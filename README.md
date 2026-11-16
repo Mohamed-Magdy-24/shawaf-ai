@@ -14,7 +14,7 @@
 
 <br/>
 
-**Shawaf AI** (* Observe"*) is a mission-critical, enterprise-grade computer vision safety platform engineered for high-risk industrial facilities. Designed specifically for the **  (BNF)** and the ** (RNF)**, Shawaf AI transforms dumb CCTV feeds into real-time safety automation grids that detect zone intrusions, hazardous equipment proximity, and camera blindness in sub-10 milliseconds.
+Shawaf AI ( "Observe") is a mission-critical, enterprise-grade computer vision safety platform engineered for high-risk industrial facilities. Designed specifically for the **  (BNF)** and the ** (RNF)**, Shawaf AI transforms dumb CCTV feeds into real-time safety automation grids that detect zone intrusions, hazardous equipment proximity, and camera blindness in sub-10 milliseconds.
 
 </div>
 
