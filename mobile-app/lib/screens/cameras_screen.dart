@@ -337,6 +337,11 @@ class _WebRTCStreamDialogState extends State<_WebRTCStreamDialog> {
               ),
             ),
             const SizedBox(height: 12),
+            if (_sdpAnswer != null)
+              Text(
+                'SDP Negotiated: ${_sdpAnswer?['type'] ?? 'answer'} (H.264)',
+                style: const TextStyle(color: AppTheme.textMuted, fontSize: 10),
+              ),
             Text(
               'Security Boundary: D-011 Zero-Trust Proxy',
               style: const TextStyle(color: AppTheme.textMuted, fontSize: 10),
