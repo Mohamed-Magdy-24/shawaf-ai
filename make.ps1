@@ -1,4 +1,4 @@
-﻿# Shawaf AI — Windows PowerShell Task Runner
+# Shawaf AI — Windows PowerShell Task Runner
 param (
     [string]$Task = "test"
 )
