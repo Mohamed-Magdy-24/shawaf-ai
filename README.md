@@ -4,7 +4,7 @@
 
 # SHAWAF AI 
 ### Industrial Computer Vision & Autonomous Safety Intelligence Platform
-**Next-Generation Multi-Site Edge Surveillance for Heavy Industry (BNF & RNF Plants)**
+**Next-Generation Multi-Site Edge Surveillance for Heavy Industry (BNF & RNF)**
 
 [![Architecture: On-Premises Edge](https://img.shields.io/badge/Architecture-On--Premises%20Edge%20Monolith-0F172A?style=for-the-badge&logo=target&logoColor=2DD4BF)](architecture/)
 [![Security: Row-Level Security](https://img.shields.io/badge/Security-PostgreSQL%2016%20RLS%20Isolated-0F172A?style=for-the-badge&logo=postgresql&logoColor=2DD4BF)](deploy/postgres/)
