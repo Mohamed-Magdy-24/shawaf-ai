@@ -2,7 +2,7 @@
 
 <img src="assets/shawaf_ai_logo.png" alt="Shawaf AI Logo" width="240" style="border-radius: 20px; box-shadow: 0 0 35px rgba(45, 212, 191, 0.4);" />
 
-# SHAWAF AI — شوف AI
+# SHAWAF AI 
 ### Industrial Computer Vision & Autonomous Safety Intelligence Platform
 **Next-Generation Multi-Site Edge Surveillance for Heavy Industry (BNF & RNF Plants)**
 
