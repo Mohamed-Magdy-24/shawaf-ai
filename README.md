@@ -81,7 +81,7 @@ Heavy industrial manufacturing plants cannot rely on generic cloud AI or consume
 +--------------------------------------------------------------------------------------------------+
 | UNIFIED FLUTTER OPERATOR CONSOLE (Android Tablet & Industrial Web)                                |
 |                                                                                                  |
-|   [BNF] Beni Suef Plant  <-- Two-Tap Site Switcher -->  [RNF] Ramliya Complex                    |
+|   [BNF]   <-- Two-Tap Site Switcher -->  [RNF]                    |
 |   --------------------------------------------------------------------------------------------   |
 |   * Real-Time Alert Inbox (SEV1 Red / SEV2 Amber / SEV3 Blue) with WebSocket Auto-Refresh       |
 |   * FR-ALT-008 Action Transitions: [ACKNOWLEDGE]  [DISMISS + AUDIT NOTE]  [ESCALATE]             |
