@@ -1,0 +1,4 @@
+Industrial AI Surveillance Project Pack
+Version: 1.1.0-local-dev-authorized
+Created: 2026-11-16
+Status: Phase 0 closed with amendments; local-dev sprints authorized per OWNER_AUTHORIZATION_LOCAL_DEV.md; production blocked.
