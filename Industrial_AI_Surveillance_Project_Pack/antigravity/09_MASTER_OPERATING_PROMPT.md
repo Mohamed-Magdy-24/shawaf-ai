@@ -4,12 +4,13 @@ You are acting as a Principal Software Architect, Senior AI/Computer Vision Engi
 
 ## 1. Source of truth and Precedence Hierarchy
 
-The canonical documentation baseline and precedence hierarchy is defined in [26_SOURCE_OF_TRUTH_AND_DOCUMENT_PRECEDENCE.md](../docs/discovery/26_SOURCE_OF_TRUTH_AND_DOCUMENT_PRECEDENCE.md) and [38_DECISION_ID_CANONICAL_REGISTER.md](../docs/discovery/38_DECISION_ID_CANONICAL_REGISTER.md). The Active Set listed in 00_READ_ME_FIRST.md is the sole technical foundation. All other files are reference-only.
+The Active Set listed in [00_READ_ME_FIRST.md](../00_READ_ME_FIRST.md) is the sole binding technical foundation. All other files in the pack are strictly reference-only.
 
-Precedence order:
-1. **Tier 1 (Canonical Owner Requirements):** Document 26, 27, and 38 (D-001 through D-019).
-2. **Tier 2 (Remediated Evidence & Canonical Consistency Standards):** Documents 21 through 41.
-3. **Tier 3 (Initial Discovery Reports):** Documents 01 through 20 (as modified by Tier 2).
+When any specification or status table conflicts, resolve strictly in this order:
+1. **Tier 1 (Supreme Governance & Local-Dev Authorization):** [OWNER_AUTHORIZATION_LOCAL_DEV.md](../docs/governance/OWNER_AUTHORIZATION_LOCAL_DEV.md) and [CTO_AMENDMENTS.md](../docs/governance/CTO_AMENDMENTS.md) (including ADR-012 through ADR-017).
+2. **Tier 2 (Canonical Numbers & Toolchain Baseline):** [CANONICAL_NUMBERS.md](../docs/governance/CANONICAL_NUMBERS.md), [TOOLCHAIN_PINS.md](../docs/governance/TOOLCHAIN_PINS.md), [WORKSTATION_PROFILE.md](../docs/governance/WORKSTATION_PROFILE.md), and [MODEL_REGISTER.md](../docs/ai/MODEL_REGISTER.md).
+3. **Tier 3 (Core Requirements & Architecture):** [01_SRS.md](../requirements/01_SRS.md), [09_REQUIREMENTS_TRACEABILITY.csv](../planning/09_REQUIREMENTS_TRACEABILITY.csv), [02_TARGET_ARCHITECTURE.md](../architecture/02_TARGET_ARCHITECTURE.md), and [08_ADR_AND_OPEN_QUESTIONS.md](../planning/08_ADR_AND_OPEN_QUESTIONS.md).
+4. **Tier 4 (Remaining Active Set Specifications):** [00_PROJECT_CHARTER.md](../00_PROJECT_CHARTER.md), [03_INTEGRATION_AND_DATA_SPEC.md](../integrations/03_INTEGRATION_AND_DATA_SPEC.md), [04_VIDEO_AI_SPEC.md](../ai/04_VIDEO_AI_SPEC.md), [05_SECURITY_PRIVACY_AND_ACCESS.md](../security/05_SECURITY_PRIVACY_AND_ACCESS.md), and Active Set discovery documents (`28`, `30`, `38`, `39`).
 
 All statements and claims MUST strictly adhere to the 9-tier provenance system:
 - `OWNER_CONFIRMED_REQUIREMENT`
@@ -126,7 +127,7 @@ Use adapters and typed outcomes. Verify exact ZKBioTime version/API, SQL schema,
 
 ## 9. Execution protocol
 
-Work in the phase order defined in [19_PHASED_IMPLEMENTATION_ROADMAP.md](../docs/discovery/19_PHASED_IMPLEMENTATION_ROADMAP.md) and governed by [35_PHASE_0_FINAL_REVIEW_AND_OWNER_DECISIONS.md](../docs/discovery/35_PHASE_0_FINAL_REVIEW_AND_OWNER_DECISIONS.md).
+Work strictly in the Work Package order (`WP-0.5` -> `WP-1` -> `WP-2` -> `WP-3` -> `WP-4` -> `WP-5` -> `WP-6`) governed by [OWNER_AUTHORIZATION_LOCAL_DEV.md](../docs/governance/OWNER_AUTHORIZATION_LOCAL_DEV.md) and [CTO_AMENDMENTS.md](../docs/governance/CTO_AMENDMENTS.md). Stop after completing each Work Package and wait for explicit owner approval before starting the next Work Package.
 
 At the start of each task:
 1. Read the relevant requirements, architecture, ADRs, and current code.

@@ -1,7 +1,7 @@
 # 00_READ_ME_FIRST — Industrial AI Surveillance Platform (BNF & RNF)
 
 ## 1. Project Purpose
-The Industrial AI Surveillance Platform is an on-premises, multi-site AI surveillance and safety alerting system engineered for Egyptian manufacturing facilities (BNF in Borg El-Arab and RNF in Sadat City). The platform ingests sub-streams from ~200+ IP cameras per site, detects industrial safety violations (restricted area intrusion, fall/hazard, PPE compliance, fire/smoke anomalies), routes time-critical alerts to security personnel and management, and enforces strict tenant isolation and Egyptian Law 151/2020 privacy compliance.
+The Industrial AI Surveillance Platform is an on-premises, multi-site AI surveillance and safety alerting system engineered for Egyptian manufacturing facilities (BNF and RNF manufacturing facilities, treated as operationally independent sites per D-001). The platform ingests sub-streams from ~200+ IP cameras per site, detects industrial safety violations (restricted area intrusion, fall/hazard, PPE compliance, fire/smoke anomalies), routes time-critical alerts to security personnel and management, and enforces strict tenant isolation and Egyptian Law 151/2020 privacy compliance.
 
 ## 2. Active Set (Authoritative Baseline)
 Only the following files define the binding project baseline:

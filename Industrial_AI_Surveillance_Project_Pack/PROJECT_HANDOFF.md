@@ -16,7 +16,7 @@
   - **Cross-Site Interconnection:** Independent factory local networks and data planes with federated, role-scoped, and secure interconnection via WireGuard VPN tunnel for authorized management access only.
 - **Repository & Active Branch:** Local Workspace `d:\Project-CRM` (Git repository initialization pending owner authorization; branch: N/A).
 - **Canonical Package & Version:** `1.1.0-local-dev-authorized` (Pack Root: `Industrial_AI_Surveillance_Project_Pack`).
-- **Last Verified Commit SHA:** `None` (Git repository not yet initialized; Sprint 1 NOT AUTHORIZED).
+- **Last Verified Commit SHA:** `None` (Local-dev sprints AUTHORIZED per OWNER_AUTHORIZATION_LOCAL_DEV.md; production deployment NOT AUTHORIZED).
 - **Last Status Update Date:** 2026-11-16.
 
 ---
@@ -32,7 +32,7 @@
 ### Explicitly Blocked & Not Yet Authorized Activities
 
 **1. Sprint 1**
-- `STRICTLY NOT AUTHORIZED` until the required owner decisions, ADR-011 approval, and implementation gates are formally approved.
+- Local development sprints (WP-1 through WP-6 on synthetic/public data) are AUTHORIZED per docs/governance/OWNER_AUTHORIZATION_LOCAL_DEV.md. Production deployment and real factory device/data access remain STRICTLY NOT AUTHORIZED.
 
 **2. Application Implementation**
 - No production application implementation or database migrations before Sprint 1 authorization.
@@ -86,46 +86,46 @@ Never convert a temporary authorization restriction into a permanent product lim
 |---|---|---|---|---|
 | **Phase 0: Readiness, Discovery & Documentation** | `CLOSED WITH AMENDMENTS` | Phase 0 CLOSED with amendments. Local-dev sprints AUTHORIZED per OWNER_AUTHORIZATION_LOCAL_DEV.md. Production blocked per its NOT AUTHORIZED list. Full documentation audit, 96-requirement SRS baseline, 96-row traceability matrix, cryptographic SHA-256 package manifest, and technology supersession completed. | `Industrial_AI_Surveillance_Project_Pack/verify_archive_manifest.py` passed with 110/110 payload files verified (exit 0). `docs/discovery/44_CURRENT_PACKAGE_INVENTORY_AND_SHA256_MANIFEST.md`. | None for local-dev; production blocked per OWNER_AUTHORIZATION_LOCAL_DEV.md. |
 | **SPK-01: ZKTeco Photo Extraction** | `AWAITING AUTHORIZATION` | Protocol and isolation boundary designed in Document 38 and Document 35. | Protocol defined; non-production test device identified. | Requires owner authorization to execute read-only queries against 1 isolated test terminal. Resolves `BLK-001`. |
-| **SPK-02: ONNX Runtime CPU/CUDA Inference Benchmark** | `AWAITING AUTHORIZATION` | Benchmark protocol purged of TensorRT/YOLOv8; baseline fixed to ONNX Runtime CPU with optional CUDA; candidate models pinned to YOLOX/RT-DETR and ByteTrack in Document 28. | Document 28 rewritten to version `1.2.0-remediated` (`PROPOSED — NOT APPROVED FOR EXECUTION`). | Requires owner authorization to allocate local workstation test GPU. Resolves `BLK-002`. Determines server BOM. |
+| **SPK-02: ONNX Runtime CPU/CUDA Inference Benchmark** | `LOCAL-DEV SIMULATION AUTHORIZED (via WP-1..WP-6); PRODUCTION BLOCKED` | Benchmark protocol purged of TensorRT/YOLOv8; baseline fixed to ONNX Runtime CPU with optional CUDA; candidate models pinned to YOLOX/RT-DETR and ByteTrack in Document 28. | Document 28 rewritten to version `1.2.0-remediated` (`PROPOSED — NOT APPROVED FOR EXECUTION`). | Requires owner authorization to allocate local workstation test GPU. Resolves `BLK-002`. Determines server BOM. |
 | **SPK-03: NVR Protocol & go2rtc Playback** | `AWAITING AUTHORIZATION` | Protocol and test harness specification designed in Document 38 and Document 32. | Specification defined for 1 test NVR and 2 test cameras on isolated test switch. | Requires owner authorization to access test NVR. Resolves `BLK-003`. |
 | **SPK-04: SQL Server Schema Read-Only Export** | `AWAITING AUTHORIZATION` | Schema inspection query plan and read-only service account boundary defined in Document 38. | Query plan documented; staging database backup identified. | Requires owner authorization to query restored staging backup of BNF attendance database. Resolves `OQ-005`. |
-| **Phase 1: Technical Spikes Execution** | `NOT AUTHORIZED` | Prerequisite protocols and governance gates established in `antigravity/11_PHASE_PROMPTS.md`. | Gate 0 verification complete; phase prompts include strict stop conditions. | Requires `DEC-01` sign-off and individual authorizations for `SPK-01` through `SPK-04`. |
-| **Phase 2: Engineering Foundation** | `NOT STARTED` | Module boundaries, Clean Architecture rules, and CI specifications defined in SDD. | Documented in `architecture/02_TARGET_ARCHITECTURE.md`. | `BLOCKED` pending Gate 1 approval and `ADR-011 = APPROVED`. Sprint 1 not authorized. |
-| **Phase 3: Site Identity & Integrations** | `NOT STARTED` | Domain contracts and adapter specifications designed. | Documented in `integrations/03_INTEGRATION_AND_DATA_SPEC.md`. | `BLOCKED` pending Gate 2 approval and Phase 1 spike outcomes (`SPK-01`, `SPK-04`). |
-| **Phase 4A: Video Pipeline Foundation** | `NOT STARTED` | go2rtc candidate sidecar architecture and storage abstractions designed. | Documented in Target Architecture and Document 32. | `BLOCKED` pending Gate 3 approval, `ADR-011 = APPROVED`, and `SPK-03` completion. |
-| **Phase 4B: One AI Use Case at a Time** | `NOT STARTED` | Multi-rate sampling policies and candidate model architectures specified. | Documented in Document 28 and Phase 4B prompt. | `BLOCKED` pending Phase 4A approval, `ADR-011 = APPROVED`, model artifact pinning, and `DEC-06` legal gate clearance. |
-| **Phase 5: Event Normalization & Alerts** | `NOT STARTED` | Outbox pattern, Valkey queueing, and urgent fire fast-path routing designed. | Documented in Document 30, Document 39, and Phase 5 prompt. | `BLOCKED` pending Gate 4 approval, `ADR-011 = APPROVED`, `DEC-04` sign-off, `DEC-05` roster submission, and `DEC-08` FCM approval. |
-| **Phase 6: Android Handheld Application** | `NOT STARTED` | UX wireframes, state models, and design tokens specified. Core requirement traceable to D-009. | Documented in Document 09, Document 10, Document 33. | `BLOCKED` pending Gate 5 approval. (Android handheld app is confirmed under D-009; Web Admin is governed separately by DEC-02). |
-| **Phase 7: Reporting & Production Hardening** | `NOT STARTED` | In-app reporting formulas, calendar cutoffs (23:59:59 Africa/Cairo per DEC-07), and 14-day pilot protocol specified. | Documented in Document 31 and Document 35. | `BLOCKED` pending Gate 6 approval and `DEC-07 = APPROVED`. |
+| **Phase 1: Technical Spikes Execution** | `LOCAL-DEV SIMULATION AUTHORIZED (via WP-1..WP-6); PRODUCTION BLOCKED` | Prerequisite protocols and governance gates established in `antigravity/11_PHASE_PROMPTS.md`. | Gate 0 verification complete; phase prompts include strict stop conditions. | Requires `DEC-01` sign-off and individual authorizations for `SPK-01` through `SPK-04`. |
+| **Phase 2: Engineering Foundation** | `LOCAL-DEV SIMULATION AUTHORIZED (via WP-1..WP-6); PRODUCTION BLOCKED` | Module boundaries, Clean Architecture rules, and CI specifications defined in SDD. | Documented in `architecture/02_TARGET_ARCHITECTURE.md`. | `BLOCKED` pending Gate 1 approval and `ADR-011 = APPROVED`. Sprint 1 not authorized. |
+| **Phase 3: Site Identity & Integrations** | `LOCAL-DEV SIMULATION AUTHORIZED (via WP-1..WP-6); PRODUCTION BLOCKED` | Domain contracts and adapter specifications designed. | Documented in `integrations/03_INTEGRATION_AND_DATA_SPEC.md`. | `BLOCKED` pending Gate 2 approval and Phase 1 spike outcomes (`SPK-01`, `SPK-04`). |
+| **Phase 4A: Video Pipeline Foundation** | `LOCAL-DEV SIMULATION AUTHORIZED (via WP-1..WP-6); PRODUCTION BLOCKED` | go2rtc candidate sidecar architecture and storage abstractions designed. | Documented in Target Architecture and Document 32. | `BLOCKED` pending Gate 3 approval, `ADR-011 = APPROVED`, and `SPK-03` completion. |
+| **Phase 4B: One AI Use Case at a Time** | `LOCAL-DEV SIMULATION AUTHORIZED (via WP-1..WP-6); PRODUCTION BLOCKED` | Multi-rate sampling policies and candidate model architectures specified. | Documented in Document 28 and Phase 4B prompt. | `BLOCKED` pending Phase 4A approval, `ADR-011 = APPROVED`, model artifact pinning, and `DEC-06` legal gate clearance. |
+| **Phase 5: Event Normalization & Alerts** | `LOCAL-DEV SIMULATION AUTHORIZED (via WP-1..WP-6); PRODUCTION BLOCKED` | Outbox pattern, Valkey queueing, and urgent fire fast-path routing designed. | Documented in Document 30, Document 39, and Phase 5 prompt. | `BLOCKED` pending Gate 4 approval, `ADR-011 = APPROVED`, `DEC-04` sign-off, `DEC-05` roster submission, and `DEC-08` FCM approval. |
+| **Phase 6: Android Handheld Application** | `LOCAL-DEV SIMULATION AUTHORIZED (via WP-1..WP-6); PRODUCTION BLOCKED` | UX wireframes, state models, and design tokens specified. Core requirement traceable to D-009. | Documented in Document 09, Document 10, Document 33. | `BLOCKED` pending Gate 5 approval. (Android handheld app is confirmed under D-009; Web Admin is governed separately by DEC-02). |
+| **Phase 7: Reporting & Production Hardening** | `LOCAL-DEV SIMULATION AUTHORIZED (via WP-1..WP-6); PRODUCTION BLOCKED` | In-app reporting formulas, calendar cutoffs (23:59:59 Africa/Cairo per DEC-07), and 14-day pilot protocol specified. | Documented in Document 31 and Document 35. | `BLOCKED` pending Gate 6 approval and `DEC-07 = APPROVED`. |
 
 ---
 
 ## D. Owner Decisions and Technical Spikes Register
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ MASTER GOVERNANCE & DECISION REGISTER                                                          │
-├──────────┬─────────────────────────────┬────────────────────────────────────────────────────────┤
-│ ID       │ Current Status              │ Specific Owner Input / Action Required                 │
-├──────────┼─────────────────────────────┼────────────────────────────────────────────────────────┤
-│ DEC-01   │ AWAITING SIGN-OFF           │ Formal sign-off on Phase 0 remediation & baseline (v1.0.3). │
-│ DEC-02   │ PROPOSED                    │ Owner approval of Web Administration Console scope.     │
-│ DEC-03   │ PROPOSED                    │ Owner approval of biometric photo-upload fallback policy.│
-│ DEC-04   │ AWAITING SIGN-OFF           │ Owner sign-off on auxiliary fire-alert status & disclaimers.│
-│ DEC-05   │ AWAITING SUBMISSION         │ Submission of verified BNF & RNF alert recipient rosters.│
-│ DEC-06   │ AWAITING SUBMISSION         │ Submission of Doc 34 to Egyptian legal counsel & formal review.│
-│ DEC-07   │ PROPOSED                    │ Owner approval of daily reporting cutoff (23:59:59 Cairo).│
-│ DEC-08   │ PROPOSED                    │ Owner approval of Firebase Cloud Messaging cloud exception.│
-├──────────┼─────────────────────────────┼────────────────────────────────────────────────────────┤
-│ SPK-01   │ AWAITING AUTHORIZATION      │ Consent to run read-only test query on 1 ZKTeco terminal.│
-│ SPK-02   │ AWAITING AUTHORIZATION      │ Consent to run ONNX Runtime benchmark on local test GPU.│
-│ SPK-03   │ AWAITING AUTHORIZATION      │ Consent to test go2rtc on 1 isolated test NVR + 2 cameras.│
-│ SPK-04   │ AWAITING AUTHORIZATION      │ Consent to inspect schema of restored BNF staging database.│
-├──────────┼─────────────────────────────┼────────────────────────────────────────────────────────┤
-│ ADR-011  │ PROPOSED — PENDING APPROVAL │ Architecture approval for Go/Python/Valkey/Postgres stack.│
-├──────────┼─────────────────────────────┼────────────────────────────────────────────────────────┤
-│ OQ-001.. │ 11 OPEN QUESTIONS           │ Unresolved technical questions tracked in Document 08/41.│
-└──────────┴─────────────────────────────┴────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ MASTER GOVERNANCE & DECISION REGISTER                                                                                                        │
+├──────────┬─────────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────────┤
+│ ID       │ Current Status                                              │ Specific Owner Input / Action Required                              │
+├──────────┼─────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────┤
+│ DEC-01   │ APPROVED (Local-Dev Baseline as amended by CTO_AMENDMENTS)  │ Phase 0 baseline accepted as amended by CTO_AMENDMENTS.md.          │
+│ DEC-02   │ APPROVED AS FLUTTER WEB (per ADR-014; React removed)        │ Administration console scope delivered as Flutter Web (ADR-014).    │
+│ DEC-03   │ BLOCKED / NOT AUTHORIZED                                    │ Owner approval of biometric photo-upload fallback policy.           │
+│ DEC-04   │ BLOCKED / NOT AUTHORIZED                                    │ Owner sign-off on auxiliary fire-alert status & disclaimers.         │
+│ DEC-05   │ BLOCKED / NOT AUTHORIZED                                    │ Submission of verified BNF & RNF alert recipient rosters.           │
+│ DEC-06   │ BLOCKED / NOT AUTHORIZED                                    │ Submission of Doc 34 to Egyptian legal counsel & formal review.     │
+│ DEC-07   │ PROPOSED                                                    │ Owner approval of daily reporting cutoff (23:59:59 Cairo).         │
+│ DEC-08   │ BLOCKED / NOT AUTHORIZED                                    │ Owner approval of Firebase Cloud Messaging cloud exception.         │
+├──────────┼─────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────┤
+│ SPK-01   │ BLOCKED / NOT AUTHORIZED                                    │ Real ZKTeco terminal contact strictly prohibited.                   │
+│ SPK-02   │ SPK-02-LOCAL APPROVED (Workstation synthetic/public media)  │ Inference/decoding benchmark on workstation synthetic/clean media.  │
+│ SPK-03   │ BLOCKED / NOT AUTHORIZED                                    │ Real NVR / factory camera contact strictly prohibited.              │
+│ SPK-04   │ BLOCKED / NOT AUTHORIZED                                    │ Real SQL Server attendance database contact strictly prohibited.    │
+├──────────┼─────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────┤
+│ ADR-011  │ APPROVED AS AMENDED (by ADR-012 .. ADR-017)                 │ Minimal PostgreSQL-only stack; Valkey/TimescaleDB/React removed.    │
+├──────────┼─────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────┤
+│ OQ-001.. │ 11 OPEN QUESTIONS                                           │ Unresolved technical questions tracked in Document 08/41.           │
+└──────────┴─────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -278,46 +278,6 @@ Remaining Blockers: DEC-01..08, SPK-01..04, ADR-011, BLK-001..007.
 Next Authorized Action: Owner formal sign-off on DEC-01 and authorization of technical spikes SPK-01 and SPK-04. Sprint 1 remains STRICTLY NOT AUTHORIZED.
 ====================================================================================================
 Date: 2026-11-16
-Phase / Task: WP-0 — Repair the Pack (Documentation Remediation)
-Previous Status: VERIFIED (Governance Audit Remediated)
-New Status: Phase 0 CLOSED with amendments. Local-dev sprints AUTHORIZED per OWNER_AUTHORIZATION_LOCAL_DEV.md. Production blocked per its NOT AUTHORIZED list.
-Work Actually Completed: 
-1. P-01: Established OWNER_AUTHORIZATION_LOCAL_DEV.md (authorizing DEC-01, ADR-011 as amended, DEC-02 Flutter Web, SPK-02-LOCAL, Sprint 1 local-dev, and FR-ALT-008 default workflow) and CTO_AMENDMENTS.md (recording the 13 pack defects and pointers to ADR-012..ADR-017).
-2. P-02: Created 00_READ_ME_FIRST.md defining the Active Set and document precedence rules.
-3. P-03: Prepended the canonical SUPERSEDED / REFERENCE-ONLY warning banner to 30 stale documents (including all 10 mandatory CTO readiness audit reports and 20 discovery/reference research files referencing banned tech).
-4. P-04: Created docs/governance/WORKSTATION_PROFILE.md with OWNER_REPORTED_ENVIRONMENT_FACT tags from AUDIT-07 §1 and empty resource footprints section for measured values.
-5. P-05: Created docs/governance/CANONICAL_NUMBERS.md fixing requirements count to 96 and video retention to 30 days on existing NVRs; updated antigravity/09_MASTER_OPERATING_PROMPT.md §3 video retention bullet.
-6. P-06: Amended antigravity/09_MASTER_OPERATING_PROMPT.md: §1 points to Active Set, §3.1 points to OWNER_AUTHORIZATION_LOCAL_DEV.md, §4 points to ADR-012..ADR-017, and appended §11 Token economy (R4, R7, R9).
-7. P-07: Amended antigravity/11_PHASE_PROMPTS.md with LOCAL-DEV MODE simulation directive directly under the title.
-8. P-08: Appended local-dev default state machine to requirements/01_SRS.md FR-ALT-008 and updated planning/09_REQUIREMENTS_TRACEABILITY.csv status to AMENDED_LOCAL_DEV_PENDING_PILOT (96 rows verified).
-9. P-09: Created docs/ai/MODEL_REGISTER.md cataloging verified candidate models (YOLOX, RT-DETR, ByteTrack, RTMPose, YuNet, SFace), marking InsightFace as NOT APPROVED (non-commercial research only), removing RT-DETR as a fall model, and marking unassigned capabilities as NO MODEL IDENTIFIED.
-10. P-10: Created docs/governance/TOOLCHAIN_PINS.md pinning verified versions for Go (1.24/1.23 latest stable), Python 3.11, PostgreSQL 16.6, ONNX Runtime 1.20.1, go2rtc, MediaMTX, FFmpeg, Flutter 3.44.7, goose, and buf.
-11. P-11: Fixed broken relative links in docs/discovery/26 and PROJECT_HANDOFF.md; updated PACK_VERSION.txt to 1.1.0-local-dev-authorized; regenerated MANIFEST.sha256 and Document 44.
-Files Changed: 
-- docs/governance/OWNER_AUTHORIZATION_LOCAL_DEV.md
-- docs/governance/CTO_AMENDMENTS.md
-- 00_READ_ME_FIRST.md
-- docs/governance/WORKSTATION_PROFILE.md
-- docs/governance/CANONICAL_NUMBERS.md
-- docs/governance/TOOLCHAIN_PINS.md
-- docs/ai/MODEL_REGISTER.md
-- antigravity/09_MASTER_OPERATING_PROMPT.md
-- antigravity/11_PHASE_PROMPTS.md
-- requirements/01_SRS.md
-- planning/09_REQUIREMENTS_TRACEABILITY.csv
-- docs/discovery/26_SOURCE_OF_TRUTH_AND_DOCUMENT_PRECEDENCE.md
-- PROJECT_HANDOFF.md
-- PACK_VERSION.txt
-- docs/discovery/44_CURRENT_PACKAGE_INVENTORY_AND_SHA256_MANIFEST.md
-- MANIFEST.sha256
-- 30 bannered audit/discovery files
-Validation and Results: python verify_archive_manifest.py passed (110/110 payload files verified, 0 mismatches, exit 0). Link check: broken 0. CSV check: 96 rows matching SRS.
-Evidence: MANIFEST.sha256, verify_archive_manifest.py output, link check script output.
-Remaining Blockers: Production hardware deployment, production NVR/ZKTeco/SQL Server contact, real employee/biometric data, Law 151/2020 legal review.
-Next Authorized Action: Awaiting user command "continue WP-1".
-====================================================================================================
-====================================================================================================
-Date: 2026-11-16
 Phase / Task: Audit Issue Remediation & Manifest Integration of PROJECT_HANDOFF.md
 Previous Status: VERIFIED
 New Status: VERIFIED (Governance Audit Remediated)
@@ -384,5 +344,29 @@ Evidence: MANIFEST.sha256, verify_archive_manifest.py output, link check script 
 Remaining Blockers: Production hardware deployment, production NVR/ZKTeco/SQL Server contact, real employee/biometric data, Law 151/2020 legal review.
 Next Authorized Action: Awaiting user command "continue WP-1".
 ====================================================================================================
+Date: 2026-11-16
+Phase / Task: WP-0.5 — Pack Hotfix & Governance Deadlock Resolution
+Previous Status: Phase 0 CLOSED with amendments. Local-dev sprints AUTHORIZED per OWNER_AUTHORIZATION_LOCAL_DEV.md. Production blocked per its NOT AUTHORIZED list.
+New Status: Phase 0.5 HOTFIX COMPLETE. Local-dev sprints AUTHORIZED per OWNER_AUTHORIZATION_LOCAL_DEV.md.
+Work Actually Completed: 
+1. Step 0.5.1: Reconciled factory location metadata in 00_READ_ME_FIRST.md §1 to BNF and RNF manufacturing facilities, treated as operationally independent sites per D-001.
+2. Step 0.5.2: Repaired corrupted markdown history fence in PROJECT_HANDOFF.md, removed duplicate early WP-0 block, synchronized operating mode, and updated governance statuses.
+3. Step 0.5.3: Replaced Section 1 of antigravity/09_MASTER_OPERATING_PROMPT.md with 4-Tier Precedence Hierarchy and updated Section 9 execution protocol.
+4. Step 0.5.4: Prepended governance amendment notices to docs/discovery/26 and docs/discovery/38.
+5. Step 0.5.5: Added canonical SUPERSEDED / REFERENCE-ONLY banner to all remaining unbannered non-Active-Set markdown files.
+6. Step 0.5.6: Added Host Version Verification Rule to docs/governance/TOOLCHAIN_PINS.md.
+7. Step 0.5.7: Recomputed MANIFEST.sha256 covering all 110 payload files; verified archive manifest (110/110) and internal relative links (0 broken).
+Files Changed: 
+- 00_READ_ME_FIRST.md
+- PROJECT_HANDOFF.md
+- antigravity/09_MASTER_OPERATING_PROMPT.md
+- docs/discovery/26_SOURCE_OF_TRUTH_AND_DOCUMENT_PRECEDENCE.md
+- docs/discovery/38_DECISION_ID_CANONICAL_REGISTER.md
+- docs/governance/TOOLCHAIN_PINS.md
+- MANIFEST.sha256
+Validation and Results: python verify_archive_manifest.py passed (110/110 payload files verified, 0 mismatches, exit 0). Link check: broken 0.
+Evidence: MANIFEST.sha256, verify_archive_manifest.py output, link check script output.
+Remaining Blockers: Production hardware deployment, production NVR/ZKTeco/SQL Server contact, real employee/biometric data, Law 151/2020 legal review.
+Next Authorized Action: Awaiting owner command: continue WP-1.
 ====================================================================================================
 ```
