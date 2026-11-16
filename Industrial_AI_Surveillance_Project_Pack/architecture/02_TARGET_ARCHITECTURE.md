@@ -28,25 +28,28 @@ Dependencies point toward Domain/Application abstractions. Infrastructure implem
 
 ### 2.3 Canonical Programming Language Strategy
 
-In accordance with the CTO Master Directive on Canonical Technology Stack:
+In accordance with the CTO Master Directive on Canonical Technology Stack (amended by ADR-012 … ADR-017):
 1. **Core Business Backend — GO:**
    - Primary language for all business logic, REST/JSON APIs, WebSocket streams, authentication, authorization, factory tenant isolation, camera/NVR orchestration, ZKBioTime adapters, and SQL Server read-only sync.
    - Clean Architecture, modular boundaries, strongly typed domain contracts.
+   - **Per ADR-012:** The Go core never decodes video. Go owns camera/zone/policy configuration, scheduling, health, persistence, and alerts.
 2. **Artificial Intelligence & Video Analytics — PYTHON:**
-   - Isolated processes/services for computer vision, ONNX Runtime inference, ByteTrack, Person Re-ID, PPE, falls, fire/smoke, and behavioral evaluation.
-   - Communicates with Go backend exclusively via versioned **gRPC** interfaces.
-3. **Desktop Web Admin Console — REACT / TYPESCRIPT (Vite):**
-   - Desktop browser administration portal for camera inventory, topology maps, zone polygon editing, live WebRTC viewing, authorized playback, digital zoom, PTZ controls, and incident investigation.
-4. **Android Management Application — FLUTTER / DART:**
-   - Manager mobile client for real-time alert feeds, site switching, incident review, evidence inspection, and authorized video playback.
-5. **Native Systems Optimization — C++:**
+   - Isolated worker processes for computer vision, ONNX Runtime inference, ByteTrack, PPE, falls, fire/smoke, and behavioral evaluation.
+   - **Per ADR-012:** The Python worker owns camera sub-stream pulling, ffmpeg video decoding, frame sampling, bounded latest-frame queue (size 1–2), ONNX inference, and rule evaluation.
+   - Communicates with Go backend exclusively via versioned **gRPC** interfaces, sending only normalized events and JPEG snapshot references (proto contains no raw frame/pixel messages).
+3. **Unified Client Codebase — FLUTTER / DART (ADR-014):**
+   - Single codebase delivering both the **Android Management Application** (mobile handheld) and the **Desktop Web Admin Console** (Flutter Web build for desktop browsers).
+   - React/Vite is removed from the baseline.
+   - State management via Cubit/Bloc (`flutter_bloc`), CustomPainter polygon zone editor, WebRTC live view via go2rtc (`flutter_webrtc`), and vector charts (`fl_chart`).
+   - Results in exactly 3 languages across the platform: Go, Python, and Dart.
+4. **Native Systems Optimization — C++:**
    - Permitted only when justified by measured benchmarks and approved licensing.
 
 ## 3. Logical context
 
 ```text
        +-------------------------------+       +------------------------------------+
-       |  Android Manager App (Flutter)|       | Desktop Web Admin Console (React)  |
+       |  Android Manager App (Flutter)|       | Flutter Web Admin Console (Flutter)|
        |  Alerts / Feed / Video / Auth |       | Topology / PTZ / Zones / Audit     |
        +---------------+---------------+       +-----------------+------------------+
                        |                                         |
@@ -65,15 +68,17 @@ In accordance with the CTO Master Directive on Canonical Technology Stack:
            | BNF Factory Edge     |                   | RNF Factory Edge     |
            | - Go Edge Agent      |                   | - Go Edge Agent      |
            | - go2rtc Gateway     |                   | - go2rtc Gateway     |
-           | - Local PostgreSQL   |                   | - Local PostgreSQL   |
-           | - Local Valkey Queue |                   | - Local Valkey Queue |
+           | - PostgreSQL 16 (DB) |                   | - PostgreSQL 16 (DB) |
+           |   + Outbox / RLS     |                   |   + Outbox / RLS     |
            +----------+-----------+                   +-----------+----------+
-                      | gRPC                                      | gRPC
+                      | gRPC (Config / Events)                    | gRPC (Config / Events)
            +----------v-----------+                   +-----------v----------+
            | Python AI Workers    |                   | Python AI Workers    |
-           | (ONNX Runtime)        |                   | (ONNX Runtime)        |
+           | (ONNX Runtime,       |                   | (ONNX Runtime,       |
+           |  FFmpeg Decode,      |                   |  FFmpeg Decode,      |
+           |  Bounded Queue 1-2)  |                   |  Bounded Queue 1-2)  |
            +----------+-----------+                   +-----------+----------+
-                      |                                           |
+                      | RTSP Sub-streams                          | RTSP Sub-streams
                Isolated CCTV LAN                           Isolated CCTV LAN
            BNF Cameras / NVRs / SQL                    RNF Cameras / NVRs / SQL
 ```
@@ -190,20 +195,20 @@ Limitations:
 - go2rtc is not the approved long-term recording-retention engine.
 - NVR playback and recording capabilities must be verified separately for each supported model.
 
-## AI Inference Runtime Baseline
+## AI Inference Runtime Baseline (ADR-011 / ADR-016)
 
 The platform shall use a decoupled Python AI worker communicating with the Go core through versioned gRPC contracts.
 
-### Proposed Runtime Baseline — Pending ADR-011 Owner Approval
+### Runtime Baseline (Approved as Amended by ADR-012 … ADR-017)
 
-- AI worker language: Python 3.11, isolated from the host Python installation.
-- Model execution: ONNX Runtime.
-- Primary compatibility baseline: CPU inference.
-- Optional acceleration: CUDA execution provider only after GPU, driver, CUDA, ONNX Runtime, and model compatibility are verified together.
-- Worker communication: versioned gRPC and protobuf contracts.
-- Intra-camera tracking: ByteTrack, subject to pinned release and dependency-license verification.
-- Cross-camera Re-ID: separate research and validation capability; not assumed to be production-ready.
-- Model selection: only models with verified source-code, model-weight, and dataset licenses may be approved.
+- AI worker language: Python 3.11, isolated from the host Python installation in a dedicated venv/container.
+- Model execution: ONNX Runtime (CPU is the mandatory baseline; FP32 on Quadro P600; `onnxruntime-gpu` optional only if WP-3 proves compatibility).
+- Deployed worker image contains ONNX Runtime + OpenCV/NumPy only (**no PyTorch in production runtime**; offline model-export environment per ADR-016).
+- Worker communication: versioned gRPC and protobuf contracts over TCP 127.0.0.1 (no frame/pixel payloads in proto).
+- Intra-camera tracking: ByteTrack algorithm running in-process on CPU.
+- Video decoding: Python worker pulls camera sub-streams directly and decodes via ffmpeg subprocess (Go never decodes video per ADR-012).
+- AI Frame queue: Bounded latest-frame queue per camera (size 1–2 frames, drops counted).
+- Model selection: strictly governed by `docs/ai/MODEL_REGISTER.md`.
 
 ### Explicit exclusions
 
@@ -211,15 +216,20 @@ The proposed baseline shall not depend on:
 
 - Ultralytics YOLOv8.
 - The `ultralytics` Python package.
+- PyTorch in the deployed worker image (ADR-016).
 - NVIDIA DeepStream SDK.
 - TensorRT.
+- MinIO (ADR-016).
+- TimescaleDB (ADR-013).
+- Valkey (ADR-013).
+- React / Vite (ADR-014).
 - The `pyzk` library.
 
 No excluded component may be reintroduced without a separate architecture decision, compatibility proof, licensing review, and owner approval.
 
 ### Model Selection Policy
 
-YOLOX and RT-DETR may be evaluated as candidate model families. Neither is automatically approved merely by naming it in this document.
+YOLOX and RT-DETR are candidate model families for detection. No model is approved without satisfying the governance requirements in `docs/ai/MODEL_REGISTER.md`.
 
 Before selecting a model, record:
 
@@ -235,21 +245,20 @@ Before selecting a model, record:
 
 The model selection decision shall be recorded in the AI model register.
 
-### AI Frame Ingestion Backpressure and Drop Policy
+### AI Worker Video Ingestion, Backpressure and Drop Policy (ADR-012)
 
-The Go edge component shall enforce bounded memory usage for AI frame dispatch.
+Per ADR-012, the Go core never decodes or dispatches raw video frames. The Python AI worker pulls each camera's sub-stream directly (credentials provided by Go at configuration time, never logged), decodes with an ffmpeg subprocess (or PyAV), applies a fixed-rate sampler, and enforces a bounded memory footprint.
 
 Requirements:
 
-- AI frame queues shall be bounded per camera stream.
-- The system shall not allow unbounded frame accumulation when inference is slower than ingestion.
-- The implementation shall support a configurable latest-frame or bounded-frame strategy appropriate to each detector.
-- Dropped frames shall be counted and exposed through metrics.
-- Inference latency, queue depth, dropped-frame count, worker health, and processing errors shall be observable.
+- The Python AI worker maintains a **bounded latest-frame queue (capacity 1–2 frames, drops counted)** per camera stream.
+- The system prevents unbounded frame accumulation when inference latency exceeds sampling rate.
+- Dropped frames shall be counted and exposed through telemetry metrics.
+- The Python worker executes ONNX inference, ByteTrack tracking, and rule evaluation locally, sending only normalized events and a JPEG evidence snapshot reference to Go over gRPC.
+- The protobuf definition contains no raw frame or pixel message payloads.
+- Transport: gRPC over TCP 127.0.0.1.
 - A failed AI worker shall not block unrelated API requests, camera inventory, or attendance synchronization.
-- Recovery shall not silently duplicate events or lose already persisted events.
-
-Initial queue capacity, latency thresholds, and alert thresholds must be configurable and validated through benchmarks. Do not hardcode the proposed ring-buffer size of 2 or the proposed 200ms/five-frame alert threshold as approved production values.
+- Recovery shall not silently duplicate events or lose already persisted events (idempotency key per event).
 
 ## 8. Data and storage principles
 
@@ -260,8 +269,8 @@ Initial queue capacity, latency thresholds, and alert thresholds must be configu
 - **Local Filesystem Storage:** For the initial on-premises deployment, the platform shall use controlled local filesystem storage on supported Linux filesystems such as ext4 or XFS, with explicit storage paths, access permissions, retention policies, and backup procedures. MinIO is removed from the proposed baseline to prevent incompatible licensing obligations.
 - **Storage Abstraction:** File access shall be mediated by an application storage abstraction port; storage paths shall not be scattered through business logic. Local filesystem storage alone does not solve multi-site replication, backup, high availability, or evidence durability.
 - **Video Retention Baseline:** Recorded video shall be retained for 30 days as specified in the project charter and SRS. The 30-day requirement shall not be changed without explicit owner approval. Retention policies for event metadata, biometric source images, face embeddings, and audit records shall be set independently; their retention periods remain TBD.
-- **Database Engine:** PostgreSQL 16 is retained as the relational database baseline, subject to version and extension compatibility verification. Enforce site isolation and row-level security (RLS). TimescaleDB is retained as a candidate only if its exact license, extension availability, compatibility, and deployment obligations are verified and recorded. Hypertable partition intervals and retention periods shall not be invented without operational evidence.
-- **In-Memory Store:** Valkey is the preferred candidate for in-memory caching and message queue buffering where a compatible feature set is required. Redis-specific APIs and configurations shall not be introduced into the proposed baseline.
+- **Database Engine & Minimal Data Plane (ADR-013):** PostgreSQL 16 only. Enforce site isolation and row-level security (RLS). Events table uses native monthly partitioning. Outbox pattern uses a dedicated PostgreSQL outbox table (`priority`, `status`, `attempts`, `next_attempt_at`, unique `idempotency_key`) dispatched via `FOR UPDATE SKIP LOCKED` + `LISTEN/NOTIFY`. Dedicated goroutine for fire-priority alerts with its own connection and zero throttling. Valkey and TimescaleDB are strictly removed from the baseline per ADR-013 to eliminate unnecessary service dependencies, licensing risks, and RAM overhead.
+- **In-Memory Store Eliminated (ADR-013):** Separate in-memory cache/queue brokers (Valkey/Redis) are eliminated from the baseline in favor of transactional persistence in PostgreSQL 16.
 - **Identity & Schema Rules:** Use stable UUIDs for platform records. Scope source Employee ID to the site. Store UTC timestamps and retain original camera/device timestamp plus synchronization offset where needed. Use schema versioning for event messages and transactional outbox for reliable publication.
 
 ## 9. API and contract rules
@@ -284,46 +293,42 @@ Initial queue capacity, latency thresholds, and alert thresholds must be configu
 - Do not size on camera count alone. Capture resolution, FPS, codec, stream count, inference sampling rate, number of models, retention mode, and concurrency.
 - Do not route all high-bandwidth live streams through one central server without a bandwidth and capacity assessment.
 
-## 11. Canonical multi-language repository structure
+## 11. Canonical multi-language repository structure (Amended by ADR-012 … ADR-017)
 
 ```text
 repo/
   docs/                         # Project documentation and ADR registers
-  proto/                        # Shared gRPC protobuf definitions (Go & Python)
-    video_analytics.proto
-    events.proto
-    tracking.proto
-  backend/                      # Core Business Platform (GO)
+  proto/                        # Shared gRPC protobuf definitions (Go & Python; NO frame/pixel payloads)
+    events.proto                # Normalized event delivery (camera_id, zone_id, snapshot_ref, etc.)
+    config.proto                # Camera, zone, and rule configuration from Go to Python
+  backend/                      # Core Business Platform (GO — Clean Architecture)
     cmd/
       server/                   # API Server & Management Plane entrypoint
       edge-agent/               # Factory Edge Ingestion Agent entrypoint
     internal/
-      domain/                   # Clean Architecture: Entities & Value Objects
+      domain/                   # Clean Architecture: Entities, Value Objects, Domain Invariants
       application/              # Use Cases, Ports & Interfaces
-      infrastructure/           # PostgreSQL, TimescaleDB, Valkey, go2rtc, ZKTeco
+      infrastructure/           # PostgreSQL 16 (Transactional Outbox / RLS), go2rtc, ZKTeco adapters
       presentation/             # REST API Handlers, WebSockets, gRPC Servers
-  ai-workers/                   # Computer Vision & Inference Daemons (PYTHON)
-    detectors/                  # Candidate models (PPE, Intrusion, Fire/Smoke)
-    tracking/                   # ByteTrack & Person Re-ID embeddings
-    fall_trigger/               # Decoupled temporal differencing & ring buffer
-    runtime/                    # ONNX Runtime execution engines
-    grpc_service/               # Python gRPC worker daemon
-  web-admin/                    # Desktop Administration Console (REACT / TYPESCRIPT / VITE)
-    src/
-      components/               # UI Component Library (Teal/Graphite Tokens)
-      features/                 # Camera Inventory, Topology, Zone Editor, Incidents
-      api/                      # Typed REST/WebSocket client
-  mobile-app/                   # Manager Application (FLUTTER / DART)
+  ai-workers/                   # Computer Vision & Inference Daemons (PYTHON 3.11 — ADR-012/016)
+    ingest/                     # Sub-stream RTSP pulling via ffmpeg subprocess; bounded queue (size 1-2)
+    detectors/                  # ONNX Runtime candidate engines (YOLOX, RT-DETR)
+    tracking/                   # ByteTrack in-process tracker
+    rules/                      # Polygon zone entry, fall heuristic, and safety rules
+    grpc_client/                # gRPC client sending events & snapshot refs to Go
+  client/                       # Unified Client Application (FLUTTER / DART — ADR-014)
     lib/
-      core/                     # Clean Code Core & Theme Tokens
-      features/                 # Cubits, Alert Inbox, Video Player, Reports
-  deploy/                       # Infrastructure & Deployment
-    docker-compose.local.yml    # Reproducible local developer environment
-    edge/                       # Factory edge systemd / docker manifests
-    vpn/                        # WireGuard / IPsec configuration templates
+      core/                     # Common Cubits/Blocs, Theme Tokens, Auth, Site-Switch
+      features/                 # Alert Inbox, Zone Polygon Editor, WebRTC Player, Reports
+    web/                        # Web Admin Console Target (Flutter Web build)
+    android/                    # Manager Handheld Target (Android APK, USB physical device)
+  deploy/                       # Infrastructure & Deployment (WSL2 / Docker Engine — ADR-015)
+    docker-compose.local.yml    # Pinned local stack (postgres:16.16, go2rtc, mediamtx, camsim, edged, ai-worker)
+    wsl/                        # .wslconfig template (5GB RAM, 6 cores, 6GB swap)
+    vpn/                        # WireGuard configuration templates
   tests/                        # Automated Test Suites
-    e2e/                        # End-to-end integration tests
-    benchmarks/                 # GPU / NVDEC benchmark suites
+    e2e/                        # End-to-end integration and site-isolation negative tests
+    benchmarks/                 # SPK-02-LOCAL decode and inference benchmark suites
 ```
 
 ## 12. Architecture guardrails

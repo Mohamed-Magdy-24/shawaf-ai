@@ -4,7 +4,7 @@ Date: 2026-11-16 · Status: ACTIVE GOVERNANCE BASELINE
 
 | Item | Value | Provenance |
 |---|---|---|
-| Requirements | 96 = 78 FR + 18 NFR | SRS + CSV (verified by script) |
+| Requirements | 97 = 78 FR + 19 NFR | SRS + CSV (verified by script, includes NFR-OBS-002 per ADR-017) |
 | Cameras | ~200+/site, may grow | D-004 |
 | Biometric terminals | 18+/site, mixed | D-005 |
 | Video retention | 30 days — **on the existing NVRs** (charter §4 excludes replacing NVR recording). Platform stores only event clips/snapshots/metadata. | D-008 + Charter |

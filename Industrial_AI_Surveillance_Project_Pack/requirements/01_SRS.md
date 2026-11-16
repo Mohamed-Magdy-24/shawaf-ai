@@ -225,6 +225,7 @@ Reference: OQ-021 in `planning/08_ADR_AND_OPEN_QUESTIONS.md`.
 | NFR-MNT-001 | Business rules shall be independent from vendor SDKs, databases, and UI frameworks. | MUST; architecture review |
 | NFR-MNT-002 | Modules shall expose explicit contracts and have automated unit/contract/integration tests. | MUST |
 | NFR-OBS-001 | Structured logs, metrics, traces, health checks, and per-site operational status shall be available. | MUST |
+| NFR-OBS-002 | The platform shall raise an operational alert ("coverage lost") to configured administrators when a camera stream or an AI worker heartbeat is missing for a configurable threshold time. | PROPOSED_LOCAL_DEV |
 | NFR-UX-001 | The manager shall be able to identify the active site and event severity without ambiguity. | MUST; usability test |
 | NFR-DATA-001 | Video retention shall be 30 days unless an evidence-preservation policy is explicitly approved. | MUST/TBD exception |
 | NFR-AI-001 | AI performance shall be measured by event class, camera/zone, day/night conditions, and site using labeled test data. | MUST |

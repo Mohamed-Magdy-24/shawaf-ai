@@ -71,23 +71,44 @@
 
 ### ADR-011 — Unified Edge, Streaming, and AI Runtime Baseline
 
-- Status: PROPOSED — PENDING OWNER APPROVAL.
+- Status: APPROVED AS AMENDED (by ADR-012 … ADR-017; see docs/governance/CTO_AMENDMENTS.md).
 - Edge Core: Go modular monolith / edge daemon.
 - Video Streaming: Isolated go2rtc sidecar, subject to device compatibility and release/license verification.
-- AI Worker: Isolated Python 3.11 gRPC service.
-- AI Runtime: ONNX Runtime with CPU as the mandatory baseline.
+- AI Worker: Isolated Python 3.11 gRPC service (ADR-012).
+- AI Runtime: ONNX Runtime with CPU as the mandatory baseline; FP32 (ADR-016).
 - Optional GPU acceleration: only after measured compatibility and performance verification.
 - Intra-camera Tracking: ByteTrack, subject to dependency and release verification.
 - AI Model Families: YOLOX and RT-DETR are candidates, not approved production models.
-- Persistence: PostgreSQL 16, with TimescaleDB only after license and compatibility verification.
+- Persistence: PostgreSQL 16 only (TimescaleDB and Valkey removed per ADR-013).
 - Local Storage: Controlled filesystem storage behind an application storage abstraction.
-- Cache/ephemeral data: Valkey candidate, subject to compatibility verification.
-- Clients: Flutter Android application and React/Vite desktop Web Administration Console, consistent with the approved project scope.
+- Clients: Flutter Android application and Flutter Web Administration Console (React/Vite removed per ADR-014).
 - Connectivity: WireGuard candidate for site-to-site VPN, subject to deployment and security verification.
 - Licensing: No mandatory paid software license or subscription in the approved baseline.
-- Exclusions: Ultralytics/YOLOv8, pyzk, NVIDIA DeepStream, and TensorRT.
+- Exclusions: Ultralytics/YOLOv8, pyzk, NVIDIA DeepStream, TensorRT, MinIO, TimescaleDB, Valkey, React/Vite.
 
-**Approval condition:** This ADR remains PROPOSED until the project owner explicitly approves it. Its contents must not be treated as an approved implementation baseline before that approval.
+**ADR-012 — The AI worker owns video decode and inference.**
+- Status: APPROVED (local-dev)
+Context: Go has no native production video decoder; sending raw frames Go→Python over gRPC costs CPU/RAM and bandwidth. Decision: the Go core never decodes video. The Python worker pulls each camera's *sub-stream* (credentials supplied by Go at config time, never logged), decodes it with an ffmpeg subprocess (or PyAV), applies a fixed-rate sampler, keeps a **bounded latest-frame queue (size 1–2, drops counted)** per camera, runs ONNX inference, tracking and rule evaluation, and sends **only events + a JPEG evidence snapshot reference** to Go via versioned gRPC (idempotency key per event). Go owns camera/zone/policy configuration, scheduling, health, persistence, alerts. Transport: gRPC over TCP 127.0.0.1 (works identically in WSL2, Docker and Linux; no Unix sockets). Consequences: Go↔Python traffic is tiny; one worker process serves N cameras where N is MEASURED in WP-3; the "proto" file must contain no frame/pixel message.
+
+**ADR-013 — Minimal data plane.**
+- Status: APPROVED (local-dev)
+Decision: PostgreSQL 16 only. Outbox = table with `priority`, `status`, `attempts`, `next_attempt_at`, unique `idempotency_key`; dispatch with `FOR UPDATE SKIP LOCKED` + `LISTEN/NOTIFY`. Fire-priority rows are served by a dedicated goroutine with its own connection and no batching/throttling. Events table uses native monthly partitioning. **Valkey and TimescaleDB are removed from the baseline** (re-introduce only through a new ADR citing a measured limit). Consequences: two fewer services, no Timescale License question, lower RAM.
+
+**ADR-014 — One client codebase.**
+- Status: APPROVED (local-dev)
+Decision: Flutter (Dart) for the Android manager app AND the administration console (Flutter Web build, desktop browser). React/Vite is removed from the baseline. Cubit/Bloc (`flutter_bloc`) for state. Zone editor = CustomPainter polygon editor. Live view = WebRTC via go2rtc (`flutter_webrtc` after license check). Charts = in-app vector charts (`fl_chart` after license check). Consequences: 3 languages total (Go, Python, Dart).
+
+**ADR-015 — Runtime environment.**
+- Status: APPROVED (local-dev)
+Decision: develop inside WSL2 Ubuntu LTS; run containers with Docker Engine (docker-ce, Apache-2.0) inside WSL2, **not Docker Desktop**, unless the owner confirms the company qualifies for the free tier. `%USERPROFILE%\.wslconfig`: `memory=5GB`, `processors=6`, `swap=6GB` with the swap file on D:. Keep project files and volumes inside the WSL2 ext4 filesystem (not `/mnt/d`). Production target: Ubuntu Server LTS. Windows 10 is past end of support: treat the workstation as a dev box only; never expose it to the factory network. The Android emulator is forbidden; use a physical phone over USB.
+
+**ADR-016 — Inference runtime.**
+- Status: APPROVED (local-dev)
+Decision: the deployed worker image contains ONNX Runtime + OpenCV/NumPy only (no PyTorch). Models are exported to ONNX in a separate offline "model-export" environment; every model artifact is stored with source commit, SHA-256 and a MODEL_REGISTER row. CPU is the mandatory baseline; `onnxruntime-gpu` (CUDA) is optional and enabled only if WP-3 proves it works on the P600 with the pinned driver/CUDA/cuDNN — otherwise CPU only. TensorRT, DeepStream, Ultralytics, pyzk, MinIO stay excluded. Models use FP32 on the P600.
+
+**ADR-017 — Notification channel port.**
+- Status: APPROVED (local-dev)
+Decision: `NotificationChannel` port with adapters: (1) `WebSocketChannel` (in-app, default), (2) `FcmChannel` (implemented, **disabled** until DEC-08; payload = event id + generic text only: no names, no images, no site-sensitive details), (3) `NtfyChannel` (self-hosted ntfy/UnifiedPush, Apache-2.0/GPL-check required before use — if its server license is copyleft, run it only as a separate unmodified process and record the legal note) as a Google-free fallback candidate. Android client: foreground service for the socket plus a documented battery-optimization exemption step; test on the physical phone with screen off for 30 min. Additionally the platform MUST raise an **operational alert ("coverage lost")** to configured admins when a camera stream or a worker heartbeat is missing for a configurable time — a silent blind spot is a safety defect. (New requirement NFR-OBS-002 — add to SRS and CSV as `PROPOSED_LOCAL_DEV`; CSV then has 97 rows; update CANONICAL_NUMBERS.md accordingly.)
 
 ## 3. Open questions / blockers
 
