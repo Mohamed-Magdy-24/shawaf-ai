@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile_app/services/api_service.dart';
-import 'package:mobile_app/models/models.dart';
+import 'package:shawaf_ai_mobile/services/api_service.dart';
+import 'package:shawaf_ai_mobile/models/models.dart';
 
 void main() {
   group('ApiService & FR-ALT-008 Workflow Validation', () {

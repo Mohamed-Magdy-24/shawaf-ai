@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile_app/models/models.dart';
-import 'package:mobile_app/widgets/site_banner.dart';
-import 'package:mobile_app/theme/app_theme.dart';
+import 'package:shawaf_ai_mobile/models/models.dart';
+import 'package:shawaf_ai_mobile/widgets/site_banner.dart';
+import 'package:shawaf_ai_mobile/theme/app_theme.dart';
 
 void main() {
   testWidgets('SiteBanner renders active site and triggers switch callback', (WidgetTester tester) async {
@@ -37,11 +37,11 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify bottom sheet modal opened with available sites
-    expect(find.text('SELECT ACTIVE FACILITY'), findsOneWidget);
-    expect(find.text('RNF (Ramliya Steel)'), findsOneWidget);
+    expect(find.text('SWITCH ACTIVE INDUSTRIAL SITE'), findsOneWidget);
+    expect(find.text('Ramliya Steel'), findsWidgets);
 
     // Tap on RNF
-    await tester.tap(find.text('RNF (Ramliya Steel)'));
+    await tester.tap(find.text('Ramliya Steel'));
     await tester.pumpAndSettle();
 
     expect(selectedSite?.code, 'RNF');
