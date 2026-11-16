@@ -132,7 +132,7 @@ class SiteBanner extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: AppTheme.primaryTeal.withOpacity(0.15),
+              color: AppTheme.primaryTeal.withValues(alpha: 0.15),
               border: Border.all(color: AppTheme.primaryTeal),
               borderRadius: BorderRadius.circular(4),
             ),

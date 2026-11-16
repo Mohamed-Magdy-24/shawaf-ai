@@ -19,7 +19,7 @@ class ZonePainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final fillPaint = Paint()
-      ..color = AppTheme.primaryTeal.withOpacity(0.18)
+      ..color = AppTheme.primaryTeal.withValues(alpha: 0.18)
       ..style = PaintingStyle.fill;
 
     // Draw safety zones

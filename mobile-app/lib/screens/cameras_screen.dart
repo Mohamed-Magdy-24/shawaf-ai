@@ -89,7 +89,7 @@ class CamerasScreen extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: statusColor.withOpacity(0.15),
+                              color: statusColor.withValues(alpha: 0.15),
                               border: Border.all(color: statusColor),
                               borderRadius: BorderRadius.circular(4),
                             ),
@@ -138,7 +138,7 @@ class CamerasScreen extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: AppTheme.surfaceLight,
-                                border: Border.all(color: AppTheme.primaryTeal.withOpacity(0.5)),
+                                border: Border.all(color: AppTheme.primaryTeal.withValues(alpha: 0.5)),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(

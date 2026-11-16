@@ -96,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: AppTheme.primaryTeal.withOpacity(0.15),
+                color: AppTheme.primaryTeal.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: const Icon(Icons.security, color: AppTheme.primaryTeal, size: 20),

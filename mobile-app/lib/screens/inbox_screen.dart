@@ -87,7 +87,7 @@ class _InboxScreenState extends State<InboxScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.shield_outlined, size: 54, color: AppTheme.textMuted.withOpacity(0.5)),
+                      Icon(Icons.shield_outlined, size: 54, color: AppTheme.textMuted.withValues(alpha: 0.5)),
                       const SizedBox(height: 12),
                       const Text(
                         'ALL INDUSTRIAL SAFETY ZONES SECURE',
@@ -119,7 +119,7 @@ class _InboxScreenState extends State<InboxScreen> {
                       margin: const EdgeInsets.only(bottom: 10),
                       shape: RoundedRectangleBorder(
                         side: BorderSide(
-                          color: alert.state == 'NEW' ? sevColor.withOpacity(0.7) : AppTheme.border,
+                          color: alert.state == 'NEW' ? sevColor.withValues(alpha: 0.7) : AppTheme.border,
                           width: alert.state == 'NEW' ? 1.5 : 1.0,
                         ),
                         borderRadius: BorderRadius.circular(10),
@@ -149,7 +149,7 @@ class _InboxScreenState extends State<InboxScreen> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                     decoration: BoxDecoration(
-                                      color: sevColor.withOpacity(0.2),
+                                      color: sevColor.withValues(alpha: 0.2),
                                       border: Border.all(color: sevColor),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
@@ -163,7 +163,7 @@ class _InboxScreenState extends State<InboxScreen> {
                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                                     decoration: BoxDecoration(
                                       color: alert.state == 'NEW'
-                                          ? AppTheme.primaryTeal.withOpacity(0.2)
+                                          ? AppTheme.primaryTeal.withValues(alpha: 0.2)
                                           : AppTheme.border,
                                       borderRadius: BorderRadius.circular(4),
                                     ),
