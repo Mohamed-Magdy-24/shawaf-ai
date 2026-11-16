@@ -1,0 +1,94 @@
+{
+  "timestamp": "2026-11-16T15:38:45Z",
+  "environment": "local_dev_simulation",
+  "host": {
+    "os": "Windows 10 Pro 64-bit (Build 10.0.19045)",
+    "cpu": "Intel Xeon E-2236 @ 3.40 GHz (6C/12T)",
+    "ram_total_mb": 16064,
+    "gpu": "NVIDIA Quadro P600 (4GB GDDR5, SM 6.1)",
+    "container_runtime": "Docker 29.8.0 / WSL2"
+  },
+  "stack_metrics": {
+    "total_ram_budget_mb": 3072,
+    "measured_total_ram_mb": 175.0,
+    "budget_headroom_percent": 94.3,
+    "services": [
+      {
+        "name": "surv_ai_worker",
+        "container_image": "deploy-ai-worker:latest",
+        "memory_mb": 72.99,
+        "memory_limit_mb": 1536.0,
+        "cpu_percent": 70.08,
+        "status": "healthy_streaming"
+      },
+      {
+        "name": "surv_edged",
+        "container_image": "deploy-edged:latest",
+        "memory_mb": 9.17,
+        "memory_limit_mb": 256.0,
+        "cpu_percent": 4.24,
+        "status": "healthy"
+      },
+      {
+        "name": "surv_postgres",
+        "container_image": "postgres:16-alpine",
+        "memory_mb": 52.70,
+        "memory_limit_mb": 512.0,
+        "cpu_percent": 0.99,
+        "status": "healthy"
+      },
+      {
+        "name": "surv_mediamtx",
+        "container_image": "bluenviron/mediamtx:latest",
+        "memory_mb": 23.86,
+        "memory_limit_mb": 128.0,
+        "cpu_percent": 0.49,
+        "status": "running"
+      },
+      {
+        "name": "surv_camsim",
+        "container_image": "deploy-camsim:latest",
+        "memory_mb": 12.97,
+        "memory_limit_mb": 128.0,
+        "cpu_percent": 0.37,
+        "status": "running"
+      },
+      {
+        "name": "surv_go2rtc",
+        "container_image": "alexxit/go2rtc:latest",
+        "memory_mb": 3.17,
+        "memory_limit_mb": 128.0,
+        "cpu_percent": 0.00,
+        "status": "running"
+      }
+    ]
+  },
+  "pipeline_metrics": {
+    "rtsp_stream": "rtsp://mediamtx:8554/bnf_cam_01",
+    "video_resolution": "640x360",
+    "ingestion_fps": 15.0,
+    "detection_model": "cleanroom_yolox_nano_fp32.onnx (IR v8, opset 13)",
+    "inference_mean_ms": 2.18,
+    "tracking_mean_ms": 0.06,
+    "safety_rule": "Jordan Curve Polygon Ray-Casting (Loading Dock Danger Perimeter)",
+    "events_ingested": 24,
+    "events_breakdown": {
+      "ZONE_RESTRICTED_AREA": 19,
+      "COVERAGE_LOST": 5
+    },
+    "outbox_dispatched_sent": 24,
+    "outbox_dropped_count": 0,
+    "outbox_dispatch_success_rate": 1.0
+  },
+  "watchdog_verification": {
+    "standard": "NFR-OBS-002",
+    "timeout_threshold_sec": 15.0,
+    "simulation_trigger": "docker stop surv_camsim",
+    "event_generated": "COVERAGE_LOST",
+    "alert_severity": "CRITICAL",
+    "detection_latency_sec": 15.1,
+    "recovery_trigger": "docker start surv_camsim",
+    "stream_recovery_verified": true,
+    "online_status_restored": true
+  }
+}

@@ -28,18 +28,18 @@ def main():
     # Initialize Safety Zones (calibrated with seed database)
     zones = [
         ZoneDefinition(
-            id="zone-bnf-crane-01",
-            camera_id="cam-bnf-01",
-            name="Overhead Crane Travel Zone",
-            zone_type="INTRUSION",
+            id="bnf_zone_restricted_01",
+            camera_id="bnf_cam_01",
+            name="Loading Dock Danger Perimeter",
+            zone_type="RESTRICTED_AREA",
             severity="SEV1",
-            polygon=[(0.40, 0.35), (0.85, 0.35), (0.85, 0.80), (0.40, 0.80)],
+            polygon=[(0.40, 0.35), (0.85, 0.35), (0.85, 0.90), (0.40, 0.90)],
         ),
         ZoneDefinition(
-            id="zone-bnf-furnace-01",
-            camera_id="cam-bnf-02",
-            name="Induction Furnace Safety Perimeter",
-            zone_type="RESTRICTED_ACCESS",
+            id="bnf_zone_crane_01",
+            camera_id="bnf_cam_02",
+            name="Overhead Crane Safety Boundary",
+            zone_type="CRANE_TRAVEL",
             severity="SEV1",
             polygon=[(0.20, 0.20), (0.70, 0.20), (0.70, 0.75), (0.20, 0.75)],
         ),
@@ -58,9 +58,14 @@ def main():
     detector = OnnxDetector(model_path, conf_threshold=config.confidence_threshold)
     tracker = MultiObjectTracker(iou_threshold=config.iou_threshold)
     evaluator = RuleEvaluator(zones)
-    client = EdgeIngestionClient(http_base_url=config.edge_http_url)
+    client = EdgeIngestionClient(
+        grpc_target=config.edge_grpc_url,
+        http_base_url=config.edge_http_url,
+        shared_token=config.shared_token,
+        worker_id=config.worker_id
+    )
 
-    camera_id = "cam-bnf-01"
+    camera_id = config.camera_id
     decoder = StreamDecoder(video_src, camera_id=camera_id, maxlen=config.decode_queue_maxlen)
     decoder.start()
 
@@ -128,13 +133,14 @@ def main():
             # 4. Periodic Heartbeat (NFR-OBS-002 watchdog compliance)
             if now - last_heartbeat >= config.heartbeat_interval_sec:
                 last_heartbeat = now
-                client.send_heartbeat(
+                ok = client.send_heartbeat(
                     site_id=config.site_id,
                     camera_id=camera_id,
                     fps=round(decoder.fps, 1),
                     drops=decoder.dropped_frames,
                     latency_ms=round(lat_ms, 2)
                 )
+                print(f"[Heartbeat] bnf_cam_01 heartbeat dispatched: ok={ok}")
 
     finally:
         decoder.stop()

@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -14,25 +13,23 @@ import (
 
 // CoverageWatchdog monitors camera heartbeats and triggers NFR-OBS-002 operational alerts
 type CoverageWatchdog struct {
-	txManager      domain.TxManager
-	repo           domain.EventRepository
 	db             *sql.DB
+	repo           domain.EventRepository
 	timeoutSec     float64
 	tickerInterval time.Duration
 	stopCh         chan struct{}
 }
 
 // NewCoverageWatchdog creates an operational health monitor
-func NewCoverageWatchdog(db *sql.DB, txManager domain.TxManager, repo domain.EventRepository, timeoutSec float64) *CoverageWatchdog {
+func NewCoverageWatchdog(db *sql.DB, repo domain.EventRepository, timeoutSec float64) *CoverageWatchdog {
 	if timeoutSec <= 0 {
 		timeoutSec = 15.0
 	}
 	return &CoverageWatchdog{
 		db:             db,
-		txManager:      txManager,
 		repo:           repo,
 		timeoutSec:     timeoutSec,
-		tickerInterval: 5 * time.Second,
+		tickerInterval: 3 * time.Second,
 		stopCh:         make(chan struct{}),
 	}
 }
@@ -63,101 +60,108 @@ func (w *CoverageWatchdog) Stop() {
 	close(w.stopCh)
 }
 
-// scanStaleCameras queries cameras with last_heartbeat older than timeout and status != COVERAGE_LOST
+// scanStaleCameras iterates through active sites and evaluates health within each site's RLS boundary
 func (w *CoverageWatchdog) scanStaleCameras(ctx context.Context) error {
 	threshold := time.Now().UTC().Add(-time.Duration(w.timeoutSec * float64(time.Second)))
 
-	// Query across all sites directly using system/runtime connection
-	query := `
-		SELECT site_id, camera_id, name, status, last_heartbeat
-		FROM camera_health
-		WHERE status = 'STREAMING' AND (last_heartbeat IS NULL OR last_heartbeat < $1)
-	`
-	rows, err := w.db.QueryContext(ctx, query, threshold)
+	siteRows, err := w.db.QueryContext(ctx, `SELECT id FROM sites WHERE is_active = true`)
 	if err != nil {
-		return fmt.Errorf("failed to query stale cameras: %w", err)
+		return fmt.Errorf("failed to query active sites: %w", err)
+	}
+	defer siteRows.Close()
+
+	var siteIDs []string
+	for siteRows.Next() {
+		var id string
+		if err := siteRows.Scan(&id); err == nil {
+			siteIDs = append(siteIDs, id)
+		}
+	}
+
+	for _, siteID := range siteIDs {
+		w.scanStaleCamerasForSite(ctx, siteID, threshold)
+	}
+
+	return nil
+}
+
+func (w *CoverageWatchdog) scanStaleCamerasForSite(ctx context.Context, siteID string, threshold time.Time) {
+	tx, err := w.db.BeginTx(ctx, nil)
+	if err != nil {
+		return
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx, "SELECT set_config('app.site_id', $1, true)", siteID); err != nil {
+		log.Printf("[CoverageWatchdog] set_config error for site %s: %v", siteID, err)
+		return
+	}
+
+	query := `
+		SELECT c.camera_id, c.name, h.last_heartbeat_at
+		FROM cameras c
+		JOIN camera_health h ON c.site_id = h.site_id AND c.camera_id = h.camera_id
+		WHERE h.online = true AND (h.last_heartbeat_at IS NULL OR h.last_heartbeat_at < $1)
+	`
+	rows, err := tx.QueryContext(ctx, query, threshold)
+	if err != nil {
+		return
 	}
 	defer rows.Close()
 
 	type StaleCam struct {
-		SiteID        string
 		CameraID      string
 		Name          string
-		Status        string
 		LastHeartbeat *time.Time
 	}
 
 	var staleList []StaleCam
 	for rows.Next() {
 		var s StaleCam
-		if err := rows.Scan(&s.SiteID, &s.CameraID, &s.Name, &s.Status, &s.LastHeartbeat); err != nil {
+		if err := rows.Scan(&s.CameraID, &s.Name, &s.LastHeartbeat); err != nil {
 			log.Printf("[CoverageWatchdog] Row scan error: %v", err)
 			continue
 		}
 		staleList = append(staleList, s)
 	}
+	rows.Close()
 
 	for _, cam := range staleList {
-		log.Printf("[CoverageWatchdog] ALERT: Camera %s at site %s exceeded timeout (last heartbeat: %v). Transitioning to COVERAGE_LOST.",
-			cam.CameraID, cam.SiteID, cam.LastHeartbeat)
+		log.Printf("[CoverageWatchdog] NFR-OBS-002 ALERT: Camera %s at site %s missed heartbeat (>%.1fs). Marking offline and raising COVERAGE_LOST.",
+			cam.CameraID, siteID, w.timeoutSec)
 
-		err := w.txManager.WithSiteTx(ctx, cam.SiteID, func(tx *sql.Tx) error {
-			// 1. Update camera status
-			_, err := tx.ExecContext(ctx, `
-				UPDATE camera_health
-				SET status = 'COVERAGE_LOST', updated_at = NOW()
-				WHERE site_id = $1 AND camera_id = $2
-			`, cam.SiteID, cam.CameraID)
-			if err != nil {
-				return err
-			}
+		// 1. Mark camera offline within site boundary
+		_, _ = tx.ExecContext(ctx, `
+			UPDATE camera_health
+			SET online = false
+			WHERE site_id = $1 AND camera_id = $2
+		`, siteID, cam.CameraID)
 
-			// 2. Raise NFR-OBS-002 operational event
-			meta, _ := json.Marshal(map[string]interface{}{
-				"reason":           "Heartbeat missing > 15s",
-				"last_heartbeat":   cam.LastHeartbeat,
-				"timeout_seconds": w.timeoutSec,
-			})
+		// 2. Raise NFR-OBS-002 operational event
+		event := &domain.Event{
+			EventID:         uuid.New().String(),
+			SiteID:          siteID,
+			CameraID:        cam.CameraID,
+			ZoneID:          "",
+			EventType:       "COVERAGE_LOST",
+			Severity:        domain.SeverityCritical,
+			OccurredAt:      time.Now().UTC(),
+			ReceivedAt:      time.Now().UTC(),
+			ModelID:         "watchdog_nfr_obs_002",
+			ModelVersion:    "v1.0",
+			RuleID:          "NFR-OBS-002",
+			RuleVersion:     "v1.0",
+			Confidence:      1.0,
+			SnapshotRelPath: "",
+			SubjectStatus:   "COVERAGE_LOST",
+			State:           domain.StateNew,
+			CreatedAt:       time.Now().UTC(),
+		}
 
-			event := &domain.Event{
-				ID:         uuid.New().String(),
-				SiteID:     cam.SiteID,
-				CameraID:   cam.CameraID,
-				ZoneID:     "",
-				EventType:  "CAMERA_COVERAGE_LOST",
-				Severity:   domain.Sev2,
-				State:      domain.StateNew,
-				Confidence: 1.0,
-				OccurredAt: time.Now().UTC(),
-				CreatedAt:  time.Now().UTC(),
-				Metadata:   meta,
-			}
-
-			if err := w.repo.InsertEvent(ctx, tx, event); err != nil {
-				return err
-			}
-
-			// 3. Emit Outbox notification
-			outboxPayload, _ := json.Marshal(event)
-			outboxItem := &domain.OutboxItem{
-				ID:        uuid.New().String(),
-				SiteID:    cam.SiteID,
-				Topic:     "camera.coverage_lost",
-				Payload:   outboxPayload,
-				CreatedAt: time.Now().UTC(),
-			}
-
-			return s_repo_insertOutbox(ctx, tx, w.repo, outboxItem)
-		})
-
-		if err != nil {
-			log.Printf("[CoverageWatchdog] Failed to transition camera %s to COVERAGE_LOST: %v", cam.CameraID, err)
+		if err := w.repo.InsertEvent(ctx, event); err != nil {
+			log.Printf("[CoverageWatchdog] Failed to record coverage lost event for %s: %v", cam.CameraID, err)
 		}
 	}
 
-	return nil
-}
-
-func s_repo_insertOutbox(ctx context.Context, tx *sql.Tx, repo domain.EventRepository, item *domain.OutboxItem) error {
-	return repo.InsertOutbox(ctx, tx, item)
+	_ = tx.Commit()
 }

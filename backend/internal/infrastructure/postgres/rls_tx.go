@@ -36,6 +36,18 @@ func (d *DB) Close() error {
 	return d.pool.Close()
 }
 
+func (d *DB) Pool() *sql.DB {
+	return d.pool
+}
+
+func NewDBFromPool(pool *sql.DB) *DB {
+	return &DB{pool: pool}
+}
+
+func NewPostgresRepo(pool *sql.DB) *DB {
+	return &DB{pool: pool}
+}
+
 // WithSiteTx executes a transaction bounded to a specific tenant site_id.
 // It sets the session setting 'app.site_id' locally, which PostgreSQL Row-Level Security policies enforce.
 func (d *DB) WithSiteTx(ctx context.Context, siteID string, fn func(tx *sql.Tx) error) error {
@@ -153,12 +165,21 @@ func (d *DB) GetEvents(ctx context.Context, siteID string, limit int, offset int
 
 func (d *DB) UpdateEventState(ctx context.Context, siteID, eventID string, occurredAt time.Time, newState domain.EventState, reason, userID string) error {
 	return d.WithSiteTx(ctx, siteID, func(tx *sql.Tx) error {
-		query := `
-			UPDATE events
-			SET state = $1, dismissed_reason = $2
-			WHERE event_id = $3 AND site_id = $4 AND occurred_at = $5`
-
-		res, err := tx.ExecContext(ctx, query, string(newState), reason, eventID, siteID, occurredAt)
+		var res sql.Result
+		var err error
+		if occurredAt.IsZero() {
+			query := `
+				UPDATE events
+				SET state = $1, dismissed_reason = $2
+				WHERE event_id = $3 AND site_id = $4`
+			res, err = tx.ExecContext(ctx, query, string(newState), reason, eventID, siteID)
+		} else {
+			query := `
+				UPDATE events
+				SET state = $1, dismissed_reason = $2
+				WHERE event_id = $3 AND site_id = $4 AND occurred_at = $5`
+			res, err = tx.ExecContext(ctx, query, string(newState), reason, eventID, siteID, occurredAt)
+		}
 		if err != nil {
 			return err
 		}

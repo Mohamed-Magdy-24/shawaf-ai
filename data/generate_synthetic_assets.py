@@ -67,7 +67,7 @@ def generate_cleanroom_onnx_model(output_path: str):
         [t_w_conv, t_b_conv, t_w_fc, t_b_fc, t_shape]
     )
 
-    model = helper.make_model(graph, producer_name='shawaf-ai-cleanroom', opset_imports=[helper.make_opsetid('', 13)])
+    model = helper.make_model(graph, producer_name='shawaf-ai-cleanroom', opset_imports=[helper.make_opsetid('', 13)], ir_version=8)
     onnx.checker.check_model(model)
     onnx.save(model, output_path)
     print(f"Generated cleanroom ONNX model at: {output_path}")

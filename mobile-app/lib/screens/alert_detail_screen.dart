@@ -23,23 +23,46 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
   bool _isSubmitting = false;
 
   void _handleAction(String action) async {
-    setState(() => _isSubmitting = true);
-    await widget.onAction(action, _noteController.text.trim());
-    setState(() {
-      _isSubmitting = false;
-      widget.event.state = action == 'ACKNOWLEDGE'
-          ? 'ACKNOWLEDGED'
-          : (action == 'DISMISS' ? 'DISMISSED' : 'ESCALATED');
-    });
-
-    if (mounted) {
+    final note = _noteController.text.trim();
+    if (action == 'DISMISS' && note.length < 10) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Action $action recorded for Event ${widget.event.id}'),
-          backgroundColor: AppTheme.surfaceLight,
+        const SnackBar(
+          content: Text('FR-ALT-008: Mandatory audit note required for dismissal (minimum 10 characters).'),
+          backgroundColor: AppTheme.sev1Red,
         ),
       );
-      Navigator.pop(context);
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      await widget.onAction(action, note);
+      setState(() {
+        _isSubmitting = false;
+        widget.event.state = action == 'ACKNOWLEDGE'
+            ? 'ACKNOWLEDGED'
+            : (action == 'DISMISS' ? 'DISMISSED' : 'ESCALATED');
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Action $action recorded for Event ${widget.event.id}'),
+            backgroundColor: AppTheme.surfaceLight,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      setState(() => _isSubmitting = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Action failed: $e'),
+            backgroundColor: AppTheme.sev1Red,
+          ),
+        );
+      }
     }
   }
 

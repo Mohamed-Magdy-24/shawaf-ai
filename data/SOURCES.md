@@ -30,3 +30,9 @@ Checksums will be updated upon generation by `data/generate_synthetic_assets.py`
 - `data/models/cleanroom_yolox_nano_fp32.onnx`: `1df40740555470ffafc2ef369f3b4c83c6b2b1992140b0928d4905aabc3b3b0f`
 - `data/synthetic/synthetic_intrusion_640x360.mp4`: `cd2194b10ad846271cd8ad94572a96ed4075730018fd03ee782699cf1e5509f6`
 - `data/synthetic/synthetic_intrusion_1280x720.mp4`: `b2c6a9ac75d1b4ffcc37e1fa9bd3a5acf96232a0d6f7a8480f6e1aa4162598f7`
+
+## 5. Verified File Hashes
+
+- `data/models/cleanroom_yolox_nano_fp32.onnx`: `5ed774f0b7e7da82c89d2a18f4ba1e36905ab9a4c9627bf88091db33aa0da56e`
+- `data/synthetic/synthetic_intrusion_640x360.mp4`: `cd2194b10ad846271cd8ad94572a96ed4075730018fd03ee782699cf1e5509f6`
+- `data/synthetic/synthetic_intrusion_1280x720.mp4`: `b2c6a9ac75d1b4ffcc37e1fa9bd3a5acf96232a0d6f7a8480f6e1aa4162598f7`

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -15,7 +14,6 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/industrial-ai/surveillance/backend/internal/application"
-	"github.com/industrial-ai/surveillance/backend/internal/domain"
 	"github.com/industrial-ai/surveillance/backend/internal/infrastructure/go2rtc"
 	"github.com/industrial-ai/surveillance/backend/internal/infrastructure/grpcserver"
 	"github.com/industrial-ai/surveillance/backend/internal/infrastructure/outbox"
@@ -30,13 +28,15 @@ func main() {
 	log.Println("   Architecture: On-Premises Multi-Site Edge with RLS Isolation")
 	log.Println("=================================================================")
 
-	// 1. Configuration
-	dbURL := getEnv("DATABASE_URL", "postgres://app_runtime:runtime_pass_local@localhost:5432/surveillance_dev?sslmode=disable")
-	httpAddr := getEnv("HTTP_PORT", ":8080")
-	grpcAddr := getEnv("GRPC_PORT", ":50051")
-	go2rtcURL := getEnv("GO2RTC_URL", "http://localhost:1984")
-	jwtSecret := getEnv("JWT_SECRET", "shawaf-ai-dev-secret-key-32-bytes-minimum")
-	timeoutSecStr := getEnv("COVERAGE_LOST_TIMEOUT_SECONDS", "15.0")
+	// 1. Reconcile Configuration (Support both compose and standalone env keys)
+	dbURL := getEnvFirst([]string{"POSTGRES_DSN", "DATABASE_URL"}, "postgres://app_runtime:local_dev_runtime_secret_change_me@localhost:5432/surveillance?sslmode=disable")
+	httpAddr := getEnvFirst([]string{"EDGED_HTTP_ADDR", "HTTP_PORT"}, ":8080")
+	grpcAddr := getEnvFirst([]string{"EDGED_GRPC_ADDR", "GRPC_PORT"}, ":50051")
+	go2rtcURL := getEnvFirst([]string{"GO2RTC_INTERNAL_URL", "GO2RTC_URL"}, "http://localhost:1984")
+	jwtSecret := getEnvFirst([]string{"EDGED_JWT_SECRET", "JWT_SECRET"}, "local_dev_jwt_hmac_secret_32bytes_min_0001")
+	workerToken := getEnvFirst([]string{"EDGED_WORKER_SHARED_TOKEN", "WORKER_TOKEN"}, "local_dev_worker_grpc_shared_secret_token_03")
+	timeoutSecStr := getEnvFirst([]string{"EDGED_COVERAGE_LOST_TIMEOUT_SEC", "COVERAGE_LOST_TIMEOUT_SECONDS"}, "15.0")
+
 	timeoutSec, err := strconv.ParseFloat(timeoutSecStr, 64)
 	if err != nil {
 		timeoutSec = 15.0
@@ -64,40 +64,35 @@ func main() {
 
 	// 3. Domain Repositories & Application Services
 	pgRepo := postgres.NewPostgresRepo(db)
-	ingestionSvc := application.NewIngestionService(pgRepo, pgRepo)
+	ingestionSvc := application.NewIngestionService(pgRepo)
 
 	// 4. WebSocket Hub
 	wsHub := ws.NewHub()
 	go wsHub.Run()
 
-	// 5. Outbox Dispatcher
-	dispatcher := outbox.NewDispatcher(db, dbURL, 1*time.Second, 50)
-	dispatcher.RegisterHandler(func(ctx context.Context, item *domain.OutboxItem) error {
-		log.Printf("[Outbox] Dispatched item %s (site: %s, topic: %s)", item.ID, item.SiteID, item.Topic)
-		// Broadcast to connected WebSocket operators for this site
-		wsHub.Broadcast(item.SiteID, item.Payload)
-		return nil
-	})
-	dispatcher.Start(ctx)
+	// 5. Outbox Dispatcher (SKIP LOCKED + LISTEN/NOTIFY)
+	dispatcher := outbox.NewDispatcher(db)
+	dispatcher.RegisterChannel(wsHub)
+	dispatcher.Start(ctx, dbURL)
 	defer dispatcher.Stop()
 
-	// 6. Coverage-Lost Watchdog (NFR-OBS-002)
-	watchdog := application.NewCoverageWatchdog(db, pgRepo, pgRepo, timeoutSec)
+	// 6. Coverage-Lost Watchdog (NFR-OBS-002: < 15s)
+	watchdog := application.NewCoverageWatchdog(db, pgRepo, timeoutSec)
 	watchdog.Start(ctx)
 	defer watchdog.Stop()
 
 	// 7. Go2rtc Zero-Trust Proxy
 	go2rtcProxy := go2rtc.NewProxy(go2rtcURL)
 
-	// 8. gRPC Ingestion Server
-	grpcServer := grpcserver.NewIngestionServer(grpcAddr, ingestionSvc)
+	// 8. gRPC Ingestion Server with Shared-Secret Auth
+	grpcServer := grpcserver.NewIngestionServer(grpcAddr, ingestionSvc, workerToken)
 	if err := grpcServer.Start(); err != nil {
 		log.Printf("[gRPC] Warning: gRPC listener failed to start on %s: %v", grpcAddr, err)
 	}
 	defer grpcServer.Stop()
 
 	// 9. HTTP REST & WebSocket Server
-	apiServer := httpapi.NewServer(db, pgRepo, pgRepo, ingestionSvc, go2rtcProxy, wsHub, jwtSecret)
+	apiServer := httpapi.NewServer(db, pgRepo, ingestionSvc, go2rtcProxy, wsHub, jwtSecret)
 	mux := http.NewServeMux()
 	apiServer.RegisterRoutes(mux)
 
@@ -131,9 +126,11 @@ func main() {
 	log.Println("[Shutdown] Shawaf AI Edge Daemon stopped safely.")
 }
 
-func getEnv(key, defaultVal string) string {
-	if val := os.Getenv(key); val != "" {
-		return val
+func getEnvFirst(keys []string, defaultVal string) string {
+	for _, k := range keys {
+		if val := os.Getenv(k); val != "" {
+			return val
+		}
 	}
 	return defaultVal
 }

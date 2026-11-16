@@ -158,6 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   cameras: _cameras,
                   zones: _zones,
                   onRefresh: () => _loadSiteData(_currentSite!.id),
+                  apiService: widget.apiService,
                 ),
                 _buildComplianceDashboard(),
               ],

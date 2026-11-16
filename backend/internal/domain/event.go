@@ -1,11 +1,19 @@
 package domain
 
 import (
+	"context"
 	"errors"
 	"time"
 )
 
-// Clean Architecture: Domain layer has zero external framework or database dependencies.
+// Clean Architecture: Domain layer has zero external transport or framework dependencies.
+
+type EventRepository interface {
+	InsertEvent(ctx context.Context, event *Event) error
+	GetEvents(ctx context.Context, siteID string, limit int, offset int) ([]*Event, error)
+	UpdateEventState(ctx context.Context, siteID, eventID string, occurredAt time.Time, newState EventState, reason, userID string) error
+	UpdateCameraHealth(ctx context.Context, siteID, cameraID string, online bool, fps float64, drops uint64) error
+}
 
 type Severity string
 

@@ -20,16 +20,18 @@ type IngestionServer struct {
 	ingestionSvc *application.IngestionService
 	grpcServer   *grpc.Server
 	listenAddr   string
+	sharedToken  string
 }
 
 // NewIngestionServer creates a new gRPC ingestion server
-func NewIngestionServer(listenAddr string, ingestionSvc *application.IngestionService) *IngestionServer {
+func NewIngestionServer(listenAddr string, ingestionSvc *application.IngestionService, sharedToken string) *IngestionServer {
 	if listenAddr == "" {
 		listenAddr = ":50051"
 	}
 	return &IngestionServer{
 		ingestionSvc: ingestionSvc,
 		listenAddr:   listenAddr,
+		sharedToken:  sharedToken,
 	}
 }
 
@@ -100,14 +102,21 @@ func (s *IngestionServer) ProcessSubmitEvent(ctx context.Context, req *WireSubmi
 	metaBytes, _ := json.Marshal(metaMap)
 
 	appReq := &application.SubmitEventRequest{
-		SiteID:     req.SiteID,
-		CameraID:   req.CameraID,
-		ZoneID:     req.ZoneID,
-		EventType:  req.EventType,
-		Severity:   domain.Severity(req.Severity),
-		Confidence: float64(req.Confidence),
-		OccurredAt: occurredAt,
-		Payload:    metaBytes,
+		EventID:         req.EventID,
+		SiteID:          req.SiteID,
+		CameraID:        req.CameraID,
+		ZoneID:          req.ZoneID,
+		EventType:       req.EventType,
+		Severity:        domain.Severity(req.Severity),
+		Confidence:      req.Confidence,
+		OccurredAt:      occurredAt,
+		ModelID:         req.ModelID,
+		ModelVersion:    req.ModelVersion,
+		RuleID:          req.RuleID,
+		RuleVersion:     req.RuleVersion,
+		SnapshotRelPath: req.SnapshotRelPath,
+		SubjectStatus:   req.SubjectStatus,
+		Payload:         metaBytes,
 	}
 
 	_, err := s.ingestionSvc.SubmitEvent(ctx, appReq)

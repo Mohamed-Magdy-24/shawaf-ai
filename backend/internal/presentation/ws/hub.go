@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/industrial-ai/surveillance/backend/internal/domain"
 )
 
 var upgrader = websocket.Upgrader{
@@ -275,5 +277,16 @@ func (h *Hub) BroadcastEvent(siteID string, event interface{}) error {
 		return err
 	}
 	h.Broadcast(siteID, bytes)
+	return nil
+}
+
+// Name implements outbox.NotificationChannel
+func (h *Hub) Name() string {
+	return "WEBSOCKET"
+}
+
+// Send implements outbox.NotificationChannel
+func (h *Hub) Send(ctx context.Context, item *domain.OutboxItem) error {
+	h.Broadcast(item.SiteID, []byte(item.PayloadJSON))
 	return nil
 }

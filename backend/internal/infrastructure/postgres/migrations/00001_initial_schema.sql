@@ -6,6 +6,9 @@ CREATE TABLE IF NOT EXISTS sites (
     id UUID PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     location VARCHAR(255) NOT NULL,
+    code VARCHAR(20) NOT NULL DEFAULT 'BNF',
+    timezone VARCHAR(50) NOT NULL DEFAULT 'Africa/Cairo',
+    is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -179,13 +182,13 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 );
 
 -- Seed Baseline Factory Sites
-INSERT INTO sites (id, name, location) VALUES
-    ('11111111-1111-1111-1111-111111111111', 'BNF Manufacturing Facility', 'Beni Suef, Egypt')
-    ON CONFLICT (id) DO NOTHING;
+INSERT INTO sites (id, name, location, code, timezone, is_active) VALUES
+    ('11111111-1111-1111-1111-111111111111', 'BNF Manufacturing Facility', 'Beni Suef, Egypt', 'BNF', 'Africa/Cairo', true)
+    ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, location = EXCLUDED.location, code = EXCLUDED.code;
 
-INSERT INTO sites (id, name, location) VALUES
-    ('22222222-2222-2222-2222-222222222222', 'RNF Manufacturing Facility', 'Sadat City, Egypt')
-    ON CONFLICT (id) DO NOTHING;
+INSERT INTO sites (id, name, location, code, timezone, is_active) VALUES
+    ('22222222-2222-2222-2222-222222222222', 'RNF Manufacturing Facility', 'Sadat City, Egypt', 'RNF', 'Africa/Cairo', true)
+    ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, location = EXCLUDED.location, code = EXCLUDED.code;
 
 -- Seed Default Security and Admin Users (password: 'AdminPassword123!')
 -- Hash generated via argon2id

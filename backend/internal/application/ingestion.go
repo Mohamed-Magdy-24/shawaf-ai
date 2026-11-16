@@ -2,10 +2,7 @@ package application
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,29 +11,33 @@ import (
 
 // SubmitEventRequest encapsulates incoming detection events from edge AI workers
 type SubmitEventRequest struct {
-	SiteID     string          `json:"site_id"`
-	CameraID   string          `json:"camera_id"`
-	ZoneID     string          `json:"zone_id"`
-	EventType  string          `json:"event_type"`
-	Severity   domain.Severity `json:"severity"`
-	Confidence float64         `json:"confidence"`
-	TrackID    int64           `json:"track_id"`
-	BBox       []float64       `json:"bbox"` // [x1, y1, x2, y2]
-	OccurredAt time.Time       `json:"occurred_at"`
-	Payload    json.RawMessage `json:"payload,omitempty"`
+	EventID         string          `json:"event_id,omitempty"`
+	SiteID          string          `json:"site_id"`
+	CameraID        string          `json:"camera_id"`
+	ZoneID          string          `json:"zone_id,omitempty"`
+	EventType       string          `json:"event_type"`
+	Severity        domain.Severity `json:"severity"`
+	OccurredAt      time.Time       `json:"occurred_at"`
+	ModelID         string          `json:"model_id,omitempty"`
+	ModelVersion    string          `json:"model_version,omitempty"`
+	RuleID          string          `json:"rule_id,omitempty"`
+	RuleVersion     string          `json:"rule_version,omitempty"`
+	Confidence      float32         `json:"confidence"`
+	SnapshotRelPath string          `json:"snapshot_rel_path,omitempty"`
+	SubjectStatus   string          `json:"subject_status,omitempty"`
+	BBox            []float64       `json:"bbox,omitempty"`
+	Payload         interface{}     `json:"payload,omitempty"`
 }
 
-// IngestionService coordinates secure event processing, RLS validation, and outbox emission
+// IngestionService coordinates secure event processing and outbox emission
 type IngestionService struct {
-	txManager domain.TxManager
-	repo      domain.EventRepository
+	repo domain.EventRepository
 }
 
 // NewIngestionService initializes the ingestion service
-func NewIngestionService(txManager domain.TxManager, repo domain.EventRepository) *IngestionService {
+func NewIngestionService(repo domain.EventRepository) *IngestionService {
 	return &IngestionService{
-		txManager: txManager,
-		repo:      repo,
+		repo: repo,
 	}
 }
 
@@ -49,57 +50,53 @@ func (s *IngestionService) SubmitEvent(ctx context.Context, req *SubmitEventRequ
 		req.OccurredAt = time.Now().UTC()
 	}
 
-	eventID := uuid.New().String()
+	eventID := req.EventID
+	if eventID == "" {
+		eventID = uuid.New().String()
+	}
+
+	modelID := req.ModelID
+	if modelID == "" {
+		modelID = "cleanroom_yolox_nano_fp32"
+	}
+	modelVersion := req.ModelVersion
+	if modelVersion == "" {
+		modelVersion = "v1.0"
+	}
+	ruleID := req.RuleID
+	if ruleID == "" {
+		ruleID = "spatial_polygon_v1"
+	}
+	ruleVersion := req.RuleVersion
+	if ruleVersion == "" {
+		ruleVersion = "v1.0"
+	}
+	subjectStatus := req.SubjectStatus
+	if subjectStatus == "" {
+		subjectStatus = "UNKNOWN"
+	}
+
 	event := &domain.Event{
-		ID:         eventID,
-		SiteID:     req.SiteID,
-		CameraID:   req.CameraID,
-		ZoneID:     req.ZoneID,
-		EventType:  req.EventType,
-		Severity:   req.Severity,
-		State:      domain.StateNew,
-		Confidence: req.Confidence,
-		TrackID:    req.TrackID,
-		OccurredAt: req.OccurredAt,
-		CreatedAt:  time.Now().UTC(),
-		Metadata:   req.Payload,
+		EventID:         eventID,
+		SiteID:          req.SiteID,
+		CameraID:        req.CameraID,
+		ZoneID:          req.ZoneID,
+		EventType:       req.EventType,
+		Severity:        req.Severity,
+		OccurredAt:      req.OccurredAt,
+		ReceivedAt:      time.Now().UTC(),
+		ModelID:         modelID,
+		ModelVersion:    modelVersion,
+		RuleID:          ruleID,
+		RuleVersion:     ruleVersion,
+		Confidence:      req.Confidence,
+		SnapshotRelPath: req.SnapshotRelPath,
+		SubjectStatus:   subjectStatus,
+		State:           domain.StateNew,
+		CreatedAt:       time.Now().UTC(),
 	}
 
-	// Payload formatting if empty
-	if len(event.Metadata) == 0 {
-		meta, _ := json.Marshal(map[string]interface{}{
-			"bbox": req.BBox,
-		})
-		event.Metadata = meta
-	}
-
-	// Atomically insert event and outbox item under tenant RLS transaction
-	err := s.txManager.WithSiteTx(ctx, req.SiteID, func(tx *sql.Tx) error {
-		if err := s.repo.InsertEvent(ctx, tx, event); err != nil {
-			return fmt.Errorf("failed to insert event: %w", err)
-		}
-
-		outboxPayload, err := json.Marshal(event)
-		if err != nil {
-			return fmt.Errorf("failed to marshal outbox payload: %w", err)
-		}
-
-		outboxItem := &domain.OutboxItem{
-			ID:        uuid.New().String(),
-			SiteID:    req.SiteID,
-			Topic:     "event.created",
-			Payload:   outboxPayload,
-			CreatedAt: time.Now().UTC(),
-		}
-
-		if err := s.repo.InsertOutbox(ctx, tx, outboxItem); err != nil {
-			return fmt.Errorf("failed to insert outbox item: %w", err)
-		}
-
-		return nil
-	})
-
-	if err != nil {
+	if err := s.repo.InsertEvent(ctx, event); err != nil {
 		return nil, err
 	}
 
@@ -112,17 +109,10 @@ func (s *IngestionService) RecordHeartbeat(ctx context.Context, siteID, cameraID
 		return errors.New("site_id and camera_id required")
 	}
 
-	health := &domain.CameraHealth{
-		SiteID:             siteID,
-		CameraID:           cameraID,
-		Status:             domain.StatusStreaming,
-		LastHeartbeat:      time.Now().UTC(),
-		ConsecutiveDrops:   drops,
-		InferenceLatencyMs: latencyMs,
-		FPS:                fps,
+	var d uint64
+	if drops > 0 {
+		d = uint64(drops)
 	}
 
-	return s.txManager.WithSiteTx(ctx, siteID, func(tx *sql.Tx) error {
-		return s.repo.UpdateCameraHealth(ctx, tx, health)
-	})
+	return s.repo.UpdateCameraHealth(ctx, siteID, cameraID, true, fps, d)
 }
