@@ -1,0 +1,9 @@
+api:
+  listen: ":1984"
+webrtc:
+  listen: ":8555"
+streams:
+  bnf_cam_01: rtsp://mediamtx:8554/bnf_cam_01
+  bnf_cam_02: rtsp://mediamtx:8554/bnf_cam_02
+  rnf_cam_01: rtsp://mediamtx:8554/rnf_cam_01
+  rnf_cam_02: rtsp://mediamtx:8554/rnf_cam_02

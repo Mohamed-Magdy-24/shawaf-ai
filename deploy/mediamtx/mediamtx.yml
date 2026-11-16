@@ -1,0 +1,4 @@
+logLevel: info
+rtspAddress: :8554
+paths:
+  all_others:

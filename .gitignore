@@ -1,0 +1,11 @@
+.env
+*.onnx
+data/synthetic/*.mp4
+data/evidence/
+docs/benchmarks/raw/*.bin
+mobile-app/build/
+mobile-app/.dart_tool/
+ai-workers/.venv/
+__pycache__/
+*.pyc
+backend/bin/

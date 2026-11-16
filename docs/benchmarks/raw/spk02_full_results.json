@@ -1,0 +1,64 @@
+{
+  "640x360": {
+    "decode": {
+      "count": 120,
+      "p50_ms": 0.3,
+      "p95_ms": 0.4,
+      "p99_ms": 0.47,
+      "mean_ms": 0.32
+    },
+    "detect": {
+      "count": 120,
+      "p50_ms": 2.15,
+      "p95_ms": 2.59,
+      "p99_ms": 2.75,
+      "mean_ms": 2.18
+    },
+    "track_and_rules": {
+      "count": 120,
+      "p50_ms": 0.06,
+      "p95_ms": 0.08,
+      "p99_ms": 0.1,
+      "mean_ms": 0.06
+    },
+    "end_to_end": {
+      "count": 120,
+      "p50_ms": 4.15,
+      "p95_ms": 4.81,
+      "p99_ms": 5.56,
+      "mean_ms": 4.23
+    },
+    "effective_fps": 236.5
+  },
+  "1280x720": {
+    "decode": {
+      "count": 120,
+      "p50_ms": 2.43,
+      "p95_ms": 2.9,
+      "p99_ms": 3.11,
+      "mean_ms": 2.5
+    },
+    "detect": {
+      "count": 120,
+      "p50_ms": 2.43,
+      "p95_ms": 2.83,
+      "p99_ms": 2.9,
+      "mean_ms": 2.47
+    },
+    "track_and_rules": {
+      "count": 120,
+      "p50_ms": 0.06,
+      "p95_ms": 0.09,
+      "p99_ms": 0.14,
+      "mean_ms": 0.07
+    },
+    "end_to_end": {
+      "count": 120,
+      "p50_ms": 8.12,
+      "p95_ms": 9.02,
+      "p99_ms": 9.6,
+      "mean_ms": 8.22
+    },
+    "effective_fps": 121.7
+  }
+}

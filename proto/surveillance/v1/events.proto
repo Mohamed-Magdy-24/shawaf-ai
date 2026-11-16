@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package surveillance.v1;
+
+option go_package = "github.com/industrial-ai/surveillance/backend/internal/infrastructure/grpcserver/pb;pb";
+
+// EdgeIngestionService receives high-level events and worker heartbeats from Python AI workers.
+// Per ADR-012, raw video frames NEVER cross this gRPC boundary; only structured events and snapshot references.
+service EdgeIngestionService {
+  rpc SubmitEvent(SubmitEventRequest) returns (SubmitEventResponse);
+  rpc SendHeartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+}
+
+message SubmitEventRequest {
+  string schema_version = 1;
+  string event_id = 2;
+  string site_id = 3;
+  string camera_id = 4;
+  string zone_id = 5;
+  string event_type = 6;
+  string severity = 7;
+  int64 occurred_at_utc_ms = 8;
+  int64 received_at_utc_ms = 9;
+  string model_id = 10;
+  string model_version = 11;
+  string rule_id = 12;
+  string rule_version = 13;
+  float confidence = 14;
+  string snapshot_rel_path = 15;
+  string subject_status = 16;
+}
+
+message SubmitEventResponse {
+  bool accepted = 1;
+  bool duplicate = 2;
+  string status_message = 3;
+}
+
+message HeartbeatRequest {
+  string worker_id = 1;
+  string site_id = 2;
+  int64 timestamp_utc_ms = 3;
+  repeated CameraStreamHealth camera_streams = 4;
+}
+
+message CameraStreamHealth {
+  string camera_id = 1;
+  bool online = 2;
+  double fps_decoded = 3;
+  uint64 dropped_frames = 4;
+  int64 last_frame_utc_ms = 5;
+}
+
+message HeartbeatResponse {
+  bool ok = 1;
+}
