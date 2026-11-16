@@ -1,3 +1,5 @@
+> ⚠️ SUPERSEDED / REFERENCE-ONLY (2026-11-16). Do NOT use as a source of truth. Authoritative: 00_READ_ME_FIRST.md and docs/governance/CTO_AMENDMENTS.md. Known stale content: counts of requirements, banned stack (YOLOv8/TensorRT/DeepStream/MinIO/Valkey/TimescaleDB/React), capacity sizing, "VERIFIED_BY_EXECUTION" labels, Docker Desktop/Go 1.22 LTS claims.
+
 # CANONICAL SRS RE-AUDIT: 96-REQUIREMENT FULL BASELINE
 ## Industrial AI Surveillance Platform — BNF & RNF
 **Document ID:** DISC-43-SRS-96-REAUDIT  

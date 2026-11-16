@@ -1,5 +1,7 @@
 # 26 — Source of Truth, Document Precedence & Supersession Map
 
+> **AMENDMENT NOTICE (2026-11-16):** This document is subordinate to [00_READ_ME_FIRST.md](../../00_READ_ME_FIRST.md), [OWNER_AUTHORIZATION_LOCAL_DEV.md](../governance/OWNER_AUTHORIZATION_LOCAL_DEV.md), and [CTO_AMENDMENTS.md](../governance/CTO_AMENDMENTS.md). Where this document lists `DEC-01` as awaiting sign-off or `ADR-011` as proposed, `OWNER_AUTHORIZATION_LOCAL_DEV.md` supersedes it for local development (`DEC-01` accepted as amended, `ADR-011` approved as amended by `ADR-012..017`, `DEC-02` approved as Flutter Web, `SPK-02-LOCAL` approved).
+
 **Document ID:** DISC-26-PRECEDENCE  
 **Version:** 1.1.0-canonical  
 **Date:** 2026-11-11  
