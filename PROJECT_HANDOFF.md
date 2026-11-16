@@ -16,16 +16,16 @@
   - **Cross-Site Interconnection:** Independent factory local networks and data planes with federated, role-scoped, and secure interconnection via WireGuard VPN tunnel for authorized management access only.
 - **Repository & Active Branch:** Local Workspace `d:\Project-CRM` (Git repository initialization pending owner authorization; branch: N/A).
 - **Canonical Package & Version:** `1.1.0-local-dev-authorized` (Pack Root: `Industrial_AI_Surveillance_Project_Pack`).
-- **Last Verified Commit SHA:** `None` (Local-dev sprints AUTHORIZED per OWNER_AUTHORIZATION_LOCAL_DEV.md; production deployment NOT AUTHORIZED).
+- **Last Verified Commit SHA:** `fe01560` (Merge wp-0.5-pack-hotfix into wp-1-adr-amendments; 97 requirements aligned).
 - **Last Status Update Date:** 2026-11-16.
 
 ---
 
 ## B. Overall Project Status
 
-- **Current Phase:** Phase 0 — Project Readiness, Discovery, Architecture & Documentation Remediation.
+- **Current Phase:** Phase 0 CLOSED with amendments; WP-0.5 Hotfix COMPLETE; WP-1 Architecture Amendments APPLIED.
 - **Current Phase Status:** Phase 0 CLOSED with amendments. Local-dev sprints AUTHORIZED per OWNER_AUTHORIZATION_LOCAL_DEV.md. Production blocked per its NOT AUTHORIZED list.
-- **Overall Project Readiness:** Phase 0 CLOSED with amendments. Local-dev sprints AUTHORIZED per OWNER_AUTHORIZATION_LOCAL_DEV.md. Production blocked per its NOT AUTHORIZED list.
+- **Overall Project Readiness:** 97 Requirements Aligned (1:1 parity between SRS and CSV); ADR-011 through ADR-017 ratified for local dev; clean room baseline intact.
 - **Sprint 1 Authorization Status:** Local development sprints AUTHORIZED per OWNER_AUTHORIZATION_LOCAL_DEV.md (simulation only; zero production contact). Production deployment remains STRICTLY NOT AUTHORIZED.
 - **Current Architecture Decision Status:** `ADR-011 = APPROVED AS AMENDED` by ADR-012 … ADR-017 (`docs/governance/CTO_AMENDMENTS.md`). Minimal data plane (PostgreSQL 16 only; Valkey and TimescaleDB removed), AI worker video decode/inference (Go never decodes video), unified Flutter client (Flutter Web replaces React), WSL2 containerized dev environment.
 
@@ -84,13 +84,13 @@ Never convert a temporary authorization restriction into a permanent product lim
 
 | Phase / Technical Spike | Canonical Status | What Was Actually Completed | Verification Evidence | Remaining Work & Blockers |
 |---|---|---|---|---|
-| **Phase 0: Readiness, Discovery & Documentation** | `CLOSED WITH AMENDMENTS` | Phase 0 CLOSED with amendments. Local-dev sprints AUTHORIZED per OWNER_AUTHORIZATION_LOCAL_DEV.md. Production blocked per its NOT AUTHORIZED list. Full documentation audit, 96-requirement SRS baseline, 96-row traceability matrix, cryptographic SHA-256 package manifest, and technology supersession completed. | `Industrial_AI_Surveillance_Project_Pack/verify_archive_manifest.py` passed with 110/110 payload files verified (exit 0). `docs/discovery/44_CURRENT_PACKAGE_INVENTORY_AND_SHA256_MANIFEST.md`. | None for local-dev; production blocked per OWNER_AUTHORIZATION_LOCAL_DEV.md. |
+| **Phase 0: Readiness, Discovery & Documentation** | `CLOSED WITH AMENDMENTS` | Phase 0 CLOSED with amendments. Local-dev sprints AUTHORIZED per OWNER_AUTHORIZATION_LOCAL_DEV.md. Production blocked per its NOT AUTHORIZED list. Full documentation audit, 97-requirement SRS baseline (including NFR-OBS-002), 97-row traceability matrix, cryptographic SHA-256 package manifest, and technology supersession completed. | `Industrial_AI_Surveillance_Project_Pack/verify_archive_manifest.py` passed with 110/110 payload files verified (exit 0). `docs/discovery/44_CURRENT_PACKAGE_INVENTORY_AND_SHA256_MANIFEST.md`. | None for local-dev; production blocked per OWNER_AUTHORIZATION_LOCAL_DEV.md. |
 | **SPK-01: ZKTeco Photo Extraction** | `AWAITING AUTHORIZATION` | Protocol and isolation boundary designed in Document 38 and Document 35. | Protocol defined; non-production test device identified. | Requires owner authorization to execute read-only queries against 1 isolated test terminal. Resolves `BLK-001`. |
 | **SPK-02: ONNX Runtime CPU/CUDA Inference Benchmark** | `LOCAL-DEV SIMULATION AUTHORIZED (via WP-1..WP-6); PRODUCTION BLOCKED` | Benchmark protocol purged of TensorRT/YOLOv8; baseline fixed to ONNX Runtime CPU with optional CUDA; candidate models pinned to YOLOX/RT-DETR and ByteTrack in Document 28. | Document 28 rewritten to version `1.2.0-remediated` (`PROPOSED — NOT APPROVED FOR EXECUTION`). | Requires owner authorization to allocate local workstation test GPU. Resolves `BLK-002`. Determines server BOM. |
 | **SPK-03: NVR Protocol & go2rtc Playback** | `AWAITING AUTHORIZATION` | Protocol and test harness specification designed in Document 38 and Document 32. | Specification defined for 1 test NVR and 2 test cameras on isolated test switch. | Requires owner authorization to access test NVR. Resolves `BLK-003`. |
 | **SPK-04: SQL Server Schema Read-Only Export** | `AWAITING AUTHORIZATION` | Schema inspection query plan and read-only service account boundary defined in Document 38. | Query plan documented; staging database backup identified. | Requires owner authorization to query restored staging backup of BNF attendance database. Resolves `OQ-005`. |
 | **Phase 1: Technical Spikes Execution** | `LOCAL-DEV SIMULATION AUTHORIZED (via WP-1..WP-6); PRODUCTION BLOCKED` | Prerequisite protocols and governance gates established in `antigravity/11_PHASE_PROMPTS.md`. | Gate 0 verification complete; phase prompts include strict stop conditions. | Requires `DEC-01` sign-off and individual authorizations for `SPK-01` through `SPK-04`. |
-| **Phase 2: Engineering Foundation** | `LOCAL-DEV SIMULATION AUTHORIZED (via WP-1..WP-6); PRODUCTION BLOCKED` | Module boundaries, Clean Architecture rules, and CI specifications defined in SDD. | Documented in `architecture/02_TARGET_ARCHITECTURE.md`. | `BLOCKED` pending Gate 1 approval and `ADR-011 = APPROVED`. Sprint 1 not authorized. |
+| **Phase 2: Engineering Foundation** | `LOCAL-DEV SIMULATION AUTHORIZED (via WP-1..WP-6); PRODUCTION BLOCKED` | Module boundaries, Clean Architecture rules, and CI specifications defined in SDD. | Documented in `architecture/02_TARGET_ARCHITECTURE.md`. | Local-dev Sprint 1 (WP-2) authorized per OWNER_AUTHORIZATION_LOCAL_DEV.md. ADR-011 approved as amended. |
 | **Phase 3: Site Identity & Integrations** | `LOCAL-DEV SIMULATION AUTHORIZED (via WP-1..WP-6); PRODUCTION BLOCKED` | Domain contracts and adapter specifications designed. | Documented in `integrations/03_INTEGRATION_AND_DATA_SPEC.md`. | `BLOCKED` pending Gate 2 approval and Phase 1 spike outcomes (`SPK-01`, `SPK-04`). |
 | **Phase 4A: Video Pipeline Foundation** | `LOCAL-DEV SIMULATION AUTHORIZED (via WP-1..WP-6); PRODUCTION BLOCKED` | go2rtc candidate sidecar architecture and storage abstractions designed. | Documented in Target Architecture and Document 32. | `BLOCKED` pending Gate 3 approval, `ADR-011 = APPROVED`, and `SPK-03` completion. |
 | **Phase 4B: One AI Use Case at a Time** | `LOCAL-DEV SIMULATION AUTHORIZED (via WP-1..WP-6); PRODUCTION BLOCKED` | Multi-rate sampling policies and candidate model architectures specified. | Documented in Document 28 and Phase 4B prompt. | `BLOCKED` pending Phase 4A approval, `ADR-011 = APPROVED`, model artifact pinning, and `DEC-06` legal gate clearance. |
@@ -123,6 +123,12 @@ Never convert a temporary authorization restriction into a permanent product lim
 │ SPK-04   │ BLOCKED / NOT AUTHORIZED                                    │ Real SQL Server attendance database contact strictly prohibited.    │
 ├──────────┼─────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────┤
 │ ADR-011  │ APPROVED AS AMENDED (by ADR-012 .. ADR-017)                 │ Minimal PostgreSQL-only stack; Valkey/TimescaleDB/React removed.    │
+│ ADR-012  │ APPROVED (local-dev)                                        │ AI worker owns video decode & inference; Go never decodes video.    │
+│ ADR-013  │ APPROVED (local-dev)                                        │ Minimal data plane: PostgreSQL 16 only (SKIP LOCKED outbox).        │
+│ ADR-014  │ APPROVED (local-dev)                                        │ Unified client codebase: Flutter Android + Flutter Web Admin.      │
+│ ADR-015  │ APPROVED (local-dev)                                        │ Runtime environment: WSL2 Ubuntu + Docker Engine (no Desktop).      │
+│ ADR-016  │ APPROVED (local-dev)                                        │ Inference runtime: ONNX Runtime CPU mandatory baseline; FP32.       │
+│ ADR-017  │ APPROVED (local-dev)                                        │ NotificationChannel port & coverage-lost alert (NFR-OBS-002).       │
 ├──────────┼─────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────┤
 │ OQ-001.. │ 11 OPEN QUESTIONS                                           │ Unresolved technical questions tracked in Document 08/41.           │
 └──────────┴─────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────────┘
@@ -134,8 +140,8 @@ Never convert a temporary authorization restriction into a permanent product lim
 
 ### Milestone 1: Phase 0 Documentation & Traceability Baseline
 - **Actual Deliverables:**
-  - `requirements/01_SRS.md`: Canonical SRS Baseline 1.0.0 defining exactly 78 Functional and 18 Non-Functional Requirements (Total: 96). Requirements `FR-WEB-001` through `FR-WEB-006` are downgraded from MUST to `PROPOSED — PENDING OWNER DECISION DEC-02` to eliminate scope contradiction.
-  - `planning/09_REQUIREMENTS_TRACEABILITY.csv`: 96-row traceability matrix with exactly 16 `OWNER_APPROVED` rows (including `FR-ALT-002` backed by `D-012`, and `FR-AI-005` backed by `D-018`, `D-013`, `D-014` with production deployment independently gated on `DEC-04` and `DEC-06`), 14 `TBD` rows, 50 `DOCUMENTED_UNVERIFIED` rows, 11 `PROPOSED` rows, and 5 `BLOCKED` rows.
+  - `requirements/01_SRS.md`: Canonical SRS Baseline defining exactly 78 Functional and 19 Non-Functional Requirements (Total: 97, including `NFR-OBS-002` added per ADR-017). Requirements `FR-WEB-001` through `FR-WEB-006` are downgraded from MUST to `PROPOSED — PENDING OWNER DECISION DEC-02` to eliminate scope contradiction.
+  - `planning/09_REQUIREMENTS_TRACEABILITY.csv`: 97-row traceability matrix (including NFR-OBS-002) with 100% 1:1 ID parity with SRS, exactly 16 `OWNER_APPROVED` rows (including `FR-ALT-002` backed by `D-012`, and `FR-AI-005` backed by `D-018`, `D-013`, `D-014` with production deployment independently gated on `DEC-04` and `DEC-06`), 14 `TBD` rows, 50 `DOCUMENTED_UNVERIFIED` rows, 11 `PROPOSED` rows, and 5 `BLOCKED` rows.
   - `docs/discovery/43_CURRENT_SRS_96_REQUIREMENT_REAUDIT.md`: Complete re-audit of all 96 requirements; evaluates 60 testable requirements and catalogs 36 unresolved requirements.
   - `docs/discovery/42_REQUIREMENT_ACCEPTANCE_CRITERIA_GAPS.md`: Authoritative register of 14 quantitative criteria gaps and 1 incomplete workflow state.
 - **Validation Performed:** Full cross-referencing between SRS IDs, CSV rows, and Document 43 audit entries.
@@ -188,34 +194,27 @@ Never convert a temporary authorization restriction into a permanent product lim
    - *Why Blocking:* Production fire and safety routing cannot be configured without verified recipient rosters.
    - *Required Input/Evidence:* Submission of verified BNF and RNF personnel rosters (`DEC-05`).
    - *Closure Action:* Receipt of verified roster document.
-7. **`BLK-007` — Runtime Architecture Stack Ratification Pending:**
-   - *Why Blocking:* `ADR-011` remains proposed. Implementation cannot standardize on Go, Python, PostgreSQL, and Valkey without owner ratification.
-   - *Required Input/Evidence:* Owner review and written approval of `ADR-011`.
-   - *Closure Action:* Status change to `ADR-011 = APPROVED`.
+7. **`BLK-007` — Runtime Architecture Stack Ratification:**
+   - *Status:* `RESOLVED / CLOSED` for local development.
+   - *Evidence:* `ADR-011` approved as amended by `ADR-012..ADR-017` in `docs/governance/CTO_AMENDMENTS.md` and `docs/governance/OWNER_AUTHORIZATION_LOCAL_DEV.md`. Minimal PostgreSQL 16 data plane, Flutter Web admin console, and Go-no-video-decode architecture ratified.
 
 ---
 
 ## G. Exact Next Step
 
 ### Overall Status:
-Phase 0 CLOSED with amendments. Local-dev sprints AUTHORIZED per OWNER_AUTHORIZATION_LOCAL_DEV.md. Production blocked per its NOT AUTHORIZED list.
+WP-0, WP-0.5, and WP-1 deliverables reconciled and verified (97 Requirements, ADR-012..017 ratified, toolchain versions verified from official endpoints, model weights downgraded to UNVERIFIED).
 
 ### Authorized Next Action:
-Work on local development simulation MVP proceeds sequentially under `ANTIGRAVITY_FIX_PROMPT.md` and `CTO_DIRECTIVES_EN.md`:
-1. **Awaiting User Command:** `continue WP-1` (Architecture Amendments: ADR-012 … ADR-017).
-2. **Local Development Mode:** Runs strictly on synthetic and license-clean public media on the owner's workstation (Xeon E-2236, 16GB RAM, Quadro P600, WSL2/Docker).
-3. **Owner Governance Action Required (Production Clearance Only):**
-   - Confirm company eligibility for Docker Desktop free tier (or continue with Docker Engine in WSL2).
-   - Sign-off on `DEC-04` (auxiliary fire status) and `DEC-05` (recipient roster) before production fire alert routing.
-   - Legal counsel review under Law 151/2020 (`DEC-06`) before biometric/face recognition testing.
+Awaiting owner approval of reconciliation audit to proceed to Stage 2 (WP-2: Repository Skeleton, Docker Stack, Protobuf & Synthetic Streams per `ANTIGRAVITY_NEXT_PHASE_CODE_IMPLEMENTATION_PROMPT.md`).
 
-### What Remains STRICTLY NOT AUTHORIZED (Production Restrictions):
+### Operating Mode Restrictions (Preserved):
 Per `docs/governance/OWNER_AUTHORIZATION_LOCAL_DEV.md`:
-- **SPK-01, SPK-03, SPK-04** on real factory hardware (any contact with real ZKTeco terminals, real NVRs/cameras, real SQL Server data).
-- **DEC-03** (photo-upload fallback), **DEC-04** (fire auxiliary sign-off), **DEC-05** (recipient roster), **DEC-06** (legal review), **DEC-08** (FCM).
-- Any face recognition, employee identity matching, cross-camera employee re-identification, or movement history on real people.
-- Any production deployment, hardware purchase, VPN to factory networks.
-- Any real employee/biometric data or real factory footage.
+- **SPK-01, SPK-03, SPK-04** on real factory hardware (any contact with real ZKTeco terminals, real NVRs/cameras, real SQL Server data) remain STRICTLY NOT AUTHORIZED.
+- **DEC-03** (photo-upload fallback), **DEC-04** (fire auxiliary sign-off), **DEC-05** (recipient roster), **DEC-06** (legal review), **DEC-08** (FCM) remain BLOCKED.
+- Any face recognition, employee identity matching, cross-camera employee re-identification, or movement history on real people remains PROHIBITED.
+- Any production deployment, hardware purchase, VPN to factory networks remains BLOCKED.
+- Any real employee/biometric data or real factory footage remains STRICTLY FORBIDDEN in development.
 
 ---
 
@@ -368,5 +367,29 @@ Validation and Results: python verify_archive_manifest.py passed (110/110 payloa
 Evidence: MANIFEST.sha256, verify_archive_manifest.py output, link check script output.
 Remaining Blockers: Production hardware deployment, production NVR/ZKTeco/SQL Server contact, real employee/biometric data, Law 151/2020 legal review.
 Next Authorized Action: Awaiting owner command: continue WP-1.
+====================================================================================================
+====================================================================================================
+Date: 2026-11-16
+Phase / Task: WP-0 & WP-1 Reconciliation Audit (97 Reqs, ADR-012..017, Toolchain & Model Alignment)
+Previous Status: Phase 0.5 HOTFIX COMPLETE. Local-dev sprints AUTHORIZED per OWNER_AUTHORIZATION_LOCAL_DEV.md.
+New Status: RECONCILIATION AUDIT PASSED. WP-0, WP-0.5 & WP-1 fully aligned (97 requirements).
+Work Actually Completed: 
+1. Fixed PROJECT_HANDOFF.md sections B/C/D/E/F/G to reflect OWNER_AUTHORIZATION_LOCAL_DEV.md, ratified ADR-011..017, and 97 requirements (including NFR-OBS-002). Closed BLK-007.
+2. Verified planning/08_ADR_AND_OPEN_QUESTIONS.md contains ADR-011 (APPROVED AS AMENDED) and ADR-012..ADR-017 verbatim, matching docs/governance/CTO_AMENDMENTS.md exactly once.
+3. Resolved D12/D13 entries in 08_ADR_AND_OPEN_QUESTIONS.md (D-012 WebSocketChannel default, D-013 test recipients only, OQ-012 Docker network, OQ-013 test roster, D12/D13 defect closures).
+4. Corrected docs/governance/TOOLCHAIN_PINS.md against live official release endpoints: Go 1.27.4, Python 3.11.18, PG 16.16, ONNX Runtime v1.32.0, go2rtc v1.9.15, MediaMTX v1.21.4, FFmpeg 9.0.2, Flutter 3.50.0 (retracted erroneous claim of Flutter on Windows PATH; tagged UNVERIFIED_ON_HOST; verified Docker 29.8.0 on host).
+5. Reviewed docs/ai/MODEL_REGISTER.md and downgraded YOLOX, RT-DETR, RTMPose, YuNet, and SFace from CANDIDATE_VERIFIED to UNVERIFIED pending commercial code, weights, and dataset licensing audit.
+6. Verified 97/97 SRS/CSV 1:1 ID parity, 0 broken markdown links, and 110/110 SHA-256 package manifest integrity.
+Files Changed: 
+- PROJECT_HANDOFF.md
+- planning/08_ADR_AND_OPEN_QUESTIONS.md
+- docs/governance/TOOLCHAIN_PINS.md
+- docs/ai/MODEL_REGISTER.md
+- docs/governance/CTO_AMENDMENTS.md
+- MANIFEST.sha256
+Validation and Results: python verify_archive_manifest.py passed (110/110 payload files verified, exit 0). Link check: broken 0. Parity check: 97/97 IDs match 1:1.
+Evidence: MANIFEST.sha256, verify_archive_manifest.py output, parity check script output.
+Remaining Blockers: Production hardware deployment, production NVR/ZKTeco/SQL Server contact, real employee/biometric data, Law 151/2020 legal review.
+Next Authorized Action: Awaiting owner command to start Stage 2 (WP-2).
 ====================================================================================================
 ```
