@@ -217,7 +217,7 @@ Verify services:
 Output:
 ```text
 =================================================================
-   SHAWAF AI (شوف AI) — Computer Vision Safety Worker
+   SHAWAF AI  — Computer Vision Safety Worker
    Worker ID: worker-bnf-ai-01 | Site ID: 11111111-1111-1111-1111-111111111111
 =================================================================
 [Detector] Loaded cleanroom_yolox_nano_fp32.onnx on CPUExecutionProvider
@@ -260,6 +260,6 @@ CREATE POLICY events_tenant_isolation ON events
 
 <div align="center">
 
-**Shawaf AI — شوف AI** • Built with Precision for Industrial Safety Excellence • 2026
+**Shawaf AI ** • Built with Precision for Industrial Safety Excellence • 2026
 
 </div>
