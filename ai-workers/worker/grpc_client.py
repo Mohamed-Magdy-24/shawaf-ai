@@ -29,15 +29,15 @@ except ImportError:
 class EdgeIngestionClient:
     def __init__(
         self,
-        grpc_target: str = "localhost:50051",
-        http_base_url: str = "http://localhost:8080",
-        shared_token: str = "local_dev_worker_grpc_shared_secret_token_03",
-        worker_id: str = "worker-bnf-ai-01"
+        grpc_target: Optional[str] = None,
+        http_base_url: Optional[str] = None,
+        shared_token: Optional[str] = None,
+        worker_id: Optional[str] = None,
     ):
-        self.grpc_target = grpc_target
-        self.http_base_url = http_base_url.rstrip("/")
-        self.shared_token = shared_token
-        self.worker_id = worker_id
+        self.grpc_target = grpc_target or os.getenv("EDGED_GRPC_ADDR", "")
+        self.http_base_url = (http_base_url or os.getenv("EDGED_HTTP_ADDR", "")).rstrip("/")
+        self.shared_token = shared_token or os.getenv("EDGED_WORKER_SHARED_TOKEN", "")
+        self.worker_id = worker_id or os.getenv("WORKER_ID", "")
 
         self.channel: Optional[grpc.Channel] = None
         self.stub: Optional[events_pb2_grpc.EdgeIngestionServiceStub] = None

@@ -41,9 +41,13 @@ class SiteBanner extends StatelessWidget {
               ...availableSites.map((site) {
                 final isSelected = site.id == currentSite.id;
                 return ListTile(
-                  title: Text(site.name, style: const TextStyle(color: AppTheme.textPrimary)),
-                  subtitle: Text(site.code, style: const TextStyle(color: AppTheme.primaryTeal)),
-                  trailing: isSelected ? const Icon(Icons.check, color: AppTheme.primaryTeal) : null,
+                  title: Text(site.name,
+                      style: const TextStyle(color: AppTheme.textPrimary)),
+                  subtitle: Text(site.code,
+                      style: const TextStyle(color: AppTheme.primaryTeal)),
+                  trailing: isSelected
+                      ? const Icon(Icons.check, color: AppTheme.primaryTeal)
+                      : null,
                   onTap: () {
                     onSiteSelected(site);
                     Navigator.pop(ctx);
@@ -94,8 +98,10 @@ class SiteBanner extends StatelessWidget {
           ),
           OutlinedButton.icon(
             onPressed: () => _showSitePicker(context),
-            icon: const Icon(Icons.swap_horiz, size: 16, color: AppTheme.primaryTeal),
-            label: const Text('SWITCH', style: TextStyle(color: AppTheme.primaryTeal, fontSize: 12)),
+            icon: const Icon(Icons.swap_horiz,
+                size: 16, color: AppTheme.primaryTeal),
+            label: const Text('SWITCH',
+                style: TextStyle(color: AppTheme.primaryTeal, fontSize: 12)),
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: AppTheme.primaryTeal),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

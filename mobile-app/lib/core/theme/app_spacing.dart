@@ -5,6 +5,7 @@ class AppSpacing {
   const AppSpacing._();
 
   // Spacing values
+  static const double xxs = 2.0;
   static const double xs = 4.0;
   static const double sm = 8.0;
   static const double md = 12.0;
@@ -48,6 +49,8 @@ class AppSpacing {
   static const EdgeInsets py8 = EdgeInsets.symmetric(vertical: sm);
   static const EdgeInsets py12 = EdgeInsets.symmetric(vertical: md);
   static const EdgeInsets py16 = EdgeInsets.symmetric(vertical: lg);
+
+  static const EdgeInsets badgePadding = EdgeInsets.symmetric(horizontal: radiusSm, vertical: xxs);
 
   // SizedBox spacing widgets
   static const Widget vGap4 = SizedBox(height: xs);

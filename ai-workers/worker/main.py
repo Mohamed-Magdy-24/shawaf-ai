@@ -16,7 +16,7 @@ from typing import Dict, Tuple, List, Any
 
 from worker.config import load_config
 from worker.decoder import StreamDecoder
-from worker.detector import OnnxDetector
+from worker.detector import DetectorFactory, BaseDetector
 from worker.tracker import MultiObjectTracker
 from worker.rules import ZoneDefinition, RuleEvaluator
 from worker.grpc_client import EdgeIngestionClient
@@ -98,7 +98,7 @@ def main():
     if not os.path.isabs(video_src) and not video_src.startswith("rtsp://"):
         video_src = os.path.join(base_dir, video_src)
 
-    detector = OnnxDetector(model_path, conf_threshold=config.confidence_threshold)
+    detector: BaseDetector = DetectorFactory.create("onnx", model_path, conf_threshold=config.confidence_threshold)
     tracker = MultiObjectTracker(iou_threshold=config.iou_threshold)
     evaluator = RuleEvaluator(zones)
     client = EdgeIngestionClient(

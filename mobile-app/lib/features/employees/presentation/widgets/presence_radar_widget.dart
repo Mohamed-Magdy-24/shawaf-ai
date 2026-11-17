@@ -81,7 +81,7 @@ class PresenceRadarWidget extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: AppSpacing.badgePadding,
                       decoration: BoxDecoration(
                         color: AppColors.successGreen.withValues(alpha: 0.15),
                         borderRadius: AppSpacing.roundedXs,

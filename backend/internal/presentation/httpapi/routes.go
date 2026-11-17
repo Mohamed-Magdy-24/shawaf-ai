@@ -98,6 +98,16 @@ func (s *Server) handleSiteSubRoutes(w http.ResponseWriter, r *http.Request) {
 				s.handleSitePresence(w, r, siteID)
 			})(w, r)
 			return
+		case "alerts":
+			if subSubResource == "inbox" {
+				s.authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+					q := r.URL.Query()
+					q.Set("site_id", siteID)
+					r.URL.RawQuery = q.Encode()
+					s.handleAlertsInbox(w, r)
+				})(w, r)
+				return
+			}
 		case "embeddings":
 			s.authMiddleware(func(w http.ResponseWriter, r *http.Request) {
 				s.handleSiteEmbeddings(w, r, siteID)

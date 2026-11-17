@@ -18,11 +18,12 @@ class DegradedBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bg = isOffline ? AppColors.sev1Red : AppColors.sev2Amber;
-    final fg = isOffline ? AppColors.textPrimary : const Color(0xFF451A03);
+    final fg = isOffline ? AppColors.textPrimary : AppColors.amberDark;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
       color: bg,
       child: Row(
         children: [
@@ -49,7 +50,9 @@ class DegradedBanner extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                 minimumSize: const Size(40, 32),
               ),
-              child: const Text('RETRY', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text('RETRY',
+                  style: AppTypography.labelSmall
+                      .copyWith(color: fg, fontWeight: FontWeight.bold)),
             ),
         ],
       ),

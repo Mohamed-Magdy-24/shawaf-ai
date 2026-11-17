@@ -326,18 +326,19 @@ class NVR extends Equatable {
   }
 
   Map<String, dynamic> toJson() => {
-    'site_id': siteId,
-    'nvr_id': nvrId,
-    'name': name,
-    'vendor': vendor,
-    'host_ip': hostIp,
-    'port': port,
-    'username': username,
-    'status': status,
-  };
+        'site_id': siteId,
+        'nvr_id': nvrId,
+        'name': name,
+        'vendor': vendor,
+        'host_ip': hostIp,
+        'port': port,
+        'username': username,
+        'status': status,
+      };
 
   @override
-  List<Object?> get props => [siteId, nvrId, name, vendor, hostIp, port, username, status];
+  List<Object?> get props =>
+      [siteId, nvrId, name, vendor, hostIp, port, username, status];
 }
 
 class Employee extends Equatable {
@@ -374,17 +375,25 @@ class Employee extends Equatable {
   }
 
   Map<String, dynamic> toJson() => {
-    'site_id': siteId,
-    'employee_id': employeeId,
-    'full_name': fullName,
-    'department': department,
-    'photo_rel_path': photoRelPath,
-    'source_type': sourceType,
-    'is_active': isActive,
-  };
+        'site_id': siteId,
+        'employee_id': employeeId,
+        'full_name': fullName,
+        'department': department,
+        'photo_rel_path': photoRelPath,
+        'source_type': sourceType,
+        'is_active': isActive,
+      };
 
   @override
-  List<Object?> get props => [siteId, employeeId, fullName, department, photoRelPath, sourceType, isActive];
+  List<Object?> get props => [
+        siteId,
+        employeeId,
+        fullName,
+        department,
+        photoRelPath,
+        sourceType,
+        isActive
+      ];
 }
 
 class EmployeePresence extends Equatable {
@@ -426,16 +435,25 @@ class EmployeePresence extends Equatable {
   }
 
   Map<String, dynamic> toJson() => {
-    'site_id': siteId,
-    'employee_id': employeeId,
-    'full_name': fullName,
-    'department': department,
-    'camera_id': cameraId,
-    'zone_id': zoneId,
-    'confidence': confidence,
-    'last_seen_at': lastSeenAt.toIso8601String(),
-  };
+        'site_id': siteId,
+        'employee_id': employeeId,
+        'full_name': fullName,
+        'department': department,
+        'camera_id': cameraId,
+        'zone_id': zoneId,
+        'confidence': confidence,
+        'last_seen_at': lastSeenAt.toIso8601String(),
+      };
 
   @override
-  List<Object?> get props => [siteId, employeeId, fullName, department, cameraId, zoneId, confidence, lastSeenAt];
+  List<Object?> get props => [
+        siteId,
+        employeeId,
+        fullName,
+        department,
+        cameraId,
+        zoneId,
+        confidence,
+        lastSeenAt
+      ];
 }

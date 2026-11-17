@@ -15,10 +15,10 @@ ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, location = EXCLUDED.locatio
 -- 3. Ensure test users exist (all have password 'AdminPassword123!' or 'admin123')
 -- argon2id hash for 'AdminPassword123!'
 INSERT INTO users (id, username, password_hash, role, site_id) VALUES
-    ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'admin_corp', '$argon2id$v=19$m=65536,t=3,p=4$dGVzdHNhbHQxMjM0NTY3OA$9mR1z4e2y0jC6fN+B1wLqK0zX5y8u3vP1a2b3c4d5e6', 'senior_management', NULL),
-    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'sec_mgr_bnf', '$argon2id$v=19$m=65536,t=3,p=4$dGVzdHNhbHQxMjM0NTY3OA$9mR1z4e2y0jC6fN+B1wLqK0zX5y8u3vP1a2b3c4d5e6', 'security_manager', '11111111-1111-1111-1111-111111111111'),
-    ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'sec_mgr_rnf', '$argon2id$v=19$m=65536,t=3,p=4$dGVzdHNhbHQxMjM0NTY3OA$9mR1z4e2y0jC6fN+B1wLqK0zX5y8u3vP1a2b3c4d5e6', 'security_manager', '22222222-2222-2222-2222-222222222222'),
-    ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'op_bnf_01', '$argon2id$v=19$m=65536,t=3,p=4$dGVzdHNhbHQxMjM0NTY3OA$9mR1z4e2y0jC6fN+B1wLqK0zX5y8u3vP1a2b3c4d5e6', 'factory_operator', '11111111-1111-1111-1111-111111111111')
+    ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'admin_corp', '$argon2id$v=19$m=65536,t=3,p=4$2dlbQGJ5+bwwXKiJXY+x+Q$vD95L7DhgjK8bcf/FDYaYV9K9uKObrczjJ3K70lyFr4', 'senior_management', NULL),
+    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'sec_mgr_bnf', '$argon2id$v=19$m=65536,t=3,p=4$2dlbQGJ5+bwwXKiJXY+x+Q$vD95L7DhgjK8bcf/FDYaYV9K9uKObrczjJ3K70lyFr4', 'security_manager', '11111111-1111-1111-1111-111111111111'),
+    ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'sec_mgr_rnf', '$argon2id$v=19$m=65536,t=3,p=4$2dlbQGJ5+bwwXKiJXY+x+Q$vD95L7DhgjK8bcf/FDYaYV9K9uKObrczjJ3K70lyFr4', 'security_manager', '22222222-2222-2222-2222-222222222222'),
+    ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'op_bnf_01', '$argon2id$v=19$m=65536,t=3,p=4$2dlbQGJ5+bwwXKiJXY+x+Q$vD95L7DhgjK8bcf/FDYaYV9K9uKObrczjJ3K70lyFr4', 'factory_operator', '11111111-1111-1111-1111-111111111111')
 ON CONFLICT (username) DO NOTHING;
 
 -- 4. Seed BNF and RNF Cameras

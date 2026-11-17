@@ -59,6 +59,8 @@ abstract class SurveillanceRepository
   Future<int> importEmployees(String siteId, String csvOrJson);
   @override
   Future<List<EmployeePresence>> getEmployeePresence(String siteId);
+  void disconnectWebSocket();
+  void dispose();
 }
 
 class HttpSurveillanceRepository implements SurveillanceRepository {
@@ -145,4 +147,10 @@ class HttpSurveillanceRepository implements SurveillanceRepository {
   @override
   WebSocketChannel? connectWebSocket(String siteId, Function(SurveillanceEvent) onEvent) =>
       _apiService.connectWebSocket(siteId, onEvent);
+
+  @override
+  void disconnectWebSocket() => _apiService.disconnectWebSocket();
+
+  @override
+  void dispose() => _apiService.disconnectWebSocket();
 }

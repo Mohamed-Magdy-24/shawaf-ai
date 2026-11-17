@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import '../config/app_config.dart';
 
 abstract class IWsClient {
   Stream<dynamic> get messages;
@@ -13,17 +14,15 @@ abstract class IWsClient {
 class WsClient implements IWsClient {
   final String baseWsUrl;
   WebSocketChannel? _channel;
-  final StreamController<dynamic> _controller = StreamController<dynamic>.broadcast();
+  final StreamController<dynamic> _controller =
+      StreamController<dynamic>.broadcast();
   bool _isConnected = false;
   bool _disposed = false;
   int _reconnectAttempts = 0;
   String? _currentEndpoint;
   String? _currentToken;
 
-  WsClient({String? baseWsUrl})
-      : baseWsUrl = baseWsUrl ??
-            const String.fromEnvironment('WS_BASE_URL',
-                defaultValue: 'ws://127.0.0.1:8080/api/v1/ws');
+  WsClient({String? baseWsUrl}) : baseWsUrl = baseWsUrl ?? AppConfig.wsBaseUrl;
 
   @override
   Stream<dynamic> get messages => _controller.stream;

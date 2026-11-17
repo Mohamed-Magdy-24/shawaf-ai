@@ -145,6 +145,12 @@ class FakeSurveillanceRepository implements SurveillanceRepository {
 
   @override
   Future<List<EmployeePresence>> getEmployeePresence(String siteId) async => [];
+
+  @override
+  void disconnectWebSocket() {}
+
+  @override
+  void dispose() {}
 }
 
 void main() {

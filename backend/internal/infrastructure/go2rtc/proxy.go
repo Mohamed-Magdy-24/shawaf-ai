@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -18,7 +19,7 @@ type Proxy struct {
 // NewProxy initializes the go2rtc SDP proxy
 func NewProxy(go2rtcURL string) *Proxy {
 	if go2rtcURL == "" {
-		go2rtcURL = "http://localhost:1984"
+		go2rtcURL = os.Getenv("GO2RTC_INTERNAL_URL")
 	}
 	return &Proxy{
 		go2rtcURL: go2rtcURL,

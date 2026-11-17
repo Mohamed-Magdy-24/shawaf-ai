@@ -18,7 +18,7 @@ void main() {
   runApp(const ShawafAiApp());
 }
 
-class ShawafAiApp extends StatelessWidget {
+class ShawafAiApp extends StatefulWidget {
   final ApiService? apiService;
   final SurveillanceRepository? repository;
   final Widget? homeOverride;
@@ -31,29 +31,65 @@ class ShawafAiApp extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    setupServiceLocator();
-    final repo = repository ?? sl<SurveillanceRepository>();
+  State<ShawafAiApp> createState() => _ShawafAiAppState();
+}
 
+class _ShawafAiAppState extends State<ShawafAiApp> with WidgetsBindingObserver {
+  late final SurveillanceRepository _repo;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    setupServiceLocator();
+    _repo = widget.repository ?? sl<SurveillanceRepository>();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        // Cleanly pause WebSocket & active streaming on backgrounding
+        _repo.disconnectWebSocket();
+        break;
+      case AppLifecycleState.resumed:
+        // Reconnect on resumption
+        break;
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _repo.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
-        RepositoryProvider<SurveillanceRepository>.value(value: repo),
+        RepositoryProvider<SurveillanceRepository>.value(value: _repo),
       ],
       child: MultiBlocProvider(
         providers: [
-          BlocProvider<AuthCubit>(create: (_) => AuthCubit(repository: repo)),
-          BlocProvider<SiteCubit>(create: (_) => SiteCubit(repository: repo)..loadSites()),
-          BlocProvider<AlertInboxCubit>(create: (_) => AlertInboxCubit(repository: repo)),
-          BlocProvider<CameraStreamCubit>(create: (_) => CameraStreamCubit(repository: repo)),
-          BlocProvider<CameraManagementCubit>(create: (_) => CameraManagementCubit(repository: repo)),
-          BlocProvider<EmployeeCubit>(create: (_) => EmployeeCubit(repository: repo)),
+          BlocProvider<AuthCubit>(create: (_) => AuthCubit(repository: _repo)),
+          BlocProvider<SiteCubit>(create: (_) => SiteCubit(repository: _repo)..loadSites()),
+          BlocProvider<AlertInboxCubit>(create: (_) => AlertInboxCubit(repository: _repo)),
+          BlocProvider<CameraStreamCubit>(create: (_) => CameraStreamCubit(repository: _repo)),
+          BlocProvider<CameraManagementCubit>(create: (_) => CameraManagementCubit(repository: _repo)),
+          BlocProvider<EmployeeCubit>(create: (_) => EmployeeCubit(repository: _repo)),
           BlocProvider<ConnectivityCubit>(create: (_) => ConnectivityCubit()),
         ],
-        child: homeOverride != null
+        child: widget.homeOverride != null
             ? MaterialApp(
                 title: 'Shawaf AI (شوف AI)',
                 debugShowCheckedModeBanner: false,
-                home: homeOverride,
+                home: widget.homeOverride,
               )
             : const ShawafApp(),
       ),

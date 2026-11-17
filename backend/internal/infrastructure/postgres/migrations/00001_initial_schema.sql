@@ -197,9 +197,9 @@ INSERT INTO sites (id, name, location, code, timezone, is_active) VALUES
 -- Seed Default Security and Admin Users (password: 'AdminPassword123!')
 -- Hash generated via argon2id
 INSERT INTO users (id, username, password_hash, role, site_id) VALUES
-    ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'admin_corp', '$argon2id$v=19$m=65536,t=3,p=4$dGVzdHNhbHQxMjM0NTY3OA$9mR1z4e2y0jC6fN+B1wLqK0zX5y8u3vP1a2b3c4d5e6', 'senior_management', NULL),
-    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'sec_mgr_bnf', '$argon2id$v=19$m=65536,t=3,p=4$dGVzdHNhbHQxMjM0NTY3OA$9mR1z4e2y0jC6fN+B1wLqK0zX5y8u3vP1a2b3c4d5e6', 'security_manager', '11111111-1111-1111-1111-111111111111'),
-    ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'sec_mgr_rnf', '$argon2id$v=19$m=65536,t=3,p=4$dGVzdHNhbHQxMjM0NTY3OA$9mR1z4e2y0jC6fN+B1wLqK0zX5y8u3vP1a2b3c4d5e6', 'security_manager', '22222222-2222-2222-2222-222222222222')
+    ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'admin_corp', '$argon2id$v=19$m=65536,t=3,p=4$2dlbQGJ5+bwwXKiJXY+x+Q$vD95L7DhgjK8bcf/FDYaYV9K9uKObrczjJ3K70lyFr4', 'senior_management', NULL),
+    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'sec_mgr_bnf', '$argon2id$v=19$m=65536,t=3,p=4$2dlbQGJ5+bwwXKiJXY+x+Q$vD95L7DhgjK8bcf/FDYaYV9K9uKObrczjJ3K70lyFr4', 'security_manager', '11111111-1111-1111-1111-111111111111'),
+    ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'sec_mgr_rnf', '$argon2id$v=19$m=65536,t=3,p=4$2dlbQGJ5+bwwXKiJXY+x+Q$vD95L7DhgjK8bcf/FDYaYV9K9uKObrczjJ3K70lyFr4', 'security_manager', '22222222-2222-2222-2222-222222222222')
     ON CONFLICT (username) DO NOTHING;
 
 -- Seed Cameras for BNF and RNF

@@ -3,13 +3,34 @@ package httpapi
 import (
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 )
 
+var (
+	healthDbMu     sync.RWMutex
+	lastHealthTime time.Time
+	lastDbStatus   = "UP"
+)
+
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
-	dbStatus := "UP"
-	if s.db == nil || s.db.Ping() != nil {
-		dbStatus = "DOWN"
+	healthDbMu.RLock()
+	dbStatus := lastDbStatus
+	needCheck := time.Since(lastHealthTime) > 1*time.Second
+	healthDbMu.RUnlock()
+
+	if needCheck {
+		healthDbMu.Lock()
+		if time.Since(lastHealthTime) > 1*time.Second {
+			if s.db == nil || s.db.Ping() != nil {
+				lastDbStatus = "DOWN"
+			} else {
+				lastDbStatus = "UP"
+			}
+			lastHealthTime = time.Now()
+		}
+		dbStatus = lastDbStatus
+		healthDbMu.Unlock()
 	}
 
 	resp := map[string]interface{}{

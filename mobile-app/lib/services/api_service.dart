@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
+import '../core/config/app_config.dart';
 import '../models/models.dart';
 
 class ApiService {
@@ -16,12 +17,8 @@ class ApiService {
     String? baseUrl,
     String? wsUrl,
     http.Client? client,
-  })  : baseUrl = baseUrl ??
-            const String.fromEnvironment('API_BASE_URL',
-                defaultValue: 'http://127.0.0.1:8080'),
-        wsUrl = wsUrl ??
-            const String.fromEnvironment('WS_BASE_URL',
-                defaultValue: 'ws://127.0.0.1:8080/api/v1/ws'),
+  })  : baseUrl = baseUrl ?? AppConfig.apiBaseUrl,
+        wsUrl = wsUrl ?? AppConfig.wsBaseUrl,
         _client = client ?? http.Client();
 
   void setAuthToken(String? token) {
@@ -330,11 +327,14 @@ class ApiService {
     }
   }
 
+  WebSocketChannel? _activeChannel;
+
   WebSocketChannel? connectWebSocket(
       String siteId, Function(SurveillanceEvent) onEvent) {
     try {
       final ticketParam = _authToken != null ? '?ticket=$_authToken' : '';
       final channel = WebSocketChannel.connect(Uri.parse('$wsUrl$ticketParam'));
+      _activeChannel = channel;
       channel.stream.listen((message) {
         try {
           final data = jsonDecode(message.toString());
@@ -351,5 +351,10 @@ class ApiService {
     } catch (_) {
       return null;
     }
+  }
+
+  void disconnectWebSocket() {
+    _activeChannel?.sink.close();
+    _activeChannel = null;
   }
 }

@@ -45,10 +45,9 @@ class ZonePainter extends CustomPainter {
       final tp = TextPainter(
         text: TextSpan(
           text: ' ${zone.name} (${zone.zoneType}) ',
-          style: const TextStyle(
-            color: Color(0xFF042F2E),
-            backgroundColor: AppTheme.primaryTeal,
-            fontSize: 10,
+          style: AppTypography.labelSmall.copyWith(
+            color: AppColors.primaryTextOn,
+            backgroundColor: AppColors.primary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -93,10 +92,9 @@ class ZonePainter extends CustomPainter {
           final labelPainter = TextPainter(
             text: TextSpan(
               text: ' TRACK #${ev.trackId} [ALERT] ',
-              style: const TextStyle(
-                color: Colors.white,
-                backgroundColor: AppTheme.sev1Red,
-                fontSize: 9,
+              style: AppTypography.labelSmall.copyWith(
+                color: AppColors.textPrimary,
+                backgroundColor: AppColors.sev1Red,
                 fontWeight: FontWeight.bold,
               ),
             ),

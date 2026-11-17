@@ -12,10 +12,29 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/industrial-ai/surveillance/backend/internal/domain/ports"
 	"github.com/industrial-ai/surveillance/backend/internal/infrastructure/crypto"
 )
+
+type presenceCacheEntry struct {
+	presence  []*ports.EmployeePresenceRecord
+	timestamp time.Time
+}
+
+var (
+	presenceCacheMu sync.RWMutex
+	presenceCache   = make(map[string]presenceCacheEntry)
+)
+
+// InvalidatePresenceCache purges cached presence data for a site
+func InvalidatePresenceCache(siteID string) {
+	presenceCacheMu.Lock()
+	delete(presenceCache, siteID)
+	presenceCacheMu.Unlock()
+}
 
 func (s *Server) handleSiteEmployees(w http.ResponseWriter, r *http.Request, siteID string) {
 	if s.employeePort == nil {
@@ -229,6 +248,19 @@ func (s *Server) handleSitePresence(w http.ResponseWriter, r *http.Request, site
 		http.Error(w, `{"error":"employee registry port not configured"}`, http.StatusServiceUnavailable)
 		return
 	}
+
+	presenceCacheMu.RLock()
+	if cached, ok := presenceCache[siteID]; ok && time.Since(cached.timestamp) < 500*time.Millisecond {
+		presenceCacheMu.RUnlock()
+		s.writeJSON(w, http.StatusOK, map[string]interface{}{
+			"site_id":       siteID,
+			"total_present": len(cached.presence),
+			"presence":      cached.presence,
+		})
+		return
+	}
+	presenceCacheMu.RUnlock()
+
 	presence, err := s.employeePort.GetEmployeePresence(r.Context(), siteID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
@@ -237,6 +269,11 @@ func (s *Server) handleSitePresence(w http.ResponseWriter, r *http.Request, site
 	if presence == nil {
 		presence = []*ports.EmployeePresenceRecord{}
 	}
+
+	presenceCacheMu.Lock()
+	presenceCache[siteID] = presenceCacheEntry{presence: presence, timestamp: time.Now()}
+	presenceCacheMu.Unlock()
+
 	s.writeJSON(w, http.StatusOK, map[string]interface{}{
 		"site_id":       siteID,
 		"total_present": len(presence),

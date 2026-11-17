@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
 import '../errors/exceptions.dart';
 
 abstract class IApiClient {
@@ -21,9 +22,7 @@ class ApiClient implements IApiClient {
   ApiClient({
     String? baseUrl,
     http.Client? httpClient,
-  })  : baseUrl = baseUrl ??
-            const String.fromEnvironment('API_BASE_URL',
-                defaultValue: 'http://127.0.0.1:8080'),
+  })  : baseUrl = baseUrl ?? AppConfig.apiBaseUrl,
         _httpClient = httpClient ?? http.Client();
 
   @override
@@ -56,7 +55,8 @@ class ApiClient implements IApiClient {
   }
 
   @override
-  Future<dynamic> get(String endpoint, {Map<String, String>? queryParams}) async {
+  Future<dynamic> get(String endpoint,
+      {Map<String, String>? queryParams}) async {
     try {
       final uri = _buildUri(endpoint, queryParams);
       final response = await _httpClient
@@ -64,9 +64,11 @@ class ApiClient implements IApiClient {
           .timeout(const Duration(seconds: 8));
       return _processResponse(response);
     } on SocketException catch (e) {
-      throw NetworkException('Network error connecting to $baseUrl: ${e.message}');
+      throw NetworkException(
+          'Network error connecting to $baseUrl: ${e.message}');
     } on TimeoutException {
-      throw const NetworkException('Request timed out connecting to backend server');
+      throw const NetworkException(
+          'Request timed out connecting to backend server');
     }
   }
 
@@ -74,15 +76,18 @@ class ApiClient implements IApiClient {
   Future<dynamic> post(String endpoint, {dynamic body}) async {
     try {
       final uri = _buildUri(endpoint);
-      final encodedBody = body is String ? body : (body != null ? jsonEncode(body) : null);
+      final encodedBody =
+          body is String ? body : (body != null ? jsonEncode(body) : null);
       final response = await _httpClient
           .post(uri, headers: _buildHeaders(), body: encodedBody)
           .timeout(const Duration(seconds: 10));
       return _processResponse(response);
     } on SocketException catch (e) {
-      throw NetworkException('Network error connecting to $baseUrl: ${e.message}');
+      throw NetworkException(
+          'Network error connecting to $baseUrl: ${e.message}');
     } on TimeoutException {
-      throw const NetworkException('Request timed out connecting to backend server');
+      throw const NetworkException(
+          'Request timed out connecting to backend server');
     }
   }
 
@@ -90,15 +95,18 @@ class ApiClient implements IApiClient {
   Future<dynamic> put(String endpoint, {dynamic body}) async {
     try {
       final uri = _buildUri(endpoint);
-      final encodedBody = body is String ? body : (body != null ? jsonEncode(body) : null);
+      final encodedBody =
+          body is String ? body : (body != null ? jsonEncode(body) : null);
       final response = await _httpClient
           .put(uri, headers: _buildHeaders(), body: encodedBody)
           .timeout(const Duration(seconds: 8));
       return _processResponse(response);
     } on SocketException catch (e) {
-      throw NetworkException('Network error connecting to $baseUrl: ${e.message}');
+      throw NetworkException(
+          'Network error connecting to $baseUrl: ${e.message}');
     } on TimeoutException {
-      throw const NetworkException('Request timed out connecting to backend server');
+      throw const NetworkException(
+          'Request timed out connecting to backend server');
     }
   }
 
@@ -111,9 +119,11 @@ class ApiClient implements IApiClient {
           .timeout(const Duration(seconds: 8));
       return _processResponse(response);
     } on SocketException catch (e) {
-      throw NetworkException('Network error connecting to $baseUrl: ${e.message}');
+      throw NetworkException(
+          'Network error connecting to $baseUrl: ${e.message}');
     } on TimeoutException {
-      throw const NetworkException('Request timed out connecting to backend server');
+      throw const NetworkException(
+          'Request timed out connecting to backend server');
     }
   }
 
@@ -128,7 +138,8 @@ class ApiClient implements IApiClient {
     } else if (response.statusCode == 401) {
       throw const AuthException('Session expired or unauthorized credentials');
     } else if (response.statusCode == 403) {
-      throw const ForbiddenException('Access denied by system governance policy');
+      throw const ForbiddenException(
+          'Access denied by system governance policy');
     } else {
       throw ServerException(
         'Server returned error: ${response.body}',

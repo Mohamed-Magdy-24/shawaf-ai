@@ -5,10 +5,28 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/industrial-ai/surveillance/backend/internal/domain"
 )
+
+type alertCacheEntry struct {
+	alerts    []*domain.Event
+	timestamp time.Time
+}
+
+var (
+	alertCacheMu sync.RWMutex
+	alertCache   = make(map[string]alertCacheEntry)
+)
+
+// InvalidateAlertCache purges cached inbox alerts for a site
+func InvalidateAlertCache(siteID string) {
+	alertCacheMu.Lock()
+	delete(alertCache, siteID)
+	alertCacheMu.Unlock()
+}
 
 func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site_id")
@@ -32,6 +50,14 @@ func (s *Server) handleAlertsInbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	alertCacheMu.RLock()
+	if cached, ok := alertCache[siteID]; ok && time.Since(cached.timestamp) < 500*time.Millisecond {
+		alertCacheMu.RUnlock()
+		s.writeJSON(w, http.StatusOK, map[string]interface{}{"alerts": cached.alerts})
+		return
+	}
+	alertCacheMu.RUnlock()
+
 	events, err := s.repo.GetEvents(r.Context(), siteID, 100, 0)
 	if err != nil {
 		http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
@@ -44,6 +70,14 @@ func (s *Server) handleAlertsInbox(w http.ResponseWriter, r *http.Request) {
 			activeAlerts = append(activeAlerts, e)
 		}
 	}
+	if activeAlerts == nil {
+		activeAlerts = []*domain.Event{}
+	}
+
+	alertCacheMu.Lock()
+	alertCache[siteID] = alertCacheEntry{alerts: activeAlerts, timestamp: time.Now()}
+	alertCacheMu.Unlock()
+
 	s.writeJSON(w, http.StatusOK, map[string]interface{}{"alerts": activeAlerts})
 }
 
@@ -102,6 +136,8 @@ func (s *Server) handleAlertAction(w http.ResponseWriter, r *http.Request) {
 	if s.repo != nil {
 		_ = s.repo.UpdateEventState(r.Context(), req.SiteID, req.EventID, occurredAt, targetState, req.Note, userID)
 	}
+
+	InvalidateAlertCache(req.SiteID)
 
 	s.writeJSON(w, http.StatusOK, map[string]interface{}{
 		"success":      true,

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/industrial-ai/surveillance/backend/internal/application"
@@ -71,7 +72,12 @@ func NewServer(
 	jwtSecret string,
 ) *Server {
 	if jwtSecret == "" {
-		jwtSecret = "local_dev_jwt_hmac_secret_32bytes_min_0001"
+		jwtSecret = os.Getenv("EDGED_JWT_SECRET")
+	}
+	encKey := os.Getenv("EDGED_ENCRYPTION_KEY")
+	evDir := os.Getenv("EDGED_EVIDENCE_DIR")
+	if evDir == "" {
+		evDir = "/var/lib/surveillance/evidence"
 	}
 	s := &Server{
 		db:            db,
@@ -80,8 +86,8 @@ func NewServer(
 		go2rtcProxy:   go2rtcProxy,
 		wsHub:         wsHub,
 		jwtSecret:     []byte(jwtSecret),
-		encryptionKey: "local_dev_secret_key_32bytes_min_0001",
-		evidenceDir:   "/var/lib/surveillance/evidence",
+		encryptionKey: encKey,
+		evidenceDir:   evDir,
 		startTime:     time.Now().UTC(),
 	}
 	if cp, ok := repo.(ports.CameraRegistryPort); ok {

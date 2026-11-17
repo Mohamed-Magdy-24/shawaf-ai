@@ -5,9 +5,32 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
+)
+
+type sitesCacheEntry struct {
+	payload   []byte
+	timestamp time.Time
+}
+
+var (
+	sitesCacheMu sync.RWMutex
+	cachedSites  sitesCacheEntry
 )
 
 func (s *Server) handleSites(w http.ResponseWriter, r *http.Request) {
+	sitesCacheMu.RLock()
+	if len(cachedSites.payload) > 0 && time.Since(cachedSites.timestamp) < 2*time.Second {
+		data := cachedSites.payload
+		sitesCacheMu.RUnlock()
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+		return
+	}
+	sitesCacheMu.RUnlock()
+
 	query := `SELECT id, name, location, code, timezone, is_active FROM sites ORDER BY name`
 	rows, err := s.db.QueryContext(r.Context(), query)
 	if err != nil {
@@ -36,7 +59,17 @@ func (s *Server) handleSites(w http.ResponseWriter, r *http.Request) {
 				})
 			}
 		}
-		s.writeJSON(w, http.StatusOK, map[string]interface{}{"sites": sites})
+		res := map[string]interface{}{"sites": sites}
+		if raw, err := json.Marshal(res); err == nil {
+			sitesCacheMu.Lock()
+			cachedSites = sitesCacheEntry{payload: raw, timestamp: time.Now()}
+			sitesCacheMu.Unlock()
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(raw)
+			return
+		}
+		s.writeJSON(w, http.StatusOK, res)
 		return
 	}
 	defer rows.Close()
@@ -55,7 +88,17 @@ func (s *Server) handleSites(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-	s.writeJSON(w, http.StatusOK, map[string]interface{}{"sites": sites})
+	res := map[string]interface{}{"sites": sites}
+	if raw, err := json.Marshal(res); err == nil {
+		sitesCacheMu.Lock()
+		cachedSites = sitesCacheEntry{payload: raw, timestamp: time.Now()}
+		sitesCacheMu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(raw)
+		return
+	}
+	s.writeJSON(w, http.StatusOK, res)
 }
 
 func (s *Server) handleZones(w http.ResponseWriter, r *http.Request) {

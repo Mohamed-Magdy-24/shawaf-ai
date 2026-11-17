@@ -27,7 +27,8 @@ class HomeScreen extends StatelessWidget {
         }
       },
       builder: (context, siteState) {
-        final activeSiteCode = siteState is SiteLoaded ? siteState.selectedSite.code : 'BNF';
+        final activeSiteCode =
+            siteState is SiteLoaded ? siteState.selectedSite.code : 'BNF';
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -40,12 +41,15 @@ class HomeScreen extends StatelessWidget {
                     color: AppColors.primary.withValues(alpha: 0.15),
                     borderRadius: AppSpacing.roundedXs,
                   ),
-                  child: const Icon(Icons.security, color: AppColors.primary, size: 20),
+                  child: const Icon(Icons.security,
+                      color: AppColors.primary, size: 20),
                 ),
                 AppSpacing.hGap8,
                 const Text('SHAWAF AI', style: AppTypography.titleLarge),
                 AppSpacing.hGap4,
-                Text('شوف', style: AppTypography.titleLarge.copyWith(color: AppColors.primary)),
+                Text('شوف',
+                    style: AppTypography.titleLarge
+                        .copyWith(color: AppColors.primary)),
               ],
             ),
             bottom: PreferredSize(

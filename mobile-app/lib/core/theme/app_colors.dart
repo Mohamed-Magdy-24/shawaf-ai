@@ -27,6 +27,7 @@ class AppColors {
   static const Color sev2Amber = Color(0xFFF59E0B);
   static const Color sev2AmberDark = Color(0xFF92400E);
   static const Color sev2AmberGlow = Color(0x33F59E0B);
+  static const Color amberDark = Color(0xFF451A03);
 
   static const Color sev3Blue = Color(0xFF3B82F6);
   static const Color sev3BlueDark = Color(0xFF1E40AF);

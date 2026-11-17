@@ -59,7 +59,7 @@ class AlertCardWidget extends StatelessWidget {
                     ),
                     AppSpacing.hGap8,
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: AppSpacing.badgePadding,
                       decoration: BoxDecoration(
                         color: stateColor.withValues(alpha: 0.15),
                         borderRadius: AppSpacing.roundedXs,
