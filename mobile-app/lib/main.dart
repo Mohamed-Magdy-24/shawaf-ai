@@ -78,16 +78,21 @@ class _ShawafAiAppState extends State<ShawafAiApp> with WidgetsBindingObserver {
       child: MultiBlocProvider(
         providers: [
           BlocProvider<AuthCubit>(create: (_) => AuthCubit(repository: _repo)),
-          BlocProvider<SiteCubit>(create: (_) => SiteCubit(repository: _repo)..loadSites()),
-          BlocProvider<AlertInboxCubit>(create: (_) => AlertInboxCubit(repository: _repo)),
-          BlocProvider<CameraStreamCubit>(create: (_) => CameraStreamCubit(repository: _repo)),
-          BlocProvider<CameraManagementCubit>(create: (_) => CameraManagementCubit(repository: _repo)),
-          BlocProvider<EmployeeCubit>(create: (_) => EmployeeCubit(repository: _repo)),
+          BlocProvider<SiteCubit>(
+              create: (_) => SiteCubit(repository: _repo)..loadSites()),
+          BlocProvider<AlertInboxCubit>(
+              create: (_) => AlertInboxCubit(repository: _repo)),
+          BlocProvider<CameraStreamCubit>(
+              create: (_) => CameraStreamCubit(repository: _repo)),
+          BlocProvider<CameraManagementCubit>(
+              create: (_) => CameraManagementCubit(repository: _repo)),
+          BlocProvider<EmployeeCubit>(
+              create: (_) => EmployeeCubit(repository: _repo)),
           BlocProvider<ConnectivityCubit>(create: (_) => ConnectivityCubit()),
         ],
         child: widget.homeOverride != null
             ? MaterialApp(
-                title: 'Shawaf AI (شوف AI)',
+                title: 'Shawaf AI',
                 debugShowCheckedModeBanner: false,
                 home: widget.homeOverride,
               )

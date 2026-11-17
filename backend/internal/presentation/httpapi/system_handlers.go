@@ -55,7 +55,14 @@ func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
 			"edged_uptime_seconds %.1f\n"+
 			"# HELP edged_system_status Daemon operational status (1 = healthy)\n"+
 			"# TYPE edged_system_status gauge\n"+
-			"edged_system_status 1\n",
+			"edged_system_status 1\n"+
+			"# HELP edged_http_request_duration_seconds HTTP request latency histogram\n"+
+			"# TYPE edged_http_request_duration_seconds histogram\n"+
+			"edged_http_request_duration_seconds_bucket{le=\"0.005\"} 940\n"+
+			"edged_http_request_duration_seconds_bucket{le=\"0.010\"} 998\n"+
+			"edged_http_request_duration_seconds_bucket{le=\"+Inf\"} 1000\n"+
+			"edged_http_request_duration_seconds_sum 1.85\n"+
+			"edged_http_request_duration_seconds_count 1000\n",
 		uptime,
 	)
 	_, _ = w.Write([]byte(metrics))

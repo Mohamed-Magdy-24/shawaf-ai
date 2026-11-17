@@ -8,7 +8,7 @@ class ShawafApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Shawaf AI (شوف AI)',
+      title: 'Shawaf AI',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       routerConfig: appRouter,

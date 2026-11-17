@@ -17,6 +17,7 @@ class EmployeesPage extends StatelessWidget {
   void _showEnrollDialog(BuildContext context, String siteId) {
     final idCtrl = TextEditingController();
     final nameCtrl = TextEditingController();
+    final deptCtrl = TextEditingController();
 
     showDialog(
       context: context,
@@ -26,9 +27,20 @@ class EmployeesPage extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: idCtrl, decoration: const InputDecoration(labelText: 'Employee ID (e.g. EMP-101)')),
+            TextField(
+              controller: idCtrl,
+              decoration: const InputDecoration(labelText: 'Employee ID', hintText: 'EMP-001'),
+            ),
             AppSpacing.vGap12,
-            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Full Name')),
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(labelText: 'Full Name', hintText: 'Full Name'),
+            ),
+            AppSpacing.vGap12,
+            TextField(
+              controller: deptCtrl,
+              decoration: const InputDecoration(labelText: 'Department', hintText: 'Operations'),
+            ),
           ],
         ),
         actions: [
@@ -37,10 +49,11 @@ class EmployeesPage extends StatelessWidget {
             label: 'ENROLL',
             onPressed: () {
               if (idCtrl.text.isNotEmpty && nameCtrl.text.isNotEmpty) {
+                final dept = deptCtrl.text.trim().isEmpty ? 'General' : deptCtrl.text.trim();
                 context.read<EmployeeCubit>().enrollEmployee(siteId, {
                   'employee_id': idCtrl.text.trim(),
                   'full_name': nameCtrl.text.trim(),
-                  'department': 'OPERATIONS',
+                  'department': dept,
                 });
                 Navigator.pop(ctx);
               }

@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -107,8 +108,41 @@ func (s *Server) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// Handler wraps an http.Handler with production security headers and rate limiter middleware
+type timingResponseWriter struct {
+	http.ResponseWriter
+	start       time.Time
+	wroteHeader bool
+}
+
+func (trw *timingResponseWriter) WriteHeader(code int) {
+	if !trw.wroteHeader {
+		duration := time.Since(trw.start)
+		trw.Header().Set("X-Response-Time-Ms", fmt.Sprintf("%.3f", float64(duration.Microseconds())/1000.0))
+		trw.wroteHeader = true
+	}
+	trw.ResponseWriter.WriteHeader(code)
+}
+
+func (trw *timingResponseWriter) Write(b []byte) (int, error) {
+	if !trw.wroteHeader {
+		trw.WriteHeader(http.StatusOK)
+	}
+	return trw.ResponseWriter.Write(b)
+}
+
+// TimingMiddleware records latency and attaches X-Response-Time-Ms header
+func (s *Server) TimingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tw := &timingResponseWriter{
+			ResponseWriter: w,
+			start:          time.Now(),
+		}
+		next.ServeHTTP(tw, r)
+	})
+}
+
+// Handler wraps an http.Handler with production security headers, rate limiter, and timing middleware
 func (s *Server) Handler(mux http.Handler) http.Handler {
-	return s.SecurityHeadersMiddleware(s.RateLimiterMiddleware(mux))
+	return s.TimingMiddleware(s.SecurityHeadersMiddleware(s.RateLimiterMiddleware(mux)))
 }
 

@@ -16,7 +16,7 @@ class AddCameraPage extends StatelessWidget {
   AddCameraPage({super.key})
       : nameController = TextEditingController(),
         rtspController = TextEditingController(),
-        fpsController = TextEditingController(text: '15');
+        fpsController = TextEditingController();
 
   void _probeConnection(BuildContext context) async {
     final siteCubit = context.read<SiteCubit>();
@@ -103,18 +103,27 @@ class AddCameraPage extends StatelessWidget {
                   AppSpacing.vGap16,
                   TextField(
                     controller: nameController,
-                    decoration: const InputDecoration(labelText: 'Camera Name (e.g. Slag Pit Cam 01)'),
+                    decoration: const InputDecoration(
+                      labelText: 'Camera Name',
+                      hintText: 'e.g. Zone A Camera',
+                    ),
                   ),
                   AppSpacing.vGap16,
                   TextField(
                     controller: rtspController,
-                    decoration: const InputDecoration(labelText: 'RTSP Stream URL'),
+                    decoration: const InputDecoration(
+                      labelText: 'RTSP Stream URL',
+                      hintText: 'rtsp://username:password@ip:port/stream',
+                    ),
                   ),
                   AppSpacing.vGap16,
                   TextField(
                     controller: fpsController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Target Frame Rate (FPS)'),
+                    decoration: const InputDecoration(
+                      labelText: 'Target Frame Rate (FPS)',
+                      hintText: '15',
+                    ),
                   ),
                   AppSpacing.vGap16,
                   AppButton(
