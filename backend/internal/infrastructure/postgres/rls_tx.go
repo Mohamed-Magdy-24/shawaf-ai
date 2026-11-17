@@ -49,7 +49,8 @@ func NewPostgresRepo(pool *sql.DB) *DB {
 }
 
 // WithSiteTx executes a transaction bounded to a specific tenant site_id.
-// It sets the session setting 'app.site_id' locally, which PostgreSQL Row-Level Security policies enforce.
+// It sets the session setting 'app.site_id' locally via parameterized set_config,
+// which PostgreSQL Row-Level Security policies enforce.
 func (d *DB) WithSiteTx(ctx context.Context, siteID string, fn func(tx *sql.Tx) error) error {
 	tx, err := d.pool.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
@@ -57,9 +58,8 @@ func (d *DB) WithSiteTx(ctx context.Context, siteID string, fn func(tx *sql.Tx) 
 	}
 	defer tx.Rollback()
 
-	// Enforce tenant boundary in RLS
-	setQuery := fmt.Sprintf("SET LOCAL app.site_id = '%s'", siteID)
-	if _, err := tx.ExecContext(ctx, setQuery); err != nil {
+	// Enforce tenant boundary in RLS with parameterized query to prevent SQL injection
+	if _, err := tx.ExecContext(ctx, "SELECT set_config('app.site_id', $1, true)", siteID); err != nil {
 		return fmt.Errorf("set site_id RLS context: %w", err)
 	}
 

@@ -20,7 +20,13 @@ class AlertRepositoryImpl implements IAlertRepository {
           .map((e) => SurveillanceEvent.fromJson(e as Map<String, dynamic>))
           .toList();
     }
-    throw Exception('Invalid server response for alerts inbox');
+    if (response is Map<String, dynamic>) {
+      final list = (response['data'] ?? response['events'] ?? response['alerts']) as List? ?? [];
+      return list
+          .map((e) => SurveillanceEvent.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+    return [];
   }
 
   @override

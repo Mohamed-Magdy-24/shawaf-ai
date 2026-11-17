@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -69,10 +70,25 @@ class EmployeesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<SiteCubit, SiteState>(
       builder: (context, siteState) {
+        if (siteState is SiteInitial) {
+          context.read<SiteCubit>().loadSites();
+          return const Center(child: CircularProgressIndicator(color: AppColors.cobalt));
+        }
+
         if (siteState is SiteError) {
+          final isAuthError = siteState.message.toLowerCase().contains('unauthorized') ||
+              siteState.message.toLowerCase().contains('401') ||
+              siteState.message.toLowerCase().contains('session expired');
           return ErrorStateView(
             errorMessage: siteState.message,
-            onRetry: () => context.read<SiteCubit>().loadSites(),
+            actionLabel: isAuthError ? 'SIGN IN' : 'RETRY',
+            onRetry: () {
+              if (isAuthError) {
+                context.go('/login');
+              } else {
+                context.read<SiteCubit>().loadSites();
+              }
+            },
           );
         }
 

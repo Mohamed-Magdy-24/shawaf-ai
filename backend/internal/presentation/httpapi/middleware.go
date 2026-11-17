@@ -83,21 +83,34 @@ func (s *Server) RateLimiterMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// CORSMiddleware enables seamless browser access from Flutter web client
+// isAllowedOrigin validates incoming CORS Origin for localhost/127.0.0.1 development or explicit hosts
+func isAllowedOrigin(origin string) bool {
+	if origin == "" {
+		return false
+	}
+	if strings.HasPrefix(origin, "http://localhost:") ||
+		strings.HasPrefix(origin, "http://127.0.0.1:") ||
+		strings.HasPrefix(origin, "https://localhost:") ||
+		strings.HasPrefix(origin, "https://127.0.0.1:") ||
+		origin == "http://localhost" ||
+		origin == "http://127.0.0.1" {
+		return true
+	}
+	return false
+}
+
+// CORSMiddleware enables secure browser access from Flutter web client
 func (s *Server) CORSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		if origin != "" {
+		if isAllowedOrigin(origin) {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, X-Requested-With, Origin")
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Expose-Headers", "X-Response-Time-Ms")
-		} else {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, X-Requested-With, Origin")
-			w.Header().Set("Access-Control-Expose-Headers", "X-Response-Time-Ms")
+		} else if origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", "null")
 		}
 
 		if r.Method == http.MethodOptions {
@@ -134,9 +147,31 @@ func (s *Server) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
+		if claims.TokenType != "access" && claims.TokenType != "" {
+			http.Error(w, `{"error":"unauthorized: access token required"}`, http.StatusUnauthorized)
+			return
+		}
+
 		ctx := context.WithValue(r.Context(), "user_claims", claims)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
+}
+
+// AuthorizeSiteAccess validates that the user is authorized to access the requested siteID
+func (s *Server) AuthorizeSiteAccess(r *http.Request, targetSiteID string) error {
+	claims, ok := r.Context().Value("user_claims").(*UserClaims)
+	if !ok || claims == nil {
+		return fmt.Errorf("unauthorized: missing user claims")
+	}
+	if claims.Role == "senior_management" || claims.Role == "admin" || claims.Role == "corp_admin" {
+		return nil
+	}
+	for _, sid := range claims.SiteIDs {
+		if strings.EqualFold(sid, targetSiteID) {
+			return nil
+		}
+	}
+	return fmt.Errorf("forbidden: user not authorized for site %s", targetSiteID)
 }
 
 type timingResponseWriter struct {

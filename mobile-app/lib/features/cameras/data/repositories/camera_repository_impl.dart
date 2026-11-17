@@ -13,7 +13,11 @@ class CameraRepositoryImpl implements ICameraRepository {
     if (response is List) {
       return response.map((e) => Camera.fromJson(e as Map<String, dynamic>)).toList();
     }
-    throw Exception('Invalid server response for cameras');
+    if (response is Map<String, dynamic>) {
+      final list = (response['data'] ?? response['cameras']) as List? ?? [];
+      return list.map((e) => Camera.fromJson(e as Map<String, dynamic>)).toList();
+    }
+    return [];
   }
 
   @override
@@ -36,7 +40,8 @@ class CameraRepositoryImpl implements ICameraRepository {
     };
     final response = await _apiClient.post('/api/v1/sites/$siteId/cameras', body: payload);
     if (response is Map<String, dynamic>) {
-      return Camera.fromJson(response);
+      final data = response.containsKey('data') ? response['data'] as Map<String, dynamic> : response;
+      return Camera.fromJson(data);
     }
     throw Exception('Failed to register camera');
   }
@@ -47,7 +52,11 @@ class CameraRepositoryImpl implements ICameraRepository {
     if (response is List) {
       return response.map((e) => Zone.fromJson(e as Map<String, dynamic>)).toList();
     }
-    throw Exception('Invalid server response for zones');
+    if (response is Map<String, dynamic>) {
+      final list = (response['data'] ?? response['zones']) as List? ?? [];
+      return list.map((e) => Zone.fromJson(e as Map<String, dynamic>)).toList();
+    }
+    return [];
   }
 
   @override

@@ -7,12 +7,14 @@ import 'app_button.dart';
 class ErrorStateView extends StatelessWidget {
   final String errorMessage;
   final VoidCallback onRetry;
+  final String actionLabel;
   final IconData icon;
 
   const ErrorStateView({
     super.key,
     required this.errorMessage,
     required this.onRetry,
+    this.actionLabel = 'RETRY CONNECTION',
     this.icon = Icons.error_outline_rounded,
   });
 
@@ -47,7 +49,7 @@ class ErrorStateView extends StatelessWidget {
             ),
             AppSpacing.vGap24,
             AppButton(
-              label: 'RETRY CONNECTION',
+              label: actionLabel,
               icon: Icons.refresh,
               onPressed: onRetry,
               variant: ButtonVariant.primary,

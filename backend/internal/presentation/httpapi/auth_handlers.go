@@ -4,10 +4,15 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/industrial-ai/surveillance/backend/internal/infrastructure/crypto"
+)
+
+var (
+	loginLimiter = NewRateLimiter(5, 10)
 )
 
 // UserClaims defines JWT access token structure
@@ -23,6 +28,12 @@ type UserClaims struct {
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	clientIP := strings.Split(r.RemoteAddr, ":")[0]
+	if !loginLimiter.allow(clientIP) {
+		s.writeError(w, http.StatusTooManyRequests, "RATE_LIMITED", "too many login attempts; retry in 60 seconds", nil)
 		return
 	}
 
@@ -46,13 +57,17 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	query := `SELECT id, password_hash, role, site_id FROM users WHERE username = $1`
 	err := s.db.QueryRowContext(r.Context(), query, req.Username).Scan(&userID, &passwordHash, &role, &siteID)
 	if err != nil {
+		s.LogAuditAction(r.Context(), "", "", "LOGIN_FAILURE", "users", map[string]interface{}{"username": req.Username, "ip": clientIP, "reason": "user_not_found"})
 		http.Error(w, `{"error":"invalid credentials"}`, http.StatusUnauthorized)
 		return
 	}
 
 	valid, vErr := crypto.VerifyPassword(req.Password, passwordHash)
 	if vErr != nil || !valid {
+		s.LogAuditAction(r.Context(), "", userID, "LOGIN_FAILURE", "users", map[string]interface{}{"username": req.Username, "ip": clientIP, "reason": "bad_password"})
 		http.Error(w, `{"error":"invalid credentials"}`, http.StatusUnauthorized)
+		return
+	}
 		return
 	}
 
@@ -99,7 +114,18 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.LogAuditAction(r.Context(), siteID.String, userID, "LOGIN_SUCCESS", "users", map[string]interface{}{"username": req.Username, "role": role, "ip": clientIP})
+
 	s.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"data": map[string]interface{}{
+			"token":         accessToken,
+			"refresh_token": refreshToken,
+			"user_id":       userID,
+			"full_name":     req.Username,
+			"role":          role,
+			"site_ids":      allowedSites,
+			"expires_in":    900,
+		},
 		"token":         accessToken,
 		"refresh_token": refreshToken,
 		"user_id":       userID,
@@ -176,7 +202,7 @@ func (s *Server) handleRefreshToken(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleWSTicket(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+		s.writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "method not allowed", nil)
 		return
 	}
 
@@ -193,10 +219,20 @@ func (s *Server) handleWSTicket(w http.ResponseWriter, r *http.Request) {
 		if siteID == "" && len(claims.SiteIDs) > 0 {
 			siteID = claims.SiteIDs[0]
 		}
+		if siteID != "" {
+			if err := s.AuthorizeSiteAccess(r, siteID); err != nil {
+				s.writeError(w, http.StatusForbidden, "FORBIDDEN", err.Error(), nil)
+				return
+			}
+		}
 	}
 
 	ticket := s.wsHub.CreateTicket(siteID, userID)
 	s.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"data": map[string]interface{}{
+			"ticket":     ticket,
+			"expires_in": 30,
+		},
 		"ticket":     ticket,
 		"expires_in": 30,
 	})

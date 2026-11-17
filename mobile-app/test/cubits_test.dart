@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shawaf_ai_mobile/cubits/alert_inbox_cubit.dart';
-import 'package:shawaf_ai_mobile/cubits/auth_cubit.dart';
-import 'package:shawaf_ai_mobile/cubits/camera_management_cubit.dart';
-import 'package:shawaf_ai_mobile/cubits/camera_stream_cubit.dart';
+import 'package:shawaf_ai_mobile/features/alerts/presentation/cubit/alert_inbox_cubit.dart';
+import 'package:shawaf_ai_mobile/features/auth/presentation/cubit/auth_cubit.dart';
+import 'package:shawaf_ai_mobile/features/cameras/presentation/cubit/camera_management_cubit.dart';
+import 'package:shawaf_ai_mobile/features/cameras/presentation/cubit/camera_stream_cubit.dart';
 import 'package:shawaf_ai_mobile/cubits/connectivity_cubit.dart';
-import 'package:shawaf_ai_mobile/cubits/employee_cubit.dart';
-import 'package:shawaf_ai_mobile/cubits/site_cubit.dart';
+import 'package:shawaf_ai_mobile/features/employees/presentation/cubit/employee_cubit.dart';
+import 'package:shawaf_ai_mobile/features/sites/presentation/cubit/site_cubit.dart';
 import 'package:shawaf_ai_mobile/models/models.dart';
 import 'package:shawaf_ai_mobile/repositories/surveillance_repository.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';

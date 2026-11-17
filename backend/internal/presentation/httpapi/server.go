@@ -1,8 +1,10 @@
 package httpapi
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -108,4 +110,65 @@ func (s *Server) writeJSON(w http.ResponseWriter, status int, data interface{}) 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(data)
+}
+
+// writeData writes a single entity response according to the canonical contract: { "data": { ... } }
+func (s *Server) writeData(w http.ResponseWriter, status int, data interface{}) {
+	s.writeJSON(w, status, map[string]interface{}{
+		"data": data,
+	})
+}
+
+// writeDataList writes a collection response according to the canonical contract: { "data": [ ... ], "meta": { ... } }
+// For maximum backward-compatibility with existing integration tests, it also embeds the resourceKey if provided.
+func (s *Server) writeDataList(w http.ResponseWriter, status int, resourceKey string, data interface{}, meta map[string]interface{}) {
+	if meta == nil {
+		meta = map[string]interface{}{}
+	}
+	resp := map[string]interface{}{
+		"data": data,
+		"meta": meta,
+	}
+	if resourceKey != "" {
+		resp[resourceKey] = data
+	}
+	s.writeJSON(w, status, resp)
+}
+
+// writeError writes a structured error response according to the canonical contract:
+// { "error": { "code": "...", "message": "...", "details": { ... } } }
+func (s *Server) writeError(w http.ResponseWriter, status int, code, message string, details map[string]interface{}) {
+	if details == nil {
+		details = map[string]interface{}{}
+	}
+	s.writeJSON(w, status, map[string]interface{}{
+		"error": map[string]interface{}{
+			"code":    code,
+			"message": message,
+			"details": details,
+		},
+	})
+}
+
+// LogAuditAction records administrative operations into the immutable platform audit_logs table
+func (s *Server) LogAuditAction(ctx context.Context, siteID, userID, action, resource string, details map[string]interface{}) {
+	if s.db == nil {
+		return
+	}
+	detailsJSON, _ := json.Marshal(details)
+	query := `
+		INSERT INTO audit_logs (site_id, user_id, action, resource, details_json, created_at)
+		VALUES ($1, $2, $3, $4, $5, NOW())`
+
+	var sID, uID *string
+	if siteID != "" {
+		sID = &siteID
+	}
+	if userID != "" && userID != "anonymous" {
+		uID = &userID
+	}
+
+	if _, err := s.db.ExecContext(ctx, query, sID, uID, action, resource, detailsJSON); err != nil {
+		log.Printf("[Audit] Warning: Failed to record audit log: %v", err)
+	}
 }

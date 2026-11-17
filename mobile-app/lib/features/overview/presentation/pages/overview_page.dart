@@ -24,10 +24,29 @@ class OverviewPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<SiteCubit, SiteState>(
       builder: (context, siteState) {
+        if (siteState is SiteInitial) {
+          context.read<SiteCubit>().loadSites();
+          return ListView.builder(
+            padding: AppSpacing.p24,
+            itemCount: 4,
+            itemBuilder: (_, __) => const ShimmerSkeletonCard(),
+          );
+        }
+
         if (siteState is SiteError) {
+          final isAuthError = siteState.message.toLowerCase().contains('unauthorized') ||
+              siteState.message.toLowerCase().contains('401') ||
+              siteState.message.toLowerCase().contains('session expired');
           return ErrorStateView(
             errorMessage: siteState.message,
-            onRetry: () => context.read<SiteCubit>().loadSites(),
+            actionLabel: isAuthError ? 'SIGN IN' : 'RETRY',
+            onRetry: () {
+              if (isAuthError) {
+                context.go('/login');
+              } else {
+                context.read<SiteCubit>().loadSites();
+              }
+            },
           );
         }
 
@@ -123,7 +142,7 @@ class OverviewPage extends StatelessWidget {
               builder: (context, empState) {
                 final totalCams = camState is CameraStreamLoaded ? camState.cameras.length : 0;
                 final onlineCams = camState is CameraStreamLoaded
-                    ? camState.cameras.where((c) => c.healthStatus.toUpperCase() == 'ONLINE' || c.healthStatus.toUpperCase() == 'STREAMING').length
+                    ? camState.cameras.where((c) => c.healthStatus.toUpperCase() == 'HEALTHY' || c.isActive).length
                     : 0;
                 final lostCams = totalCams - onlineCams;
 
@@ -349,3 +368,4 @@ class OverviewPage extends StatelessWidget {
     );
   }
 }
+

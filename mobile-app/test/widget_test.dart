@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shawaf_ai_mobile/models/models.dart';
-import 'package:shawaf_ai_mobile/theme/app_theme.dart';
-import 'package:shawaf_ai_mobile/widgets/alert_card.dart';
-import 'package:shawaf_ai_mobile/widgets/degraded_connection_banner.dart';
-import 'package:shawaf_ai_mobile/widgets/severity_badge.dart';
-import 'package:shawaf_ai_mobile/widgets/site_switcher_banner.dart';
+import 'package:shawaf_ai_mobile/core/theme/app_theme.dart';
+import 'package:shawaf_ai_mobile/features/alerts/presentation/widgets/alert_card_widget.dart';
+import 'package:shawaf_ai_mobile/core/widgets/degraded_banner.dart';
+import 'package:shawaf_ai_mobile/core/widgets/severity_badge.dart';
+import 'package:shawaf_ai_mobile/core/widgets/site_switcher_banner.dart';
 
 void main() {
   group('Widget Tests (BNF & RNF Strict Naming)', () {
@@ -56,14 +56,14 @@ void main() {
       expect(find.text('SEV1'), findsOneWidget);
     });
 
-    testWidgets('DegradedConnectionBanner displays error message and handles retry', (WidgetTester tester) async {
+    testWidgets('DegradedBanner displays error message and handles retry', (WidgetTester tester) async {
       bool retried = false;
 
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: DegradedConnectionBanner(
-              message: 'Connection dropped',
+            body: DegradedBanner(
+              message: 'OFFLINE (ADR-016): Connection dropped',
               isOffline: true,
               onRetry: () {
                 retried = true;
@@ -79,7 +79,7 @@ void main() {
       expect(retried, isTrue);
     });
 
-    testWidgets('AlertCard displays alert information and triggers tap callback', (WidgetTester tester) async {
+    testWidgets('AlertCardWidget displays alert information and triggers tap callback', (WidgetTester tester) async {
       bool tapped = false;
       final alert = SurveillanceEvent(
         id: 'evt-001',
@@ -99,7 +99,7 @@ void main() {
         MaterialApp(
           theme: AppTheme.darkTheme,
           home: Scaffold(
-            body: AlertCard(
+            body: AlertCardWidget(
               alert: alert,
               onTap: () {
                 tapped = true;
@@ -113,7 +113,7 @@ void main() {
       expect(find.text('NEW'), findsOneWidget);
       expect(find.text('bnf_cam_01'), findsOneWidget);
 
-      await tester.tap(find.byType(AlertCard));
+      await tester.tap(find.byType(AlertCardWidget));
       await tester.pump();
       expect(tapped, isTrue);
     });

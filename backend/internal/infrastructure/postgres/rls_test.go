@@ -8,15 +8,16 @@ import (
 
 func TestRLS_TenantIsolationQueryStructure(t *testing.T) {
 	testSiteID := "11111111-1111-1111-1111-111111111111"
-	expectedSQL := fmt.Sprintf("SET LOCAL app.site_id = '%s'", testSiteID)
+	expectedSQL := "SELECT set_config('app.site_id', $1, true)"
 
 	if !strings.Contains(expectedSQL, "app.site_id") {
 		t.Fatalf("expected RLS query to set session parameter app.site_id")
 	}
 
-	if !strings.Contains(expectedSQL, testSiteID) {
-		t.Fatalf("expected RLS query to contain tenant site_id")
+	if !strings.Contains(expectedSQL, "set_config") {
+		t.Fatalf("expected parameterized set_config for SQL injection defense")
 	}
+	_ = testSiteID
 }
 
 func TestRLS_CompositePrimaryKeyCompliance(t *testing.T) {

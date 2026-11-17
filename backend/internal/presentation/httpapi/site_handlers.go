@@ -59,7 +59,11 @@ func (s *Server) handleSites(w http.ResponseWriter, r *http.Request) {
 				})
 			}
 		}
-		res := map[string]interface{}{"sites": sites}
+		res := map[string]interface{}{
+			"data":  sites,
+			"meta":  map[string]interface{}{"total": len(sites)},
+			"sites": sites,
+		}
 		if raw, err := json.Marshal(res); err == nil {
 			sitesCacheMu.Lock()
 			cachedSites = sitesCacheEntry{payload: raw, timestamp: time.Now()}
@@ -88,7 +92,11 @@ func (s *Server) handleSites(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-	res := map[string]interface{}{"sites": sites}
+	res := map[string]interface{}{
+		"data":  sites,
+		"meta":  map[string]interface{}{"total": len(sites)},
+		"sites": sites,
+	}
 	if raw, err := json.Marshal(res); err == nil {
 		sitesCacheMu.Lock()
 		cachedSites = sitesCacheEntry{payload: raw, timestamp: time.Now()}
@@ -104,14 +112,14 @@ func (s *Server) handleSites(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleZones(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site_id")
 	if siteID == "" {
-		http.Error(w, `{"error":"site_id parameter required"}`, http.StatusBadRequest)
+		s.writeError(w, http.StatusBadRequest, "INVALID_ARGUMENT", "site_id parameter required", nil)
 		return
 	}
 
 	query := `SELECT zone_id, site_id, camera_id, name, polygon_geojson, risk_type FROM zones WHERE site_id = $1`
 	rows, err := s.db.QueryContext(r.Context(), query, siteID)
 	if err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
+		s.writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", fmt.Sprintf("%v", err), nil)
 		return
 	}
 	defer rows.Close()
@@ -132,5 +140,5 @@ func (s *Server) handleZones(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-	s.writeJSON(w, http.StatusOK, map[string]interface{}{"zones": zones})
+	s.writeDataList(w, http.StatusOK, "zones", zones, map[string]interface{}{"site_id": siteID, "total": len(zones)})
 }

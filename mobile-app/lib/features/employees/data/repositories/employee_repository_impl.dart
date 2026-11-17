@@ -13,14 +13,19 @@ class EmployeeRepositoryImpl implements IEmployeeRepository {
     if (response is List) {
       return response.map((e) => Employee.fromJson(e as Map<String, dynamic>)).toList();
     }
-    throw Exception('Invalid server response for employees');
+    if (response is Map<String, dynamic>) {
+      final list = (response['data'] ?? response['employees']) as List? ?? [];
+      return list.map((e) => Employee.fromJson(e as Map<String, dynamic>)).toList();
+    }
+    return [];
   }
 
   @override
   Future<Employee> registerEmployee(String siteId, Map<String, dynamic> empPayload) async {
     final response = await _apiClient.post('/api/v1/sites/$siteId/employees', body: empPayload);
     if (response is Map<String, dynamic>) {
-      return Employee.fromJson(response);
+      final data = response.containsKey('data') ? response['data'] as Map<String, dynamic> : response;
+      return Employee.fromJson(data);
     }
     throw Exception('Failed to register employee');
   }
@@ -29,7 +34,7 @@ class EmployeeRepositoryImpl implements IEmployeeRepository {
   Future<int> importEmployees(String siteId, String csvOrJson) async {
     final response = await _apiClient.post('/api/v1/sites/$siteId/employees/import', body: csvOrJson);
     if (response is Map<String, dynamic>) {
-      return response['imported'] as int? ?? 0;
+      return (response['imported'] ?? response['count'] ?? 0) as int;
     }
     throw Exception('Failed to bulk import employees');
   }
@@ -40,6 +45,10 @@ class EmployeeRepositoryImpl implements IEmployeeRepository {
     if (response is List) {
       return response.map((e) => EmployeePresence.fromJson(e as Map<String, dynamic>)).toList();
     }
-    throw Exception('Invalid server response for employee presence');
+    if (response is Map<String, dynamic>) {
+      final list = (response['data'] ?? response['presence']) as List? ?? [];
+      return list.map((e) => EmployeePresence.fromJson(e as Map<String, dynamic>)).toList();
+    }
+    return [];
   }
 }

@@ -13,6 +13,10 @@ class SiteRepositoryImpl implements ISiteRepository {
     if (response is List) {
       return response.map((e) => Site.fromJson(e as Map<String, dynamic>)).toList();
     }
+    if (response is Map<String, dynamic>) {
+      final list = (response['data'] ?? response['sites']) as List? ?? [];
+      return list.map((e) => Site.fromJson(e as Map<String, dynamic>)).toList();
+    }
     throw Exception('Invalid server response for sites endpoint');
   }
 }

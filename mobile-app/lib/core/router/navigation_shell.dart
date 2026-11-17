@@ -152,7 +152,7 @@ class NavigationShell extends StatelessWidget {
             child: Row(
               children: [
                 Container(
-                  padding: AppSpacing.p4,
+                  padding: AppSpacing.p8,
                   decoration: BoxDecoration(
                     color: AppColors.elevated,
                     borderRadius: AppSpacing.roundedSm,
@@ -334,7 +334,7 @@ class NavigationShell extends StatelessWidget {
                         shape: BoxShape.circle,
                       ),
                     ),
-                    AppSpacing.hGap4,
+                    AppSpacing.hGap8,
                     Text(
                       isOffline ? 'OFFLINE' : 'ONLINE (3.6ms)',
                       style: AppTypography.tabularMonoSmall.copyWith(

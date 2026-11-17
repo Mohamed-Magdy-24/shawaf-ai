@@ -131,7 +131,28 @@ class ApiClient implements IApiClient {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return null;
       try {
-        return jsonDecode(response.body);
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          if (decoded.containsKey('data')) {
+            return decoded['data'];
+          }
+          const resourceKeys = [
+            'sites',
+            'cameras',
+            'zones',
+            'employees',
+            'events',
+            'alerts',
+            'nvrs',
+            'presence',
+          ];
+          for (final key in resourceKeys) {
+            if (decoded.containsKey(key)) {
+              return decoded[key];
+            }
+          }
+        }
+        return decoded;
       } catch (_) {
         return response.body;
       }

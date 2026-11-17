@@ -19,7 +19,7 @@ class CameraFeedCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isStreaming = camera.healthStatus.toUpperCase() == 'STREAMING' || camera.healthStatus.toUpperCase() == 'ONLINE';
+    final isStreaming = camera.healthStatus.toUpperCase() == 'HEALTHY' || camera.isActive;
     final statusColor = isStreaming ? AppColors.emerald : AppColors.crimson;
     final fpsText = isStreaming ? '${camera.fpsTarget.toStringAsFixed(1)} FPS' : '0.0 FPS';
 
@@ -151,3 +151,4 @@ class CameraFeedCardWidget extends StatelessWidget {
     );
   }
 }
+
