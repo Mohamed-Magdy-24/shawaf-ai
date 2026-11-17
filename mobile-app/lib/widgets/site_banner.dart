@@ -21,104 +21,39 @@ class SiteBanner extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'SWITCH ACTIVE INDUSTRIAL SITE',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: AppTheme.textSecondary),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'SWITCH ACTIVE INDUSTRIAL SITE',
+                style: TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
                 ),
-                const SizedBox(height: 8),
-                ...availableSites.map((site) {
-                  final isSelected = site.id == currentSite.id;
-                  return InkWell(
-                    onTap: () {
-                      onSiteSelected(site);
-                      Navigator.pop(ctx);
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.surfaceLight : Colors.transparent,
-                        border: Border.all(
-                          color: isSelected ? AppTheme.primaryTeal : AppTheme.border,
-                          width: isSelected ? 1.5 : 1.0,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppTheme.primaryTeal : AppTheme.border,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              site.code,
-                              style: TextStyle(
-                                color: isSelected ? const Color(0xFF042F2E) : AppTheme.textPrimary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  site.name,
-                                  style: const TextStyle(
-                                    color: AppTheme.textPrimary,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                Text(
-                                  'Timezone: ${site.timezone}',
-                                  style: const TextStyle(
-                                    color: AppTheme.textMuted,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (isSelected)
-                            const Icon(Icons.check_circle, color: AppTheme.primaryTeal, size: 20),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-              ],
-            ),
+              ),
+              const SizedBox(height: 8),
+              ...availableSites.map((site) {
+                final isSelected = site.id == currentSite.id;
+                return ListTile(
+                  title: Text(site.name, style: const TextStyle(color: AppTheme.textPrimary)),
+                  subtitle: Text(site.code, style: const TextStyle(color: AppTheme.primaryTeal)),
+                  trailing: isSelected ? const Icon(Icons.check, color: AppTheme.primaryTeal) : null,
+                  onTap: () {
+                    onSiteSelected(site);
+                    Navigator.pop(ctx);
+                  },
+                );
+              }),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -147,29 +82,14 @@ class SiteBanner extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'CURRENT INDUSTRIAL SITE',
-                  style: TextStyle(
-                    color: AppTheme.textMuted,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                Text(
-                  currentSite.name,
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+            child: Text(
+              currentSite.name,
+              style: const TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           OutlinedButton.icon(

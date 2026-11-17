@@ -2,13 +2,30 @@ import 'dart:async';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import '../features/auth/domain/repositories/auth_repository.dart';
+import '../features/sites/domain/repositories/site_repository.dart';
+import '../features/alerts/domain/repositories/alert_repository.dart';
+import '../features/cameras/domain/repositories/camera_repository.dart';
+import '../features/employees/domain/repositories/employee_repository.dart';
 
-abstract class SurveillanceRepository {
+abstract class SurveillanceRepository
+    implements
+        IAuthRepository,
+        ISiteRepository,
+        IAlertRepository,
+        ICameraRepository,
+        IEmployeeRepository {
+  @override
   Future<Map<String, dynamic>> login(String username, String password);
+  @override
   void logout();
+  @override
   String? get currentToken;
+  @override
   Future<List<Site>> getSites();
+  @override
   Future<List<Camera>> getCameras(String siteId);
+  @override
   Future<Camera> registerCamera(
     String siteId, {
     required String name,
@@ -18,17 +35,29 @@ abstract class SurveillanceRepository {
     String? onvifHost,
     List<Map<String, dynamic>>? zones,
   });
+  @override
   Future<List<Zone>> getZones(String siteId);
+  @override
   Future<List<SurveillanceEvent>> getAlertsInbox(String siteId);
+  @override
   Future<bool> executeAlertAction(String siteId, String eventId, String action, String note);
+  @override
   Future<Map<String, dynamic>> requestWebRTCSdp(String siteId, String cameraId, String offerSdp);
+  @override
   WebSocketChannel? connectWebSocket(String siteId, Function(SurveillanceEvent) onEvent);
+  @override
   Future<Map<String, dynamic>> testCameraConnection(String siteId, Map<String, dynamic> probePayload);
+  @override
   Future<List<NVR>> getNVRs(String siteId);
+  @override
   Future<NVR> registerNVR(String siteId, Map<String, dynamic> nvrPayload);
+  @override
   Future<List<Employee>> getEmployees(String siteId);
+  @override
   Future<Employee> registerEmployee(String siteId, Map<String, dynamic> empPayload);
+  @override
   Future<int> importEmployees(String siteId, String csvOrJson);
+  @override
   Future<List<EmployeePresence>> getEmployeePresence(String siteId);
 }
 

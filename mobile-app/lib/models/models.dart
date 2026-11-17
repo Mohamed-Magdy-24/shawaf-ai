@@ -27,12 +27,12 @@ class Site extends Equatable {
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'code': code,
-    'name': name,
-    'timezone': timezone,
-    'is_active': isActive,
-  };
+        'id': id,
+        'code': code,
+        'name': name,
+        'timezone': timezone,
+        'is_active': isActive,
+      };
 
   @override
   List<Object?> get props => [id, code, name, timezone, isActive];
@@ -82,21 +82,33 @@ class Camera extends Equatable {
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'site_id': siteId,
-    'name': name,
-    'fps_target': fpsTarget,
-    'is_active': isActive,
-    'health_status': healthStatus,
-    'current_fps': currentFPS,
-    'last_heartbeat': lastHeartbeat,
-    'rtsp_url': rtspUrl,
-    'nvr_id': nvrId,
-    'onvif_host': onvifHost,
-  };
+        'id': id,
+        'site_id': siteId,
+        'name': name,
+        'fps_target': fpsTarget,
+        'is_active': isActive,
+        'health_status': healthStatus,
+        'current_fps': currentFPS,
+        'last_heartbeat': lastHeartbeat,
+        'rtsp_url': rtspUrl,
+        'nvr_id': nvrId,
+        'onvif_host': onvifHost,
+      };
 
   @override
-  List<Object?> get props => [id, siteId, name, fpsTarget, isActive, healthStatus, currentFPS, lastHeartbeat, rtspUrl, nvrId, onvifHost];
+  List<Object?> get props => [
+        id,
+        siteId,
+        name,
+        fpsTarget,
+        isActive,
+        healthStatus,
+        currentFPS,
+        lastHeartbeat,
+        rtspUrl,
+        nvrId,
+        onvifHost
+      ];
 }
 
 class Zone extends Equatable {
@@ -148,18 +160,19 @@ class Zone extends Equatable {
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'site_id': siteId,
-    'camera_id': cameraId,
-    'name': name,
-    'zone_type': zoneType,
-    'severity': severity,
-    'polygon': polygon,
-    'is_active': isActive,
-  };
+        'id': id,
+        'site_id': siteId,
+        'camera_id': cameraId,
+        'name': name,
+        'zone_type': zoneType,
+        'severity': severity,
+        'polygon': polygon,
+        'is_active': isActive,
+      };
 
   @override
-  List<Object?> get props => [id, siteId, cameraId, name, zoneType, severity, polygon, isActive];
+  List<Object?> get props =>
+      [id, siteId, cameraId, name, zoneType, severity, polygon, isActive];
 }
 
 class SurveillanceEvent extends Equatable {
@@ -174,6 +187,9 @@ class SurveillanceEvent extends Equatable {
   final int trackId;
   final DateTime occurredAt;
   final Map<String, dynamic> metadata;
+
+  String? get employeeName => metadata['employee_name'] as String?;
+  String? get employeeId => metadata['employee_id'] as String?;
 
   const SurveillanceEvent({
     required this.id,
@@ -246,21 +262,33 @@ class SurveillanceEvent extends Equatable {
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'site_id': siteId,
-    'camera_id': cameraId,
-    'zone_id': zoneId,
-    'event_type': eventType,
-    'severity': severity,
-    'state': state,
-    'confidence': confidence,
-    'track_id': trackId,
-    'occurred_at': occurredAt.toIso8601String(),
-    'metadata': metadata,
-  };
+        'id': id,
+        'site_id': siteId,
+        'camera_id': cameraId,
+        'zone_id': zoneId,
+        'event_type': eventType,
+        'severity': severity,
+        'state': state,
+        'confidence': confidence,
+        'track_id': trackId,
+        'occurred_at': occurredAt.toIso8601String(),
+        'metadata': metadata,
+      };
 
   @override
-  List<Object?> get props => [id, siteId, cameraId, zoneId, eventType, severity, state, confidence, trackId, occurredAt, metadata];
+  List<Object?> get props => [
+        id,
+        siteId,
+        cameraId,
+        zoneId,
+        eventType,
+        severity,
+        state,
+        confidence,
+        trackId,
+        occurredAt,
+        metadata
+      ];
 }
 
 class NVR extends Equatable {
@@ -321,6 +349,8 @@ class Employee extends Equatable {
   final String sourceType;
   final bool isActive;
 
+  String get id => employeeId;
+
   const Employee({
     required this.siteId,
     required this.employeeId,
@@ -366,6 +396,8 @@ class EmployeePresence extends Equatable {
   final String? zoneId;
   final double confidence;
   final DateTime lastSeenAt;
+
+  String? get zoneName => zoneId;
 
   const EmployeePresence({
     required this.siteId,
