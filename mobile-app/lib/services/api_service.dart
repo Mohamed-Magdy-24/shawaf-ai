@@ -227,6 +227,109 @@ class ApiService {
     }
   }
 
+  /// Probe camera RTSP connection and latency
+  Future<Map<String, dynamic>> testCameraConnection(
+      String siteId, Map<String, dynamic> probePayload) async {
+    final uri = Uri.parse('$baseUrl/api/v1/sites/$siteId/cameras/test-connection');
+    final response = await _client
+        .post(
+          uri,
+          headers: _headers(),
+          body: jsonEncode(probePayload),
+        )
+        .timeout(const Duration(seconds: 5));
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('RTSP Connection test failed (HTTP ${response.statusCode}): ${response.body}');
+    }
+  }
+
+  /// NVR Appliances
+  Future<List<NVR>> getNVRs(String siteId) async {
+    final uri = Uri.parse('$baseUrl/api/v1/sites/$siteId/nvrs');
+    final response = await _client.get(uri, headers: _headers()).timeout(const Duration(seconds: 5));
+    if (response.statusCode == 200) {
+      final list = jsonDecode(response.body) as List<dynamic>;
+      return list.map((e) => NVR.fromJson(e as Map<String, dynamic>)).toList();
+    } else {
+      throw Exception('Failed to load NVRs (HTTP ${response.statusCode}): ${response.body}');
+    }
+  }
+
+  Future<NVR> registerNVR(String siteId, Map<String, dynamic> nvrPayload) async {
+    final uri = Uri.parse('$baseUrl/api/v1/sites/$siteId/nvrs');
+    final response = await _client
+        .post(
+          uri,
+          headers: _headers(),
+          body: jsonEncode(nvrPayload),
+        )
+        .timeout(const Duration(seconds: 5));
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return NVR.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } else {
+      throw Exception('Failed to register NVR (HTTP ${response.statusCode}): ${response.body}');
+    }
+  }
+
+  /// Personnel & Presence ("Who & Where")
+  Future<List<Employee>> getEmployees(String siteId) async {
+    final uri = Uri.parse('$baseUrl/api/v1/sites/$siteId/employees');
+    final response = await _client.get(uri, headers: _headers()).timeout(const Duration(seconds: 5));
+    if (response.statusCode == 200) {
+      final list = jsonDecode(response.body) as List<dynamic>;
+      return list.map((e) => Employee.fromJson(e as Map<String, dynamic>)).toList();
+    } else {
+      throw Exception('Failed to load employees (HTTP ${response.statusCode}): ${response.body}');
+    }
+  }
+
+  Future<Employee> registerEmployee(String siteId, Map<String, dynamic> empPayload) async {
+    final uri = Uri.parse('$baseUrl/api/v1/sites/$siteId/employees');
+    final response = await _client
+        .post(
+          uri,
+          headers: _headers(),
+          body: jsonEncode(empPayload),
+        )
+        .timeout(const Duration(seconds: 5));
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return Employee.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } else {
+      throw Exception('Failed to register employee (HTTP ${response.statusCode}): ${response.body}');
+    }
+  }
+
+  Future<int> importEmployees(String siteId, String csvOrJson) async {
+    final uri = Uri.parse('$baseUrl/api/v1/sites/$siteId/employees/import');
+    final response = await _client
+        .post(
+          uri,
+          headers: _headers(),
+          body: csvOrJson,
+        )
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode == 200) {
+      final map = jsonDecode(response.body) as Map<String, dynamic>;
+      return map['imported'] as int? ?? 0;
+    } else {
+      throw Exception('Failed to import employees (HTTP ${response.statusCode}): ${response.body}');
+    }
+  }
+
+  Future<List<EmployeePresence>> getEmployeePresence(String siteId) async {
+    final uri = Uri.parse('$baseUrl/api/v1/sites/$siteId/presence');
+    final response = await _client.get(uri, headers: _headers()).timeout(const Duration(seconds: 5));
+    if (response.statusCode == 200) {
+      final list = jsonDecode(response.body) as List<dynamic>;
+      return list.map((e) => EmployeePresence.fromJson(e as Map<String, dynamic>)).toList();
+    } else {
+      throw Exception('Failed to load presence radar (HTTP ${response.statusCode}): ${response.body}');
+    }
+  }
+
   WebSocketChannel? connectWebSocket(
       String siteId, Function(SurveillanceEvent) onEvent) {
     try {
