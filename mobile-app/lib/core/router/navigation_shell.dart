@@ -19,11 +19,22 @@ class NavigationShell extends StatelessWidget {
 
   int _calculateSelectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
-    if (location.startsWith('/inbox')) return 1;
-    if (location.startsWith('/cameras')) return 2;
-    if (location.startsWith('/employees')) return 3;
-    if (location.startsWith('/security')) return 4;
-    return 0; // /overview
+    if (location == '/overview') return 0;
+    if (location.startsWith('/live-control')) return 1;
+    if (location.startsWith('/camera-wall')) return 2;
+    if (location.startsWith('/inbox')) return 3;
+    if (location == '/employees') return 4;
+    if (location.startsWith('/employees/presence')) return 5;
+    if (location.startsWith('/cameras')) return 6;
+    if (location.startsWith('/nvrs')) return 7;
+    if (location.startsWith('/sites')) return 8;
+    if (location.startsWith('/zones')) return 9;
+    if (location.startsWith('/analytics')) return 10;
+    if (location.startsWith('/diagnostics')) return 11;
+    if (location.startsWith('/audit')) return 12;
+    if (location.startsWith('/settings')) return 13;
+    if (location.startsWith('/security')) return 14;
+    return 0;
   }
 
   void _onNavigate(int index, BuildContext context) {
@@ -32,15 +43,45 @@ class NavigationShell extends StatelessWidget {
         context.go('/overview');
         break;
       case 1:
-        context.go('/inbox');
+        context.go('/live-control');
         break;
       case 2:
-        context.go('/cameras');
+        context.go('/camera-wall');
         break;
       case 3:
-        context.go('/employees');
+        context.go('/inbox');
         break;
       case 4:
+        context.go('/employees');
+        break;
+      case 5:
+        context.go('/employees/presence');
+        break;
+      case 6:
+        context.go('/cameras');
+        break;
+      case 7:
+        context.go('/nvrs');
+        break;
+      case 8:
+        context.go('/sites');
+        break;
+      case 9:
+        context.go('/zones');
+        break;
+      case 10:
+        context.go('/analytics');
+        break;
+      case 11:
+        context.go('/diagnostics');
+        break;
+      case 12:
+        context.go('/audit');
+        break;
+      case 13:
+        context.go('/settings');
+        break;
+      case 14:
         context.go('/security');
         break;
     }
@@ -112,8 +153,14 @@ class NavigationShell extends StatelessWidget {
                   bottomNavigationBar: isWide
                       ? null
                       : BottomNavigationBar(
-                          currentIndex: selectedIndex,
-                          onTap: (idx) => _onNavigate(idx, context),
+                          currentIndex: selectedIndex.clamp(0, 4),
+                          onTap: (idx) {
+                            if (idx == 0) context.go('/overview');
+                            if (idx == 1) context.go('/inbox');
+                            if (idx == 2) context.go('/cameras');
+                            if (idx == 3) context.go('/employees');
+                            if (idx == 4) context.go('/security');
+                          },
                           type: BottomNavigationBarType.fixed,
                           backgroundColor: AppColors.panel,
                           selectedItemColor: AppColors.cobalt,
@@ -201,16 +248,31 @@ class NavigationShell extends StatelessWidget {
               ],
             ),
           ),
-          AppSpacing.vGap12,
+          AppSpacing.vGap8,
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
               children: [
+                _buildSectionHeader('OPERATIONS'),
                 _buildNavItem(context, 0, 'Live Overview', Icons.dashboard_outlined, selectedIndex == 0),
-                _buildNavItem(context, 1, 'Alert Inbox', Icons.notifications_active_outlined, selectedIndex == 1, badgeCount: alertCount),
-                _buildNavItem(context, 2, 'Cameras & NVRs', Icons.videocam_outlined, selectedIndex == 2),
-                _buildNavItem(context, 3, 'Employees & IDs', Icons.people_alt_outlined, selectedIndex == 3),
-                _buildNavItem(context, 4, 'Security & Controls', Icons.shield_outlined, selectedIndex == 4),
+                _buildNavItem(context, 1, 'Live Control', Icons.smart_display_outlined, selectedIndex == 1),
+                _buildNavItem(context, 2, 'Camera Wall', Icons.grid_view_outlined, selectedIndex == 2),
+                _buildNavItem(context, 3, 'Incident Center', Icons.notifications_active_outlined, selectedIndex == 3, badgeCount: alertCount),
+                _buildNavItem(context, 4, 'Employee Directory', Icons.people_alt_outlined, selectedIndex == 4),
+                _buildNavItem(context, 5, 'Employee Presence', Icons.radar_outlined, selectedIndex == 5),
+                AppSpacing.vGap12,
+                _buildSectionHeader('INFRASTRUCTURE'),
+                _buildNavItem(context, 6, 'Camera Inventory', Icons.videocam_outlined, selectedIndex == 6),
+                _buildNavItem(context, 7, 'NVR Appliances', Icons.dns_outlined, selectedIndex == 7),
+                _buildNavItem(context, 8, 'Sites & Facilities', Icons.factory_outlined, selectedIndex == 8),
+                _buildNavItem(context, 9, 'Safety Zones', Icons.polyline_outlined, selectedIndex == 9),
+                AppSpacing.vGap12,
+                _buildSectionHeader('INTELLIGENCE & SYSTEM'),
+                _buildNavItem(context, 10, 'AI Analytics', Icons.insights_outlined, selectedIndex == 10),
+                _buildNavItem(context, 11, 'System Diagnostics', Icons.monitor_heart_outlined, selectedIndex == 11),
+                _buildNavItem(context, 12, 'Audit Trail', Icons.receipt_long_outlined, selectedIndex == 12),
+                _buildNavItem(context, 13, 'Settings & Access', Icons.settings_outlined, selectedIndex == 13),
+                _buildNavItem(context, 14, 'Security Controls', Icons.shield_outlined, selectedIndex == 14),
               ],
             ),
           ),
@@ -245,6 +307,22 @@ class NavigationShell extends StatelessWidget {
     );
   }
 
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, top: 8, bottom: 4),
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: AppColors.dim,
+          fontSize: 9,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.8,
+          fontFamily: 'JetBrains Mono',
+        ),
+      ),
+    );
+  }
+
   Widget _buildSiteButton(BuildContext context, String code, bool isActive, SiteState siteState) {
     return Material(
       color: isActive ? AppColors.elevated : AppColors.transparent,
@@ -273,7 +351,7 @@ class NavigationShell extends StatelessWidget {
 
   Widget _buildNavItem(BuildContext context, int index, String label, IconData icon, bool isSelected, {int? badgeCount}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 1.5),
       child: Material(
         color: isSelected ? AppColors.elevated : AppColors.transparent,
         borderRadius: AppSpacing.roundedSm,
@@ -281,10 +359,10 @@ class NavigationShell extends StatelessWidget {
           onTap: () => _onNavigate(index, context),
           borderRadius: AppSpacing.roundedSm,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             child: Row(
               children: [
-                Icon(icon, size: 18, color: isSelected ? AppColors.cobalt : AppColors.muted),
+                Icon(icon, size: 16, color: isSelected ? AppColors.cobalt : AppColors.muted),
                 AppSpacing.hGap12,
                 Expanded(
                   child: Text(
@@ -292,12 +370,14 @@ class NavigationShell extends StatelessWidget {
                     style: AppTypography.bodySmall.copyWith(
                       color: isSelected ? AppColors.ink : AppColors.muted,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      fontSize: 12,
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 if (badgeCount != null && badgeCount > 0)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                     decoration: BoxDecoration(
                       color: AppColors.crimson.withValues(alpha: 0.2),
                       borderRadius: AppSpacing.roundedXs,
@@ -307,7 +387,7 @@ class NavigationShell extends StatelessWidget {
                       '$badgeCount',
                       style: AppTypography.tabularMonoSmall.copyWith(
                         color: AppColors.crimson,
-                        fontSize: 10,
+                        fontSize: 9,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
