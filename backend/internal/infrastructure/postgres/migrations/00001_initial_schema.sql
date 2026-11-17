@@ -26,8 +26,12 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS cameras (
     site_id UUID NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
     camera_id VARCHAR(100) NOT NULL,
+    nvr_id VARCHAR(100),
     name VARCHAR(150) NOT NULL,
     rtsp_sub_url VARCHAR(255) NOT NULL,
+    onvif_host VARCHAR(150),
+    fps_target INT NOT NULL DEFAULT 15,
+    zones TEXT[],
     status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (site_id, camera_id)
@@ -183,11 +187,11 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 
 -- Seed Baseline Factory Sites
 INSERT INTO sites (id, name, location, code, timezone, is_active) VALUES
-    ('11111111-1111-1111-1111-111111111111', 'BNF Manufacturing Facility', 'Beni Suef, Egypt', 'BNF', 'Africa/Cairo', true)
+    ('11111111-1111-1111-1111-111111111111', 'BNF', 'BNF', 'BNF', 'Africa/Cairo', true)
     ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, location = EXCLUDED.location, code = EXCLUDED.code;
 
 INSERT INTO sites (id, name, location, code, timezone, is_active) VALUES
-    ('22222222-2222-2222-2222-222222222222', 'RNF Manufacturing Facility', 'Sadat City, Egypt', 'RNF', 'Africa/Cairo', true)
+    ('22222222-2222-2222-2222-222222222222', 'RNF', 'RNF', 'RNF', 'Africa/Cairo', true)
     ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, location = EXCLUDED.location, code = EXCLUDED.code;
 
 -- Seed Default Security and Admin Users (password: 'AdminPassword123!')

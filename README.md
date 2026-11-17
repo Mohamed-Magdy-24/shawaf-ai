@@ -26,7 +26,7 @@ Heavy industrial manufacturing plants cannot rely on generic cloud AI or consume
 
 1. **Bandwidth & Latency Limits**: Streaming dozens of 4K RTSP streams across plant WAN or to cloud servers collapses industrial networks and introduces 2–5 second delays—completely unacceptable when a 50-ton overhead crane is approaching a worker.
 2. **Data Sovereignty & Legal Mandates**: Under **Egyptian Data Protection Law (Law 151/2020)**, continuous facial recording and off-premise video transmission without strict masking and auditability creates severe civil and criminal liabilities.
-3. **Multi-Site Air-Gap & Tenant Contamination**: BNF (cement) and RNF (steel) operate under distinct operational managements. A security operator reviewing alerts at Beni Suef must never accidentally view or leak data from Ramliya.
+3. **Multi-Site Air-Gap & Tenant Contamination**: BNF and RNF operate under distinct operational managements. A security operator reviewing alerts at BNF must never view or leak data from RNF.
 4. **Camera Blindness & Stream Failures**: Dust, vibration, and power fluctuations disconnect cameras without warning. Traditional NVRs fail silently.
 
 ### The Shawaf AI Architecture Solution:

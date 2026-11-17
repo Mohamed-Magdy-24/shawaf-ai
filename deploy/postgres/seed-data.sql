@@ -7,10 +7,10 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_runti
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_runtime;
 
 -- 2. Ensure default factory sites exist
-INSERT INTO sites (id, name, location) VALUES
-    ('11111111-1111-1111-1111-111111111111', 'BNF Manufacturing Facility', 'Beni Suef, Egypt'),
-    ('22222222-2222-2222-2222-222222222222', 'RNF Manufacturing Facility', 'Sadat City, Egypt')
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, location = EXCLUDED.location;
+INSERT INTO sites (id, name, location, code, timezone, is_active) VALUES
+    ('11111111-1111-1111-1111-111111111111', 'BNF', 'BNF', 'BNF', 'Africa/Cairo', true),
+    ('22222222-2222-2222-2222-222222222222', 'RNF', 'RNF', 'RNF', 'Africa/Cairo', true)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, location = EXCLUDED.location, code = EXCLUDED.code;
 
 -- 3. Ensure test users exist (all have password 'AdminPassword123!' or 'admin123')
 -- argon2id hash for 'AdminPassword123!'

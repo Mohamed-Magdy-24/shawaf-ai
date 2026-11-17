@@ -2,27 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
-import '../widgets/zone_painter.dart';
+import '../widgets/polygon_zone_painter.dart';
+import '../widgets/severity_badge.dart';
 
-class AlertDetailScreen extends StatefulWidget {
+class AlertDetailScreen extends StatelessWidget {
   final SurveillanceEvent event;
-  final Function(String action, String note) onAction;
+  final Future<void> Function(String action, String note) onAction;
+  final TextEditingController _noteController = TextEditingController();
+  final ValueNotifier<bool> _isSubmitting = ValueNotifier<bool>(false);
 
-  const AlertDetailScreen({
-    Key? key,
+  AlertDetailScreen({
+    super.key,
     required this.event,
     required this.onAction,
-  }) : super(key: key);
+  });
 
-  @override
-  State<AlertDetailScreen> createState() => _AlertDetailScreenState();
-}
-
-class _AlertDetailScreenState extends State<AlertDetailScreen> {
-  final TextEditingController _noteController = TextEditingController();
-  bool _isSubmitting = false;
-
-  void _handleAction(String action) async {
+  void _handleAction(BuildContext context, String action) async {
     final note = _noteController.text.trim();
     if (action == 'DISMISS' && note.length < 10) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -34,28 +29,22 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
       return;
     }
 
-    setState(() => _isSubmitting = true);
+    _isSubmitting.value = true;
     try {
-      await widget.onAction(action, note);
-      setState(() {
-        _isSubmitting = false;
-        widget.event.state = action == 'ACKNOWLEDGE'
-            ? 'ACKNOWLEDGED'
-            : (action == 'DISMISS' ? 'DISMISSED' : 'ESCALATED');
-      });
-
-      if (mounted) {
+      await onAction(action, note);
+      _isSubmitting.value = false;
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Action $action recorded for Event ${widget.event.id}'),
+            content: Text('Action $action recorded for Event ${event.id}'),
             backgroundColor: AppTheme.surfaceLight,
           ),
         );
         Navigator.pop(context);
       }
     } catch (e) {
-      setState(() => _isSubmitting = false);
-      if (mounted) {
+      _isSubmitting.value = false;
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Action failed: $e'),
@@ -68,12 +57,11 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final e = widget.event;
-    final timeStr = DateFormat('yyyy-MM-dd HH:mm:ss UTC').format(e.occurredAt);
+    final timeStr = DateFormat('yyyy-MM-dd HH:mm:ss UTC').format(event.occurredAt.toUtc());
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('ALERT #${e.trackId} DETAIL'),
+        title: Text('ALERT #${event.trackId} AUDIT'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -93,19 +81,18 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                 borderRadius: BorderRadius.circular(12),
                 child: Stack(
                   children: [
-                    // Simulated floor canvas
                     CustomPaint(
                       size: const Size(double.infinity, 220),
-                      painter: ZonePainter(
+                      painter: PolygonZonePainter(
                         zones: [
                           Zone(
-                            id: e.zoneId,
-                            siteId: e.siteId,
-                            cameraId: e.cameraId,
-                            name: e.metadata['zone_name'] ?? 'Zone 01',
+                            id: event.zoneId,
+                            siteId: event.siteId,
+                            cameraId: event.cameraId,
+                            name: event.metadata['zone_name']?.toString() ?? 'Active Zone',
                             zoneType: 'INTRUSION',
-                            severity: e.severity,
-                            polygon: [
+                            severity: event.severity,
+                            polygon: const [
                               [0.35, 0.30],
                               [0.85, 0.30],
                               [0.85, 0.85],
@@ -114,7 +101,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                             isActive: true,
                           ),
                         ],
-                        activeEvents: [e],
+                        activeEvents: [event],
                       ),
                     ),
                     Positioned(
@@ -127,8 +114,12 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          'CAM: ${e.cameraId} | ${e.state}',
-                          style: const TextStyle(color: AppTheme.primaryTeal, fontSize: 11, fontWeight: FontWeight.bold),
+                          'CAM: ${event.cameraId} | ${event.state}',
+                          style: const TextStyle(
+                            color: AppTheme.primaryTeal,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -143,7 +134,11 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
                         ),
                         child: const Text(
                           'LAW 151/2020 PRIVACY MASKED',
-                          style: TextStyle(color: AppTheme.textMuted, fontSize: 9, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: AppTheme.textMuted,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -154,7 +149,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
 
             const SizedBox(height: 16),
 
-            // Metadata card
+            // Metadata Card
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -164,25 +159,39 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
               ),
               child: Column(
                 children: [
-                  _infoRow('Event ID', e.id),
-                  _infoRow('Site ID', e.siteId),
-                  _infoRow('Event Type', e.eventType),
-                  _infoRow('Severity', e.severity),
-                  _infoRow('Track ID', '#${e.trackId}'),
-                  _infoRow('Detection Confidence', '${(e.confidence * 100).toStringAsFixed(1)}%'),
+                  _infoRow('Event ID', event.id),
+                  _infoRow('Site ID', event.siteId),
+                  _infoRow('Event Type', event.eventType),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Severity', style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+                        SeverityBadge(severity: event.severity),
+                      ],
+                    ),
+                  ),
+                  _infoRow('State', event.state),
+                  _infoRow('Track ID', '#${event.trackId}'),
+                  _infoRow('Detection Confidence', '${(event.confidence * 100).toStringAsFixed(1)}%'),
                   _infoRow('Timestamp', timeStr),
-                  if (e.metadata['inference_lat_ms'] != null)
-                    _infoRow('Edge Inference Latency', '${e.metadata['inference_lat_ms']} ms'),
+                  if (event.metadata['inference_lat_ms'] != null)
+                    _infoRow('Edge Inference Latency', '${event.metadata['inference_lat_ms']} ms'),
                 ],
               ),
             ),
 
             const SizedBox(height: 16),
 
-            // Audit Note input
+            // Audit Note Input
             const Text(
               'OPERATOR AUDIT NOTE',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             TextField(
@@ -214,46 +223,55 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
             // FR-ALT-008 Action Buttons
             const Text(
               'WORKFLOW TRANSITIONS (FR-ALT-008)',
-              style: TextStyle(color: AppTheme.textMuted, fontSize: 11, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppTheme.textMuted,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isSubmitting ? null : () => _handleAction('ACKNOWLEDGE'),
-                    icon: const Icon(Icons.check, size: 16),
-                    label: const Text('ACKNOWLEDGE'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryTeal,
-                      foregroundColor: const Color(0xFF042F2E),
+            ValueListenableBuilder<bool>(
+              valueListenable: _isSubmitting,
+              builder: (context, submitting, _) {
+                return Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: submitting ? null : () => _handleAction(context, 'ACKNOWLEDGE'),
+                        icon: const Icon(Icons.check, size: 16),
+                        label: const Text('ACKNOWLEDGE'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryTeal,
+                          foregroundColor: const Color(0xFF042F2E),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _isSubmitting ? null : () => _handleAction('DISMISS'),
-                    icon: const Icon(Icons.close, size: 16, color: AppTheme.textSecondary),
-                    label: const Text('DISMISS', style: TextStyle(color: AppTheme.textSecondary)),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppTheme.border),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: submitting ? null : () => _handleAction(context, 'RESOLVE'),
+                        icon: const Icon(Icons.verified, size: 16),
+                        label: const Text('RESOLVE'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.successGreen,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isSubmitting ? null : () => _handleAction('ESCALATE'),
-                    icon: const Icon(Icons.warning_amber_rounded, size: 16),
-                    label: const Text('ESCALATE'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.sev1Red,
-                      foregroundColor: Colors.white,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: submitting ? null : () => _handleAction(context, 'DISMISS'),
+                        icon: const Icon(Icons.close, size: 16, color: AppTheme.textSecondary),
+                        label: const Text('DISMISS', style: TextStyle(color: AppTheme.textSecondary)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppTheme.border),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ],
+                  ],
+                );
+              },
             ),
           ],
         ),

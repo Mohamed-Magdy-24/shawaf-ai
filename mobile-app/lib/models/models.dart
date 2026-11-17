@@ -1,13 +1,14 @@
 import 'dart:convert';
+import 'package:equatable/equatable.dart';
 
-class Site {
+class Site extends Equatable {
   final String id;
   final String code;
   final String name;
   final String timezone;
   final bool isActive;
 
-  Site({
+  const Site({
     required this.id,
     required this.code,
     required this.name,
@@ -24,9 +25,20 @@ class Site {
       isActive: json['is_active'] ?? true,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'code': code,
+    'name': name,
+    'timezone': timezone,
+    'is_active': isActive,
+  };
+
+  @override
+  List<Object?> get props => [id, code, name, timezone, isActive];
 }
 
-class Camera {
+class Camera extends Equatable {
   final String id;
   final String siteId;
   final String name;
@@ -35,8 +47,11 @@ class Camera {
   final String healthStatus;
   final double currentFPS;
   final String? lastHeartbeat;
+  final String? rtspUrl;
+  final String? nvrId;
+  final String? onvifHost;
 
-  Camera({
+  const Camera({
     required this.id,
     required this.siteId,
     required this.name,
@@ -45,6 +60,9 @@ class Camera {
     required this.healthStatus,
     required this.currentFPS,
     this.lastHeartbeat,
+    this.rtspUrl,
+    this.nvrId,
+    this.onvifHost,
   });
 
   factory Camera.fromJson(Map<String, dynamic> json) {
@@ -57,11 +75,31 @@ class Camera {
       healthStatus: json['health_status'] ?? 'DISCONNECTED',
       currentFPS: (json['current_fps'] as num?)?.toDouble() ?? 0.0,
       lastHeartbeat: json['last_heartbeat'],
+      rtspUrl: json['rtsp_url'],
+      nvrId: json['nvr_id'],
+      onvifHost: json['onvif_host'],
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'site_id': siteId,
+    'name': name,
+    'fps_target': fpsTarget,
+    'is_active': isActive,
+    'health_status': healthStatus,
+    'current_fps': currentFPS,
+    'last_heartbeat': lastHeartbeat,
+    'rtsp_url': rtspUrl,
+    'nvr_id': nvrId,
+    'onvif_host': onvifHost,
+  };
+
+  @override
+  List<Object?> get props => [id, siteId, name, fpsTarget, isActive, healthStatus, currentFPS, lastHeartbeat, rtspUrl, nvrId, onvifHost];
 }
 
-class Zone {
+class Zone extends Equatable {
   final String id;
   final String siteId;
   final String cameraId;
@@ -71,7 +109,7 @@ class Zone {
   final List<List<double>> polygon;
   final bool isActive;
 
-  Zone({
+  const Zone({
     required this.id,
     required this.siteId,
     required this.cameraId,
@@ -108,22 +146,36 @@ class Zone {
       isActive: json['is_active'] ?? true,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'site_id': siteId,
+    'camera_id': cameraId,
+    'name': name,
+    'zone_type': zoneType,
+    'severity': severity,
+    'polygon': polygon,
+    'is_active': isActive,
+  };
+
+  @override
+  List<Object?> get props => [id, siteId, cameraId, name, zoneType, severity, polygon, isActive];
 }
 
-class SurveillanceEvent {
+class SurveillanceEvent extends Equatable {
   final String id;
   final String siteId;
   final String cameraId;
   final String zoneId;
   final String eventType;
   final String severity;
-  String state;
+  final String state;
   final double confidence;
   final int trackId;
   final DateTime occurredAt;
   final Map<String, dynamic> metadata;
 
-  SurveillanceEvent({
+  const SurveillanceEvent({
     required this.id,
     required this.siteId,
     required this.cameraId,
@@ -136,6 +188,34 @@ class SurveillanceEvent {
     required this.occurredAt,
     required this.metadata,
   });
+
+  SurveillanceEvent copyWith({
+    String? id,
+    String? siteId,
+    String? cameraId,
+    String? zoneId,
+    String? eventType,
+    String? severity,
+    String? state,
+    double? confidence,
+    int? trackId,
+    DateTime? occurredAt,
+    Map<String, dynamic>? metadata,
+  }) {
+    return SurveillanceEvent(
+      id: id ?? this.id,
+      siteId: siteId ?? this.siteId,
+      cameraId: cameraId ?? this.cameraId,
+      zoneId: zoneId ?? this.zoneId,
+      eventType: eventType ?? this.eventType,
+      severity: severity ?? this.severity,
+      state: state ?? this.state,
+      confidence: confidence ?? this.confidence,
+      trackId: trackId ?? this.trackId,
+      occurredAt: occurredAt ?? this.occurredAt,
+      metadata: metadata ?? this.metadata,
+    );
+  }
 
   factory SurveillanceEvent.fromJson(Map<String, dynamic> json) {
     Map<String, dynamic> meta = {};
@@ -164,4 +244,21 @@ class SurveillanceEvent {
       metadata: meta,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'site_id': siteId,
+    'camera_id': cameraId,
+    'zone_id': zoneId,
+    'event_type': eventType,
+    'severity': severity,
+    'state': state,
+    'confidence': confidence,
+    'track_id': trackId,
+    'occurred_at': occurredAt.toIso8601String(),
+    'metadata': metadata,
+  };
+
+  @override
+  List<Object?> get props => [id, siteId, cameraId, zoneId, eventType, severity, state, confidence, trackId, occurredAt, metadata];
 }

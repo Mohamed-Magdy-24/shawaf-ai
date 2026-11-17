@@ -12,19 +12,33 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/industrial-ai/surveillance/backend/internal/application"
 	"github.com/industrial-ai/surveillance/backend/internal/domain"
+	"github.com/industrial-ai/surveillance/backend/internal/domain/ports"
 	"github.com/industrial-ai/surveillance/backend/internal/infrastructure/go2rtc"
+	"github.com/industrial-ai/surveillance/backend/internal/infrastructure/governance"
 	"github.com/industrial-ai/surveillance/backend/internal/presentation/ws"
 )
 
 // Server coordinates HTTP REST endpoints, security middleware, and WebSocket upgrade
 type Server struct {
-	db           *sql.DB
-	repo         domain.EventRepository
-	ingestionSvc *application.IngestionService
-	go2rtcProxy  *go2rtc.Proxy
-	wsHub        *ws.Hub
-	jwtSecret    []byte
-	startTime    time.Time
+	db             *sql.DB
+	repo           domain.EventRepository
+	cameraPort     ports.CameraRegistryPort
+	streamGateway  ports.StreamGatewayPort
+	identityReader ports.AttendanceEmployeeReader
+	photoFetcher   ports.BiometricPhotoFetcher
+	ingestionSvc   *application.IngestionService
+	go2rtcProxy    *go2rtc.Proxy
+	wsHub          *ws.Hub
+	jwtSecret      []byte
+	startTime      time.Time
+}
+
+// SetPorts binds hexagonal ports for cameras, video gateway, and governance identity adapters
+func (s *Server) SetPorts(cam ports.CameraRegistryPort, stream ports.StreamGatewayPort, idReader ports.AttendanceEmployeeReader, photo ports.BiometricPhotoFetcher) {
+	s.cameraPort = cam
+	s.streamGateway = stream
+	s.identityReader = idReader
+	s.photoFetcher = photo
 }
 
 // NewServer initializes the HTTP API Server
@@ -39,7 +53,7 @@ func NewServer(
 	if jwtSecret == "" {
 		jwtSecret = "local_dev_jwt_hmac_secret_32bytes_min_0001"
 	}
-	return &Server{
+	s := &Server{
 		db:           db,
 		repo:         repo,
 		ingestionSvc: ingestionSvc,
@@ -48,6 +62,12 @@ func NewServer(
 		jwtSecret:    []byte(jwtSecret),
 		startTime:    time.Now().UTC(),
 	}
+	if cp, ok := repo.(ports.CameraRegistryPort); ok {
+		s.cameraPort = cp
+	}
+	s.identityReader = governance.NewBlockedIdentityAdapter()
+	s.photoFetcher = governance.NewBlockedIdentityAdapter()
+	return s
 }
 
 // RegisterRoutes registers all REST and WebSocket routes
@@ -83,12 +103,168 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 }
 
 func (s *Server) handleSiteSubRoutes(w http.ResponseWriter, r *http.Request) {
-	// Handles /api/v1/sites/{site_id}/ws-ticket
-	if strings.HasSuffix(r.URL.Path, "/ws-ticket") {
-		s.authMiddleware(s.handleWSTicket)(w, r)
-		return
+	// Path format: /api/v1/sites/{site_id}/...
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(parts) >= 4 {
+		siteID := parts[3]
+		subResource := ""
+		if len(parts) >= 5 {
+			subResource = parts[4]
+		}
+
+		switch subResource {
+		case "ws-ticket":
+			s.authMiddleware(s.handleWSTicket)(w, r)
+			return
+		case "cameras":
+			if r.Method == http.MethodPost {
+				s.authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+					s.handleRegisterSiteCamera(w, r, siteID)
+				})(w, r)
+				return
+			}
+			s.authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+				s.handleGetSiteCameras(w, r, siteID)
+			})(w, r)
+			return
+		case "employees":
+			s.authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+				s.handleSiteEmployees(w, r, siteID)
+			})(w, r)
+			return
+		}
 	}
 	http.NotFound(w, r)
+}
+
+func (s *Server) handleRegisterSiteCamera(w http.ResponseWriter, r *http.Request, siteID string) {
+	claimsVal := r.Context().Value("user_claims")
+	if claimsVal == nil {
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+	claims := claimsVal.(*UserClaims)
+
+	// RBAC check: only security_manager and senior_management (or admin)
+	if claims.Role != "security_manager" && claims.Role != "senior_management" && claims.Role != "admin" {
+		http.Error(w, `{"error":"forbidden: insufficient role to register cameras"}`, http.StatusForbidden)
+		return
+	}
+
+	// Site tenant boundary check
+	if claims.Role != "senior_management" && claims.Role != "admin" {
+		allowed := false
+		for _, sID := range claims.SiteIDs {
+			if sID == siteID {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			http.Error(w, `{"error":"forbidden: cross-site camera registration prohibited"}`, http.StatusForbidden)
+			return
+		}
+	}
+
+	var req struct {
+		CameraID  string   `json:"camera_id"`
+		ID        string   `json:"id"`
+		NVRID     string   `json:"nvr_id"`
+		Name      string   `json:"name"`
+		RTSPURL   string   `json:"rtsp_url"`
+		RTSPSub   string   `json:"rtsp_sub_url"`
+		ONVIFHost string   `json:"onvif_host"`
+		TargetFPS int      `json:"fps_target"`
+		Zones     []string `json:"zones"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid camera payload"}`, http.StatusBadRequest)
+		return
+	}
+
+	camID := req.CameraID
+	if camID == "" {
+		camID = req.ID
+	}
+	if camID == "" && req.Name != "" {
+		slug := strings.ToLower(strings.ReplaceAll(req.Name, " ", "_"))
+		camID = fmt.Sprintf("cam_%s", slug)
+	}
+
+	rtspURL := req.RTSPURL
+	if rtspURL == "" {
+		rtspURL = req.RTSPSub
+	}
+
+	if camID == "" || req.Name == "" {
+		http.Error(w, `{"error":"camera name is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	if !ports.ValidateRTSPURL(rtspURL) {
+		http.Error(w, fmt.Sprintf(`{"error":"%v"}`, ports.ErrInvalidRTSPURL), http.StatusBadRequest)
+		return
+	}
+
+	cam := &ports.Camera{
+		SiteID:    siteID,
+		CameraID:  camID,
+		NVRID:     req.NVRID,
+		Name:      req.Name,
+		RTSPURL:   rtspURL,
+		ONVIFHost: req.ONVIFHost,
+		TargetFPS: req.TargetFPS,
+		Zones:     req.Zones,
+		Status:    "ACTIVE",
+	}
+
+	if s.cameraPort != nil {
+		if err := s.cameraPort.RegisterCamera(r.Context(), cam); err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"failed to register camera: %v"}`, err), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if s.streamGateway != nil {
+		_ = s.streamGateway.RegisterLiveStream(r.Context(), cam.CameraID, cam.RTSPURL)
+	}
+
+	sanitized := *cam
+	sanitized.RTSPURL = ports.SanitizeRTSPURL(cam.RTSPURL)
+	s.writeJSON(w, http.StatusCreated, map[string]interface{}{
+		"ok":     true,
+		"camera": sanitized,
+	})
+}
+
+func (s *Server) handleGetSiteCameras(w http.ResponseWriter, r *http.Request, siteID string) {
+	if s.cameraPort != nil {
+		cameras, err := s.cameraPort.GetCameras(r.Context(), siteID)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
+			return
+		}
+		if cameras == nil {
+			cameras = []*ports.Camera{}
+		}
+		s.writeJSON(w, http.StatusOK, map[string]interface{}{"cameras": cameras})
+		return
+	}
+	q := r.URL.Query()
+	q.Set("site_id", siteID)
+	r.URL.RawQuery = q.Encode()
+	s.handleCameras(w, r)
+}
+
+func (s *Server) handleSiteEmployees(w http.ResponseWriter, r *http.Request, siteID string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusServiceUnavailable)
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"error":          "FEATURE_BLOCKED_BY_GOVERNANCE",
+		"detail":         ports.ErrFeatureBlockedByGovernance.Error(),
+		"spk_references": []string{"SPK-01", "SPK-04", "DEC-06"},
+	})
 }
 
 // UserClaims defines JWT token structure

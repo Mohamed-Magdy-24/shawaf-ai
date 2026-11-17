@@ -1,199 +1,255 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../cubits/camera_stream_cubit.dart';
+import '../cubits/site_cubit.dart';
 import '../models/models.dart';
-import '../services/api_service.dart';
+import '../repositories/surveillance_repository.dart';
 import '../theme/app_theme.dart';
+import '../widgets/camera_health_card.dart';
+import '../widgets/empty_state_view.dart';
+import '../widgets/shimmer_skeleton_card.dart';
 
 class CamerasScreen extends StatelessWidget {
-  final List<Camera> cameras;
-  final List<Zone> zones;
-  final Function() onRefresh;
-  final ApiService? apiService;
+  const CamerasScreen({super.key});
 
-  const CamerasScreen({
-    Key? key,
-    required this.cameras,
-    required this.zones,
-    required this.onRefresh,
-    this.apiService,
-  }) : super(key: key);
+  void _showAddCameraDialog(BuildContext context, String siteId) {
+    final nameController = TextEditingController();
+    final rtspController = TextEditingController(text: 'rtsp://mediamtx:8554/');
+    final fpsController = TextEditingController(text: '15');
+    final formKey = GlobalKey<FormState>();
 
-  Color _getStatusColor(String status) {
-    switch (status.toUpperCase()) {
-      case 'STREAMING':
-        return AppTheme.successGreen;
-      case 'COVERAGE_LOST':
-        return AppTheme.sev1Red;
-      default:
-        return AppTheme.textMuted;
-    }
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(color: AppTheme.border),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.add_a_photo_outlined, color: AppTheme.primaryTeal, size: 20),
+            SizedBox(width: 8),
+            Text(
+              'REGISTER RTSP CAMERA',
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Camera Name',
+                    hintText: 'Perimeter West Gate',
+                    border: OutlineInputBorder(),
+                    filled: true,
+                    fillColor: AppTheme.surfaceLight,
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Name is required' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: rtspController,
+                  decoration: const InputDecoration(
+                    labelText: 'RTSP Stream URL',
+                    hintText: 'rtsp://user:pass@host:port/path',
+                    border: OutlineInputBorder(),
+                    filled: true,
+                    fillColor: AppTheme.surfaceLight,
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'RTSP URL is required';
+                    if (!v.trim().toLowerCase().startsWith('rtsp://') && !v.trim().toLowerCase().startsWith('rtsps://')) {
+                      return 'Must begin with rtsp:// or rtsps://';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: fpsController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Target FPS (1 - 30)',
+                    border: OutlineInputBorder(),
+                    filled: true,
+                    fillColor: AppTheme.surfaceLight,
+                  ),
+                  validator: (v) {
+                    final n = int.tryParse(v ?? '');
+                    if (n == null || n < 1 || n > 30) return 'Enter FPS between 1 and 30';
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('CANCEL', style: TextStyle(color: AppTheme.textMuted)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState?.validate() ?? false) {
+                final nav = Navigator.of(dialogCtx);
+                final fps = int.tryParse(fpsController.text) ?? 15;
+                final success = await context.read<CameraStreamCubit>().registerCamera(
+                      siteId,
+                      name: nameController.text.trim(),
+                      rtspUrl: rtspController.text.trim(),
+                      fpsTarget: fps,
+                    );
+                if (success) {
+                  nav.pop();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Camera registered successfully (creds scrubbed).'),
+                        backgroundColor: AppTheme.successGreen,
+                      ),
+                    );
+                  }
+                }
+              }
+            },
+            child: const Text('REGISTER'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _openLiveStream(BuildContext context, Camera cam) {
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (ctx) => _WebRTCStreamDialog(camera: cam, apiService: apiService),
+      builder: (ctx) => _WebRTCStreamDialog(camera: cam),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          color: AppTheme.surface,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'MONITORED CAMERAS (${cameras.length})',
-                style: const TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.refresh, color: AppTheme.primaryTeal, size: 20),
-                onPressed: onRefresh,
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: cameras.length,
-            itemBuilder: (context, index) {
-              final cam = cameras[index];
-              final statusColor = _getStatusColor(cam.healthStatus);
-              final camZones = zones.where((z) => z.cameraId == cam.id).toList();
+    return BlocBuilder<SiteCubit, SiteState>(
+      builder: (context, siteState) {
+        final currentSiteId = siteState is SiteLoaded ? siteState.selectedSite.id : '';
+        final currentSiteCode = siteState is SiteLoaded ? siteState.selectedSite.code : '';
 
-              return Card(
-                color: AppTheme.surface,
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(
-                  side: const BorderSide(color: AppTheme.border),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.videocam_outlined, color: statusColor, size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              cam.name,
-                              style: const TextStyle(
-                                color: AppTheme.textPrimary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: statusColor.withValues(alpha: 0.15),
-                              border: Border.all(color: statusColor),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: BoxDecoration(
-                                    color: statusColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  cam.healthStatus,
-                                  style: TextStyle(
-                                    color: statusColor,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'ID: ${cam.id} | Throughput: ${cam.currentFPS.toStringAsFixed(1)} FPS / ${cam.fpsTarget} FPS Target',
-                        style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
-                      ),
-                      const SizedBox(height: 10),
-                      if (camZones.isNotEmpty) ...[
-                        const Text(
-                          'CONFIGURED SAFETY ZONES:',
-                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 10, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 4),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          children: camZones.map((z) {
-                            return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppTheme.surfaceLight,
-                                border: Border.all(color: AppTheme.primaryTeal.withValues(alpha: 0.5)),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                '${z.name} [${z.zoneType}]',
-                                style: const TextStyle(color: AppTheme.primaryTeal, fontSize: 10),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () => _openLiveStream(context, cam),
-                          icon: const Icon(Icons.play_circle_outline, color: AppTheme.primaryTeal, size: 16),
-                          label: const Text('ZERO-TRUST WEBRTC LIVE STREAM', style: TextStyle(color: AppTheme.primaryTeal, fontSize: 11)),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppTheme.primaryTeal),
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                          ),
-                        ),
-                      ),
-                    ],
+        return Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: AppTheme.surface,
+              child: Row(
+                children: [
+                  Text(
+                    'CAMERAS — $currentSiteCode',
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.8,
+                    ),
                   ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.refresh, color: AppTheme.primaryTeal, size: 20),
+                    onPressed: () {
+                      if (currentSiteId.isNotEmpty) {
+                        context.read<CameraStreamCubit>().loadCameras(currentSiteId);
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 4),
+                  ElevatedButton.icon(
+                    onPressed: currentSiteId.isEmpty
+                        ? null
+                        : () => _showAddCameraDialog(context, currentSiteId),
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('ADD CAMERA', style: TextStyle(fontSize: 11)),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      minimumSize: Size.zero,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: BlocBuilder<CameraStreamCubit, CameraStreamState>(
+                builder: (context, state) {
+                  if (state is CameraStreamLoading || state is CameraStreamRegistering) {
+                    return ListView.builder(
+                      itemCount: 3,
+                      itemBuilder: (_, __) => const ShimmerSkeletonCard(height: 120),
+                    );
+                  }
+
+                  if (state is CameraStreamError) {
+                    return EmptyStateView(
+                      icon: Icons.error_outline,
+                      title: 'CAMERA SYSTEM UNREACHABLE',
+                      message: state.message,
+                      actionLabel: 'RETRY',
+                      onAction: () {
+                        if (currentSiteId.isNotEmpty) {
+                          context.read<CameraStreamCubit>().loadCameras(currentSiteId);
+                        }
+                      },
+                    );
+                  }
+
+                  if (state is CameraStreamEmpty) {
+                    return EmptyStateView(
+                      icon: Icons.videocam_off_outlined,
+                      title: 'NO CAMERAS REGISTERED',
+                      message: 'No video streams configured for site $currentSiteCode.',
+                      actionLabel: 'REGISTER FIRST CAMERA',
+                      onAction: currentSiteId.isEmpty
+                          ? null
+                          : () => _showAddCameraDialog(context, currentSiteId),
+                    );
+                  }
+
+                  final cameras = state is CameraStreamLoaded ? state.cameras : <Camera>[];
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: cameras.length,
+                    itemBuilder: (context, index) {
+                      final cam = cameras[index];
+                      return CameraHealthCard(
+                        camera: cam,
+                        onLiveStreamTap: () => _openLiveStream(context, cam),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
 
 class _WebRTCStreamDialog extends StatefulWidget {
   final Camera camera;
-  final ApiService? apiService;
 
-  const _WebRTCStreamDialog({
-    Key? key,
-    required this.camera,
-    this.apiService,
-  }) : super(key: key);
+  const _WebRTCStreamDialog({required this.camera});
 
   @override
   State<_WebRTCStreamDialog> createState() => _WebRTCStreamDialogState();
@@ -212,23 +268,17 @@ class _WebRTCStreamDialogState extends State<_WebRTCStreamDialog> {
   }
 
   void _startSdpNegotiation() async {
-    if (widget.apiService == null) {
-      setState(() {
-        _isNegotiating = false;
-        _errorMessage = 'API Service client not available';
-      });
-      return;
-    }
-
     try {
       setState(() {
         _statusText = 'Exchanging SDP via edged reverse-proxy (RBAC Check D-011)...';
       });
 
       // Synthetic client SDP offer for H.264 video track
-      const syntheticOffer = 'v=0\r\no=- 4294967295 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\nm=video 9 UDP/TLS/RTP/SAVPF 96\r\nc=IN IP4 0.0.0.0\r\na=rtpmap:96 H264/90000\r\na=recvonly\r\n';
+      const syntheticOffer =
+          'v=0\r\no=- 4294967295 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\nm=video 9 UDP/TLS/RTP/SAVPF 96\r\nc=IN IP4 0.0.0.0\r\na=rtpmap:96 H264/90000\r\na=recvonly\r\n';
 
-      final answer = await widget.apiService!.requestWebRTCSdp(
+      final repo = context.read<SurveillanceRepository>();
+      final answer = await repo.requestWebRTCSdp(
         widget.camera.siteId,
         widget.camera.id,
         syntheticOffer,
@@ -245,7 +295,7 @@ class _WebRTCStreamDialogState extends State<_WebRTCStreamDialog> {
       if (mounted) {
         setState(() {
           _isNegotiating = false;
-          _errorMessage = e.toString();
+          _errorMessage = e.toString().replaceAll('Exception: ', '');
         });
       }
     }
@@ -266,7 +316,12 @@ class _WebRTCStreamDialogState extends State<_WebRTCStreamDialog> {
           Expanded(
             child: Text(
               'LIVE: ${widget.camera.name}',
-              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -318,19 +373,23 @@ class _WebRTCStreamDialogState extends State<_WebRTCStreamDialog> {
                               ),
                             ],
                           )
-                        : Column(
+                        : const Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.lock_outline, color: AppTheme.successGreen, size: 32),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'ZERO-TRUST STREAM ACTIVE',
-                                style: TextStyle(color: AppTheme.successGreen, fontSize: 12, fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 4),
+                              Icon(Icons.lock_outline, color: AppTheme.successGreen, size: 32),
+                              SizedBox(height: 8),
                               Text(
-                                'RTSP: rtsp://mediamtx:8554/${widget.camera.id}',
-                                style: const TextStyle(color: AppTheme.textMuted, fontSize: 10),
+                                'ZERO-TRUST STREAM ACTIVE',
+                                style: TextStyle(
+                                  color: AppTheme.successGreen,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'WebRTC H.264 stream proxy active',
+                                style: TextStyle(color: AppTheme.textMuted, fontSize: 10),
                               ),
                             ],
                           ),
@@ -342,13 +401,13 @@ class _WebRTCStreamDialogState extends State<_WebRTCStreamDialog> {
                 'SDP Negotiated: ${_sdpAnswer?['type'] ?? 'answer'} (H.264)',
                 style: const TextStyle(color: AppTheme.textMuted, fontSize: 10),
               ),
-            Text(
+            const Text(
               'Security Boundary: D-011 Zero-Trust Proxy',
-              style: const TextStyle(color: AppTheme.textMuted, fontSize: 10),
+              style: TextStyle(color: AppTheme.textMuted, fontSize: 10),
             ),
-            Text(
+            const Text(
               'Sidecar Isolation: go2rtc internal only (port 1984/8555 not exposed)',
-              style: const TextStyle(color: AppTheme.textMuted, fontSize: 10),
+              style: TextStyle(color: AppTheme.textMuted, fontSize: 10),
             ),
           ],
         ),

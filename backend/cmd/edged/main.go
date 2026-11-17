@@ -15,6 +15,7 @@ import (
 
 	"github.com/industrial-ai/surveillance/backend/internal/application"
 	"github.com/industrial-ai/surveillance/backend/internal/infrastructure/go2rtc"
+	"github.com/industrial-ai/surveillance/backend/internal/infrastructure/governance"
 	"github.com/industrial-ai/surveillance/backend/internal/infrastructure/grpcserver"
 	"github.com/industrial-ai/surveillance/backend/internal/infrastructure/outbox"
 	"github.com/industrial-ai/surveillance/backend/internal/infrastructure/postgres"
@@ -81,8 +82,10 @@ func main() {
 	watchdog.Start(ctx)
 	defer watchdog.Stop()
 
-	// 7. Go2rtc Zero-Trust Proxy
+	// 7. Go2rtc Zero-Trust Proxy & Stream Gateway
 	go2rtcProxy := go2rtc.NewProxy(go2rtcURL)
+	streamGateway := go2rtc.NewStreamGateway(go2rtcURL)
+	identityAdapter := governance.NewBlockedIdentityAdapter()
 
 	// 8. gRPC Ingestion Server with Shared-Secret Auth
 	grpcServer := grpcserver.NewIngestionServer(grpcAddr, ingestionSvc, workerToken)
@@ -91,8 +94,9 @@ func main() {
 	}
 	defer grpcServer.Stop()
 
-	// 9. HTTP REST & WebSocket Server
+	// 9. HTTP REST & WebSocket Server (with Hexagonal Integration Ports)
 	apiServer := httpapi.NewServer(db, pgRepo, ingestionSvc, go2rtcProxy, wsHub, jwtSecret)
+	apiServer.SetPorts(pgRepo, streamGateway, identityAdapter, identityAdapter)
 	mux := http.NewServeMux()
 	apiServer.RegisterRoutes(mux)
 

@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:81e77a4833487b8132fe4b00bedd39dc3f74b8641e387f19312a48f7de218c2e
     container_name: surv_postgres
     restart: unless-stopped
     mem_limit: 512m
@@ -28,7 +28,7 @@ services:
       - surv_net
 
   mediamtx:
-    image: bluenviron/mediamtx:latest
+    image: bluenviron/mediamtx:latest@sha256:c730bccdbc8739f8f0c13cefe9bea8b61926f599b88fa4d0d229baa91846c7bc
     container_name: surv_mediamtx
     restart: unless-stopped
     mem_limit: 128m
@@ -54,7 +54,7 @@ services:
       - surv_net
 
   go2rtc:
-    image: alexxit/go2rtc:latest
+    image: alexxit/go2rtc:latest@sha256:e098de5c2f8040dc3d4784ed2d5cfdac3b0979f9349afe587ef6a670a14b9f4d
     container_name: surv_go2rtc
     restart: unless-stopped
     mem_limit: 128m
