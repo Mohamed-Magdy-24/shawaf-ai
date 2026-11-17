@@ -68,8 +68,6 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"invalid credentials"}`, http.StatusUnauthorized)
 		return
 	}
-		return
-	}
 
 	allowedSites := []string{
 		"11111111-1111-1111-1111-111111111111",

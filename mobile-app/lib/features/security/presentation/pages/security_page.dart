@@ -12,7 +12,8 @@ class SecurityPage extends StatelessWidget {
   void _testRbacDenial(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('HTTP 403 FORBIDDEN: Access denied by system governance policy (ADR-011 RBAC).'),
+        content: Text(
+            'HTTP 403 FORBIDDEN: Access denied by system governance policy (ADR-011 RBAC).'),
         backgroundColor: AppColors.amber,
       ),
     );
@@ -21,7 +22,8 @@ class SecurityPage extends StatelessWidget {
   void _simulateCoverageLost(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('WATCHDOG ALARM: Stream drop >15s on West Perimeter. Automated NFR-OBS-002 SEV2 event raised.'),
+        content: Text(
+            'WATCHDOG ALARM: Stream drop >15s on West Perimeter. Automated NFR-OBS-002 SEV2 event raised.'),
         backgroundColor: AppColors.crimson,
       ),
     );
@@ -31,7 +33,8 @@ class SecurityPage extends StatelessWidget {
     context.read<ConnectivityCubit>().setOffline('Simulated Network Drop');
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('DEGRADED OFFLINE ACTIVE: Zero mock fallback triggered. Reconnection watchdog polling.'),
+        content: Text(
+            'DEGRADED OFFLINE ACTIVE: Zero mock fallback triggered. Reconnection watchdog polling.'),
         backgroundColor: AppColors.crimson,
       ),
     );
@@ -44,7 +47,8 @@ class SecurityPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Security Controls & Bad Use Case Verification', style: AppTypography.titleLarge),
+          const Text('Security Controls & Bad Use Case Verification',
+              style: AppTypography.titleLarge),
           AppSpacing.vGap4,
           Text(
             'Interactive verification of failure modes without silent mock fallbacks.',
@@ -60,7 +64,8 @@ class SecurityPage extends StatelessWidget {
                       children: [
                         Expanded(child: _buildFailureTestsCard(context)),
                         AppSpacing.hGap16,
-                        Expanded(child: _buildArchitectureGuaranteesCard(context)),
+                        Expanded(
+                            child: _buildArchitectureGuaranteesCard(context)),
                       ],
                     )
                   : Column(
@@ -83,7 +88,8 @@ class SecurityPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Simulate Failure / Edge States', style: AppTypography.titleSmall),
+          const Text('Simulate Failure / Edge States',
+              style: AppTypography.titleSmall),
           AppSpacing.vGap16,
           _buildActionButton(
             label: 'Test 403 RBAC Denial (Operator Live Video)',
@@ -132,7 +138,9 @@ class SecurityPage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text(label, style: AppTypography.bodySmall.copyWith(color: AppColors.ink)),
+                child: Text(label,
+                    style:
+                        AppTypography.bodySmall.copyWith(color: AppColors.ink)),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -142,7 +150,8 @@ class SecurityPage extends StatelessWidget {
                 ),
                 child: Text(
                   tag,
-                  style: AppTypography.tabularMonoSmall.copyWith(color: tagColor, fontWeight: FontWeight.bold),
+                  style: AppTypography.tabularMonoSmall
+                      .copyWith(color: tagColor, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -158,14 +167,21 @@ class SecurityPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Active Architecture Guarantees', style: AppTypography.titleSmall),
+          const Text('Active Architecture Guarantees',
+              style: AppTypography.titleSmall),
           AppSpacing.vGap16,
-          _buildGuaranteeRow('Tenant Isolation', 'PostgreSQL 16 FORCE RLS', AppColors.emerald),
-          _buildGuaranteeRow('Raw Video Over Wire', '0 bytes (ADR-012)', AppColors.emerald),
-          _buildGuaranteeRow('RTSP Password Storage', 'AES-256-GCM Encrypted', AppColors.emerald),
-          _buildGuaranteeRow('Flutter Architecture', 'Stateful Root + Stateless BLoC', AppColors.ink),
-          _buildGuaranteeRow('Edge Daemon Latency', '< 10ms LAN p95', AppColors.emerald),
-          _buildGuaranteeRow('Biometric Face Identification', '512-dim ONNX Vectors', AppColors.ink),
+          _buildGuaranteeRow(
+              'Tenant Isolation', 'PostgreSQL 16 FORCE RLS', AppColors.emerald),
+          _buildGuaranteeRow(
+              'Raw Video Over Wire', '0 bytes (ADR-012)', AppColors.emerald),
+          _buildGuaranteeRow('RTSP Password Storage', 'AES-256-GCM Encrypted',
+              AppColors.emerald),
+          _buildGuaranteeRow('Flutter Architecture',
+              'Stateful Root + Stateless BLoC', AppColors.ink),
+          _buildGuaranteeRow(
+              'Edge Daemon Latency', '< 10ms LAN p95', AppColors.emerald),
+          _buildGuaranteeRow('Biometric Face Identification',
+              '512-dim ONNX Vectors', AppColors.ink),
         ],
       ),
     );
@@ -175,19 +191,21 @@ class SecurityPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.borderline, width: 1.0)),
+        border:
+            Border(bottom: BorderSide(color: AppColors.borderline, width: 1.0)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: AppTypography.bodySmall.copyWith(color: AppColors.muted)),
+          Text(label,
+              style: AppTypography.bodySmall.copyWith(color: AppColors.muted)),
           Text(
             value,
-            style: AppTypography.tabularMonoSmall.copyWith(color: valueColor, fontWeight: FontWeight.w600),
+            style: AppTypography.tabularMonoSmall
+                .copyWith(color: valueColor, fontWeight: FontWeight.w600),
           ),
         ],
       ),
     );
   }
 }
-
