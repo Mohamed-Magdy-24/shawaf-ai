@@ -9,7 +9,15 @@ Verifies:
 
 import os
 import sys
-import onnx
+
+# Ensure project virtual environment packages are reachable when run from system Python
+_venv_site = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "ai-workers", ".venv", "Lib", "site-packages")
+)
+if os.path.isdir(_venv_site) and _venv_site not in sys.path:
+    sys.path.insert(0, _venv_site)
+
+import onnx  # pyrefly: ignore[missing-import] # type: ignore
 
 project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

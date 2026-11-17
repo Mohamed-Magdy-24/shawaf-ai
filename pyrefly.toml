@@ -1,0 +1,5 @@
+[errors]
+missing-import = "ignore"
+
+[environment]
+python = "ai-workers/.venv/Scripts/python.exe"

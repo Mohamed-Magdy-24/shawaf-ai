@@ -9,11 +9,20 @@ Generates:
 """
 
 import os
+import sys
 import hashlib
-import cv2
-import numpy as np
-import onnx
-from onnx import helper, TensorProto
+
+# Ensure project virtual environment packages are reachable when run from system Python
+_venv_site = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "ai-workers", ".venv", "Lib", "site-packages")
+)
+if os.path.isdir(_venv_site) and _venv_site not in sys.path:
+    sys.path.insert(0, _venv_site)
+
+import cv2  # pyrefly: ignore[missing-import] # type: ignore
+import numpy as np  # pyrefly: ignore[missing-import] # type: ignore
+import onnx  # pyrefly: ignore[missing-import] # type: ignore
+from onnx import helper, TensorProto  # pyrefly: ignore[missing-import] # type: ignore
 
 
 def generate_cleanroom_onnx_model(output_path: str):
