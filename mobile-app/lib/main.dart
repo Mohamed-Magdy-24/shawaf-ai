@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'cubits/alert_inbox_cubit.dart';
 import 'cubits/auth_cubit.dart';
+import 'cubits/camera_management_cubit.dart';
 import 'cubits/camera_stream_cubit.dart';
 import 'cubits/connectivity_cubit.dart';
+import 'cubits/employee_cubit.dart';
 import 'cubits/site_cubit.dart';
 import 'repositories/surveillance_repository.dart';
 import 'screens/home_screen.dart';
@@ -54,6 +56,12 @@ class ShawafAiApp extends StatelessWidget {
           ),
           BlocProvider<CameraStreamCubit>(
             create: (_) => CameraStreamCubit(repository: repository),
+          ),
+          BlocProvider<CameraManagementCubit>(
+            create: (_) => CameraManagementCubit(repository: repository),
+          ),
+          BlocProvider<EmployeeCubit>(
+            create: (_) => EmployeeCubit(repository: repository),
           ),
           BlocProvider<ConnectivityCubit>(
             create: (_) => ConnectivityCubit(),

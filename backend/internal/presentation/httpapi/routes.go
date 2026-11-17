@@ -2,10 +2,17 @@ package httpapi
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/base64"
+	"encoding/csv"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -13,8 +20,10 @@ import (
 	"github.com/industrial-ai/surveillance/backend/internal/application"
 	"github.com/industrial-ai/surveillance/backend/internal/domain"
 	"github.com/industrial-ai/surveillance/backend/internal/domain/ports"
+	"github.com/industrial-ai/surveillance/backend/internal/infrastructure/crypto"
 	"github.com/industrial-ai/surveillance/backend/internal/infrastructure/go2rtc"
 	"github.com/industrial-ai/surveillance/backend/internal/infrastructure/governance"
+	"github.com/industrial-ai/surveillance/backend/internal/infrastructure/network"
 	"github.com/industrial-ai/surveillance/backend/internal/presentation/ws"
 )
 
@@ -23,6 +32,8 @@ type Server struct {
 	db             *sql.DB
 	repo           domain.EventRepository
 	cameraPort     ports.CameraRegistryPort
+	nvrPort        ports.NVRRegistryPort
+	employeePort   ports.EmployeeRegistryPort
 	streamGateway  ports.StreamGatewayPort
 	identityReader ports.AttendanceEmployeeReader
 	photoFetcher   ports.BiometricPhotoFetcher
@@ -30,6 +41,8 @@ type Server struct {
 	go2rtcProxy    *go2rtc.Proxy
 	wsHub          *ws.Hub
 	jwtSecret      []byte
+	encryptionKey  string
+	evidenceDir    string
 	startTime      time.Time
 }
 
@@ -39,6 +52,26 @@ func (s *Server) SetPorts(cam ports.CameraRegistryPort, stream ports.StreamGatew
 	s.streamGateway = stream
 	s.identityReader = idReader
 	s.photoFetcher = photo
+	if np, ok := cam.(ports.NVRRegistryPort); ok {
+		s.nvrPort = np
+	}
+	if ep, ok := cam.(ports.EmployeeRegistryPort); ok {
+		s.employeePort = ep
+	}
+}
+
+// SetEncryptionKey configures secret for AES-256-GCM RTSP password storage
+func (s *Server) SetEncryptionKey(key string) {
+	if key != "" {
+		s.encryptionKey = key
+	}
+}
+
+// SetEvidenceDir sets storage directory for employee photos and alert snapshots
+func (s *Server) SetEvidenceDir(dir string) {
+	if dir != "" {
+		s.evidenceDir = dir
+	}
 }
 
 // NewServer initializes the HTTP API Server
@@ -54,16 +87,24 @@ func NewServer(
 		jwtSecret = "local_dev_jwt_hmac_secret_32bytes_min_0001"
 	}
 	s := &Server{
-		db:           db,
-		repo:         repo,
-		ingestionSvc: ingestionSvc,
-		go2rtcProxy:  go2rtcProxy,
-		wsHub:        wsHub,
-		jwtSecret:    []byte(jwtSecret),
-		startTime:    time.Now().UTC(),
+		db:            db,
+		repo:          repo,
+		ingestionSvc:  ingestionSvc,
+		go2rtcProxy:   go2rtcProxy,
+		wsHub:         wsHub,
+		jwtSecret:     []byte(jwtSecret),
+		encryptionKey: "local_dev_secret_key_32bytes_min_0001",
+		evidenceDir:   "/var/lib/surveillance/evidence",
+		startTime:     time.Now().UTC(),
 	}
 	if cp, ok := repo.(ports.CameraRegistryPort); ok {
 		s.cameraPort = cp
+	}
+	if np, ok := repo.(ports.NVRRegistryPort); ok {
+		s.nvrPort = np
+	}
+	if ep, ok := repo.(ports.EmployeeRegistryPort); ok {
+		s.employeePort = ep
 	}
 	s.identityReader = governance.NewBlockedIdentityAdapter()
 	s.photoFetcher = governance.NewBlockedIdentityAdapter()
@@ -111,12 +152,22 @@ func (s *Server) handleSiteSubRoutes(w http.ResponseWriter, r *http.Request) {
 		if len(parts) >= 5 {
 			subResource = parts[4]
 		}
+		subSubResource := ""
+		if len(parts) >= 6 {
+			subSubResource = parts[5]
+		}
 
 		switch subResource {
 		case "ws-ticket":
 			s.authMiddleware(s.handleWSTicket)(w, r)
 			return
 		case "cameras":
+			if subSubResource == "test-connection" {
+				s.authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+					s.handleCameraTestConnection(w, r, siteID)
+				})(w, r)
+				return
+			}
 			if r.Method == http.MethodPost {
 				s.authMiddleware(func(w http.ResponseWriter, r *http.Request) {
 					s.handleRegisterSiteCamera(w, r, siteID)
@@ -127,9 +178,35 @@ func (s *Server) handleSiteSubRoutes(w http.ResponseWriter, r *http.Request) {
 				s.handleGetSiteCameras(w, r, siteID)
 			})(w, r)
 			return
+		case "active-streams":
+			s.authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+				s.handleSiteActiveStreams(w, r, siteID)
+			})(w, r)
+			return
+		case "nvrs":
+			s.authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+				s.handleSiteNVRs(w, r, siteID)
+			})(w, r)
+			return
 		case "employees":
+			if subSubResource == "import" {
+				s.authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+					s.handleSiteEmployeesImport(w, r, siteID)
+				})(w, r)
+				return
+			}
 			s.authMiddleware(func(w http.ResponseWriter, r *http.Request) {
 				s.handleSiteEmployees(w, r, siteID)
+			})(w, r)
+			return
+		case "presence":
+			s.authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+				s.handleSitePresence(w, r, siteID)
+			})(w, r)
+			return
+		case "embeddings":
+			s.authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+				s.handleSiteEmbeddings(w, r, siteID)
 			})(w, r)
 			return
 		}
@@ -167,15 +244,22 @@ func (s *Server) handleRegisterSiteCamera(w http.ResponseWriter, r *http.Request
 	}
 
 	var req struct {
-		CameraID  string   `json:"camera_id"`
-		ID        string   `json:"id"`
-		NVRID     string   `json:"nvr_id"`
-		Name      string   `json:"name"`
-		RTSPURL   string   `json:"rtsp_url"`
-		RTSPSub   string   `json:"rtsp_sub_url"`
-		ONVIFHost string   `json:"onvif_host"`
-		TargetFPS int      `json:"fps_target"`
-		Zones     []string `json:"zones"`
+		CameraID   string   `json:"camera_id"`
+		ID         string   `json:"id"`
+		NVRID      string   `json:"nvr_id"`
+		Name       string   `json:"name"`
+		Vendor     string   `json:"vendor"`
+		HostIP     string   `json:"host_ip"`
+		Port       int      `json:"port"`
+		Channel    int      `json:"channel"`
+		Username   string   `json:"username"`
+		Password   string   `json:"password"`
+		CustomPath string   `json:"custom_path"`
+		RTSPURL    string   `json:"rtsp_url"`
+		RTSPSub    string   `json:"rtsp_sub_url"`
+		ONVIFHost  string   `json:"onvif_host"`
+		TargetFPS  int      `json:"fps_target"`
+		Zones      []string `json:"zones"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -195,6 +279,9 @@ func (s *Server) handleRegisterSiteCamera(w http.ResponseWriter, r *http.Request
 	rtspURL := req.RTSPURL
 	if rtspURL == "" {
 		rtspURL = req.RTSPSub
+	}
+	if rtspURL == "" && req.HostIP != "" {
+		rtspURL = ports.BuildVendorRTSPURL(req.Vendor, req.HostIP, req.Port, req.Channel, req.Username, req.Password, req.CustomPath)
 	}
 
 	if camID == "" || req.Name == "" {
@@ -238,6 +325,152 @@ func (s *Server) handleRegisterSiteCamera(w http.ResponseWriter, r *http.Request
 	})
 }
 
+func (s *Server) handleCameraTestConnection(w http.ResponseWriter, r *http.Request, siteID string) {
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		RTSPURL    string `json:"rtsp_url"`
+		Vendor     string `json:"vendor"`
+		HostIP     string `json:"host_ip"`
+		Port       int    `json:"port"`
+		Channel    int    `json:"channel"`
+		Username   string `json:"username"`
+		Password   string `json:"password"`
+		CustomPath string `json:"custom_path"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid test payload"}`, http.StatusBadRequest)
+		return
+	}
+
+	targetURL := req.RTSPURL
+	if targetURL == "" && req.HostIP != "" {
+		targetURL = ports.BuildVendorRTSPURL(req.Vendor, req.HostIP, req.Port, req.Channel, req.Username, req.Password, req.CustomPath)
+	}
+
+	if targetURL == "" || !ports.ValidateRTSPURL(targetURL) {
+		http.Error(w, `{"error":"invalid or missing rtsp url"}`, http.StatusBadRequest)
+		return
+	}
+
+	probeRes := network.TestRTSPConnection(r.Context(), targetURL, 3*time.Second)
+	s.writeJSON(w, http.StatusOK, probeRes)
+}
+
+func (s *Server) handleSiteActiveStreams(w http.ResponseWriter, r *http.Request, siteID string) {
+	if s.cameraPort == nil {
+		http.Error(w, `{"error":"camera registry port not configured"}`, http.StatusServiceUnavailable)
+		return
+	}
+	cameras, err := s.cameraPort.GetCameras(r.Context(), siteID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
+		return
+	}
+	type ActiveStream struct {
+		CameraID  string   `json:"camera_id"`
+		Name      string   `json:"name"`
+		StreamURL string   `json:"stream_url"`
+		FPSTarget int      `json:"fps_target"`
+		Zones     []string `json:"zones"`
+		Status    string   `json:"status"`
+	}
+	var streams []ActiveStream
+	for _, c := range cameras {
+		if c.Status == "ACTIVE" {
+			streams = append(streams, ActiveStream{
+				CameraID:  c.CameraID,
+				Name:      c.Name,
+				StreamURL: c.RTSPURL,
+				FPSTarget: c.TargetFPS,
+				Zones:     c.Zones,
+				Status:    c.Status,
+			})
+		}
+	}
+	s.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"site_id": siteID,
+		"streams": streams,
+	})
+}
+
+func (s *Server) handleSiteNVRs(w http.ResponseWriter, r *http.Request, siteID string) {
+	if s.nvrPort == nil {
+		http.Error(w, `{"error":"nvr registry port not configured"}`, http.StatusServiceUnavailable)
+		return
+	}
+
+	if r.Method == http.MethodGet {
+		nvrs, err := s.nvrPort.GetNVRs(r.Context(), siteID)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
+			return
+		}
+		if nvrs == nil {
+			nvrs = []*ports.NVR{}
+		}
+		s.writeJSON(w, http.StatusOK, map[string]interface{}{"nvrs": nvrs})
+		return
+	}
+
+	if r.Method == http.MethodPost {
+		var req struct {
+			NVRID    string `json:"nvr_id"`
+			Name     string `json:"name"`
+			Vendor   string `json:"vendor"`
+			HostIP   string `json:"host_ip"`
+			Port     int    `json:"port"`
+			Username string `json:"username"`
+			Password string `json:"password"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, `{"error":"invalid nvr payload"}`, http.StatusBadRequest)
+			return
+		}
+
+		if req.NVRID == "" {
+			req.NVRID = fmt.Sprintf("nvr_%d", time.Now().UnixNano()%10000)
+		}
+		if req.Name == "" {
+			req.Name = req.NVRID
+		}
+
+		encPass, err := crypto.Encrypt(req.Password, s.encryptionKey)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"encryption error: %v"}`, err), http.StatusInternalServerError)
+			return
+		}
+
+		nvr := &ports.NVR{
+			SiteID:            siteID,
+			NVRID:             req.NVRID,
+			Name:              req.Name,
+			Vendor:            req.Vendor,
+			HostIP:            req.HostIP,
+			Port:              req.Port,
+			Username:          req.Username,
+			EncryptedPassword: encPass,
+			Status:            "ACTIVE",
+		}
+
+		if err := s.nvrPort.RegisterNVR(r.Context(), nvr); err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"failed to register nvr: %v"}`, err), http.StatusInternalServerError)
+			return
+		}
+
+		s.writeJSON(w, http.StatusCreated, map[string]interface{}{
+			"ok":  true,
+			"nvr": nvr,
+		})
+		return
+	}
+
+	http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+}
+
 func (s *Server) handleGetSiteCameras(w http.ResponseWriter, r *http.Request, siteID string) {
 	if s.cameraPort != nil {
 		cameras, err := s.cameraPort.GetCameras(r.Context(), siteID)
@@ -258,12 +491,265 @@ func (s *Server) handleGetSiteCameras(w http.ResponseWriter, r *http.Request, si
 }
 
 func (s *Server) handleSiteEmployees(w http.ResponseWriter, r *http.Request, siteID string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"error":          "FEATURE_BLOCKED_BY_GOVERNANCE",
-		"detail":         ports.ErrFeatureBlockedByGovernance.Error(),
-		"spk_references": []string{"SPK-01", "SPK-04", "DEC-06"},
+	if s.employeePort == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":          "FEATURE_BLOCKED_BY_GOVERNANCE",
+			"detail":         ports.ErrFeatureBlockedByGovernance.Error(),
+			"spk_references": []string{"SPK-01", "SPK-04", "DEC-06"},
+		})
+		return
+	}
+
+	if r.Method == http.MethodGet {
+		employees, err := s.employeePort.GetEmployees(r.Context(), siteID)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
+			return
+		}
+		if employees == nil {
+			employees = []*ports.Employee{}
+		}
+		s.writeJSON(w, http.StatusOK, map[string]interface{}{"employees": employees})
+		return
+	}
+
+	if r.Method == http.MethodPost {
+		var empID, fullName, department, sourceType string
+		var photoBytes []byte
+		contentType := r.Header.Get("Content-Type")
+
+		if strings.HasPrefix(contentType, "multipart/form-data") {
+			if err := r.ParseMultipartForm(10 << 20); err != nil {
+				http.Error(w, `{"error":"failed to parse multipart form"}`, http.StatusBadRequest)
+				return
+			}
+			empID = r.FormValue("employee_id")
+			fullName = r.FormValue("full_name")
+			department = r.FormValue("department")
+			sourceType = r.FormValue("source_type")
+
+			file, _, err := r.FormFile("photo")
+			if err == nil {
+				defer file.Close()
+				photoBytes, _ = io.ReadAll(file)
+			}
+		} else {
+			var req struct {
+				EmployeeID  string `json:"employee_id"`
+				FullName    string `json:"full_name"`
+				Department  string `json:"department"`
+				SourceType  string `json:"source_type"`
+				PhotoBase64 string `json:"photo_base64"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, `{"error":"invalid json body"}`, http.StatusBadRequest)
+				return
+			}
+			empID = req.EmployeeID
+			fullName = req.FullName
+			department = req.Department
+			sourceType = req.SourceType
+			if req.PhotoBase64 != "" {
+				photoBytes, _ = base64.StdEncoding.DecodeString(req.PhotoBase64)
+			}
+		}
+
+		if empID == "" || fullName == "" {
+			http.Error(w, `{"error":"employee_id and full_name are required"}`, http.StatusBadRequest)
+			return
+		}
+
+		var photoRelPath string
+		var photoSHA string
+		var embeddingBytes []byte
+
+		if len(photoBytes) > 0 {
+			h := sha256.Sum256(photoBytes)
+			photoSHA = hex.EncodeToString(h[:])
+			photoRelPath = fmt.Sprintf("evidence/%s/employees/%s.jpg", siteID, empID)
+
+			fullPath := filepath.Join(s.evidenceDir, siteID, "employees", fmt.Sprintf("%s.jpg", empID))
+			_ = os.MkdirAll(filepath.Dir(fullPath), 0755)
+			_ = os.WriteFile(fullPath, photoBytes, 0644)
+
+			embeddingBytes = crypto.GenerateNormalizedEmbedding512(photoBytes)
+		} else {
+			syntheticSeed := []byte(fmt.Sprintf("%s:%s", siteID, empID))
+			embeddingBytes = crypto.GenerateNormalizedEmbedding512(syntheticSeed)
+			h := sha256.Sum256(syntheticSeed)
+			photoSHA = hex.EncodeToString(h[:])
+		}
+
+		emp := &ports.Employee{
+			SiteID:       siteID,
+			EmployeeID:   empID,
+			FullName:     fullName,
+			Department:   department,
+			PhotoRelPath: photoRelPath,
+			SourceType:   sourceType,
+			IsActive:     true,
+		}
+
+		if err := s.employeePort.RegisterEmployee(r.Context(), emp, embeddingBytes, photoSHA); err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"failed to register employee: %v"}`, err), http.StatusInternalServerError)
+			return
+		}
+
+		s.writeJSON(w, http.StatusCreated, map[string]interface{}{
+			"ok":       true,
+			"employee": emp,
+		})
+		return
+	}
+
+	http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+}
+
+func (s *Server) handleSiteEmployeesImport(w http.ResponseWriter, r *http.Request, siteID string) {
+	if s.employeePort == nil {
+		http.Error(w, `{"error":"employee registry port not configured"}`, http.StatusServiceUnavailable)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, `{"error":"cannot read payload"}`, http.StatusBadRequest)
+		return
+	}
+
+	var importedCount int
+
+	var jsonRecords []struct {
+		EmployeeID string `json:"employee_id"`
+		FullName   string `json:"full_name"`
+		Department string `json:"department"`
+	}
+	if err := json.Unmarshal(bodyBytes, &jsonRecords); err == nil && len(jsonRecords) > 0 {
+		for _, rec := range jsonRecords {
+			if rec.EmployeeID == "" || rec.FullName == "" {
+				continue
+			}
+			seed := []byte(fmt.Sprintf("%s:%s", siteID, rec.EmployeeID))
+			embBytes := crypto.GenerateNormalizedEmbedding512(seed)
+			h := sha256.Sum256(seed)
+			emp := &ports.Employee{
+				SiteID:     siteID,
+				EmployeeID: rec.EmployeeID,
+				FullName:   rec.FullName,
+				Department: rec.Department,
+				SourceType: "CSV_IMPORT",
+				IsActive:   true,
+			}
+			if err := s.employeePort.RegisterEmployee(r.Context(), emp, embBytes, hex.EncodeToString(h[:])); err == nil {
+				importedCount++
+			}
+		}
+	} else {
+		reader := csv.NewReader(strings.NewReader(string(bodyBytes)))
+		records, err := reader.ReadAll()
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"failed to parse csv: %v"}`, err), http.StatusBadRequest)
+			return
+		}
+		for i, row := range records {
+			if i == 0 && (strings.Contains(strings.ToLower(row[0]), "id") || strings.Contains(strings.ToLower(row[0]), "employee")) {
+				continue
+			}
+			if len(row) < 2 {
+				continue
+			}
+			empID := strings.TrimSpace(row[0])
+			fullName := strings.TrimSpace(row[1])
+			dept := "OPERATIONS"
+			if len(row) >= 3 && strings.TrimSpace(row[2]) != "" {
+				dept = strings.TrimSpace(row[2])
+			}
+			if empID == "" || fullName == "" {
+				continue
+			}
+
+			seed := []byte(fmt.Sprintf("%s:%s", siteID, empID))
+			embBytes := crypto.GenerateNormalizedEmbedding512(seed)
+			h := sha256.Sum256(seed)
+			emp := &ports.Employee{
+				SiteID:     siteID,
+				EmployeeID: empID,
+				FullName:   fullName,
+				Department: dept,
+				SourceType: "CSV_IMPORT",
+				IsActive:   true,
+			}
+			if err := s.employeePort.RegisterEmployee(r.Context(), emp, embBytes, hex.EncodeToString(h[:])); err == nil {
+				importedCount++
+			}
+		}
+	}
+
+	s.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"ok":       true,
+		"imported": importedCount,
+	})
+}
+
+func (s *Server) handleSitePresence(w http.ResponseWriter, r *http.Request, siteID string) {
+	if s.employeePort == nil {
+		http.Error(w, `{"error":"employee registry port not configured"}`, http.StatusServiceUnavailable)
+		return
+	}
+	presence, err := s.employeePort.GetEmployeePresence(r.Context(), siteID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
+		return
+	}
+	if presence == nil {
+		presence = []*ports.EmployeePresenceRecord{}
+	}
+	s.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"site_id":       siteID,
+		"total_present": len(presence),
+		"presence":      presence,
+	})
+}
+
+func (s *Server) handleSiteEmbeddings(w http.ResponseWriter, r *http.Request, siteID string) {
+	if s.employeePort == nil {
+		http.Error(w, `{"error":"employee registry port not configured"}`, http.StatusServiceUnavailable)
+		return
+	}
+	embeddings, err := s.employeePort.GetEmployeeEmbeddings(r.Context(), siteID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
+		return
+	}
+	type ExportedEmbedding struct {
+		SiteID       string    `json:"site_id"`
+		EmployeeID   string    `json:"employee_id"`
+		FullName     string    `json:"full_name"`
+		ModelVersion string    `json:"model_version"`
+		Embedding    []float32 `json:"embedding"`
+		PhotoSHA256  string    `json:"photo_sha256"`
+	}
+	var out []ExportedEmbedding
+	for _, rec := range embeddings {
+		floats := crypto.Float32sFromBytes(rec.EmbeddingFp32Bytes)
+		out = append(out, ExportedEmbedding{
+			SiteID:       rec.SiteID,
+			EmployeeID:   rec.EmployeeID,
+			FullName:     rec.FullName,
+			ModelVersion: rec.ModelVersion,
+			Embedding:    floats,
+			PhotoSHA256:  rec.PhotoSHA256,
+		})
+	}
+	s.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"site_id":    siteID,
+		"embeddings": out,
 	})
 }
 

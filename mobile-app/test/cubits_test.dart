@@ -1,8 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shawaf_ai_mobile/cubits/alert_inbox_cubit.dart';
 import 'package:shawaf_ai_mobile/cubits/auth_cubit.dart';
+import 'package:shawaf_ai_mobile/cubits/camera_management_cubit.dart';
 import 'package:shawaf_ai_mobile/cubits/camera_stream_cubit.dart';
 import 'package:shawaf_ai_mobile/cubits/connectivity_cubit.dart';
+import 'package:shawaf_ai_mobile/cubits/employee_cubit.dart';
 import 'package:shawaf_ai_mobile/cubits/site_cubit.dart';
 import 'package:shawaf_ai_mobile/models/models.dart';
 import 'package:shawaf_ai_mobile/repositories/surveillance_repository.dart';
@@ -119,6 +121,30 @@ class FakeSurveillanceRepository implements SurveillanceRepository {
 
   @override
   WebSocketChannel? connectWebSocket(String siteId, Function(SurveillanceEvent) onEvent) => null;
+
+  @override
+  Future<Map<String, dynamic>> testCameraConnection(String siteId, Map<String, dynamic> probePayload) async =>
+      {'reachable': true, 'latency_ms': 12.0, 'sanitized_url': 'rtsp://***:***@10.0.1.20:554/live'};
+
+  @override
+  Future<List<NVR>> getNVRs(String siteId) async => [];
+
+  @override
+  Future<NVR> registerNVR(String siteId, Map<String, dynamic> nvrPayload) async =>
+      NVR.fromJson({...nvrPayload, 'site_id': siteId, 'status': 'ACTIVE'});
+
+  @override
+  Future<List<Employee>> getEmployees(String siteId) async => [];
+
+  @override
+  Future<Employee> registerEmployee(String siteId, Map<String, dynamic> empPayload) async =>
+      Employee.fromJson({...empPayload, 'site_id': siteId, 'is_active': true, 'source_type': 'MANUAL_UPLOAD'});
+
+  @override
+  Future<int> importEmployees(String siteId, String csvOrJson) async => 5;
+
+  @override
+  Future<List<EmployeePresence>> getEmployeePresence(String siteId) async => [];
 }
 
 void main() {
@@ -223,6 +249,40 @@ void main() {
 
       cubit.setOnline();
       expect(cubit.state, isA<ConnectivityOnline>());
+    });
+
+    test('CameraManagementCubit: testConnection and addCamera', () async {
+      final cubit = CameraManagementCubit(repository: repository);
+      await cubit.load('11111111-1111-1111-1111-111111111111');
+      expect(cubit.state, isA<CameraManagementLoaded>());
+
+      final probe = await cubit.testConnection('11111111-1111-1111-1111-111111111111', {
+        'host_ip': '10.0.1.20',
+      });
+      expect(probe['reachable'], isTrue);
+
+      final cam = await cubit.addCamera(
+        '11111111-1111-1111-1111-111111111111',
+        name: 'BNF North Perimeter',
+        rtspUrl: 'rtsp://10.0.1.20:554/live',
+      );
+      expect(cam.name, 'BNF North Perimeter');
+    });
+
+    test('EmployeeCubit: enrollEmployee and bulkImport', () async {
+      final cubit = EmployeeCubit(repository: repository);
+      await cubit.load('11111111-1111-1111-1111-111111111111');
+      expect(cubit.state, isA<EmployeeLoaded>());
+
+      final emp = await cubit.enrollEmployee('11111111-1111-1111-1111-111111111111', {
+        'employee_id': 'EMP-200',
+        'full_name': 'Hany Adel',
+        'department': 'OPERATIONS',
+      });
+      expect(emp.employeeId, 'EMP-200');
+
+      final count = await cubit.bulkImport('11111111-1111-1111-1111-111111111111', 'csv-data');
+      expect(count, 5);
     });
   });
 }

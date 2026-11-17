@@ -23,6 +23,13 @@ abstract class SurveillanceRepository {
   Future<bool> executeAlertAction(String siteId, String eventId, String action, String note);
   Future<Map<String, dynamic>> requestWebRTCSdp(String siteId, String cameraId, String offerSdp);
   WebSocketChannel? connectWebSocket(String siteId, Function(SurveillanceEvent) onEvent);
+  Future<Map<String, dynamic>> testCameraConnection(String siteId, Map<String, dynamic> probePayload);
+  Future<List<NVR>> getNVRs(String siteId);
+  Future<NVR> registerNVR(String siteId, Map<String, dynamic> nvrPayload);
+  Future<List<Employee>> getEmployees(String siteId);
+  Future<Employee> registerEmployee(String siteId, Map<String, dynamic> empPayload);
+  Future<int> importEmployees(String siteId, String csvOrJson);
+  Future<List<EmployeePresence>> getEmployeePresence(String siteId);
 }
 
 class HttpSurveillanceRepository implements SurveillanceRepository {
@@ -65,6 +72,32 @@ class HttpSurveillanceRepository implements SurveillanceRepository {
     };
     return _apiService.registerCamera(siteId, payload);
   }
+
+  @override
+  Future<Map<String, dynamic>> testCameraConnection(String siteId, Map<String, dynamic> probePayload) =>
+      _apiService.testCameraConnection(siteId, probePayload);
+
+  @override
+  Future<List<NVR>> getNVRs(String siteId) => _apiService.getNVRs(siteId);
+
+  @override
+  Future<NVR> registerNVR(String siteId, Map<String, dynamic> nvrPayload) =>
+      _apiService.registerNVR(siteId, nvrPayload);
+
+  @override
+  Future<List<Employee>> getEmployees(String siteId) => _apiService.getEmployees(siteId);
+
+  @override
+  Future<Employee> registerEmployee(String siteId, Map<String, dynamic> empPayload) =>
+      _apiService.registerEmployee(siteId, empPayload);
+
+  @override
+  Future<int> importEmployees(String siteId, String csvOrJson) =>
+      _apiService.importEmployees(siteId, csvOrJson);
+
+  @override
+  Future<List<EmployeePresence>> getEmployeePresence(String siteId) =>
+      _apiService.getEmployeePresence(siteId);
 
   @override
   Future<List<Zone>> getZones(String siteId) => _apiService.getZones(siteId);

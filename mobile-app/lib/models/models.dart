@@ -262,3 +262,148 @@ class SurveillanceEvent extends Equatable {
   @override
   List<Object?> get props => [id, siteId, cameraId, zoneId, eventType, severity, state, confidence, trackId, occurredAt, metadata];
 }
+
+class NVR extends Equatable {
+  final String siteId;
+  final String nvrId;
+  final String name;
+  final String vendor;
+  final String hostIp;
+  final int port;
+  final String username;
+  final String status;
+
+  const NVR({
+    required this.siteId,
+    required this.nvrId,
+    required this.name,
+    required this.vendor,
+    required this.hostIp,
+    required this.port,
+    required this.username,
+    required this.status,
+  });
+
+  factory NVR.fromJson(Map<String, dynamic> json) {
+    return NVR(
+      siteId: json['site_id'] ?? '',
+      nvrId: json['nvr_id'] ?? '',
+      name: json['name'] ?? '',
+      vendor: json['vendor'] ?? 'GENERIC',
+      hostIp: json['host_ip'] ?? '',
+      port: json['port'] ?? 554,
+      username: json['username'] ?? '',
+      status: json['status'] ?? 'ACTIVE',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'site_id': siteId,
+    'nvr_id': nvrId,
+    'name': name,
+    'vendor': vendor,
+    'host_ip': hostIp,
+    'port': port,
+    'username': username,
+    'status': status,
+  };
+
+  @override
+  List<Object?> get props => [siteId, nvrId, name, vendor, hostIp, port, username, status];
+}
+
+class Employee extends Equatable {
+  final String siteId;
+  final String employeeId;
+  final String fullName;
+  final String department;
+  final String? photoRelPath;
+  final String sourceType;
+  final bool isActive;
+
+  const Employee({
+    required this.siteId,
+    required this.employeeId,
+    required this.fullName,
+    required this.department,
+    this.photoRelPath,
+    required this.sourceType,
+    required this.isActive,
+  });
+
+  factory Employee.fromJson(Map<String, dynamic> json) {
+    return Employee(
+      siteId: json['site_id'] ?? '',
+      employeeId: json['employee_id'] ?? '',
+      fullName: json['full_name'] ?? '',
+      department: json['department'] ?? 'OPERATIONS',
+      photoRelPath: json['photo_rel_path'],
+      sourceType: json['source_type'] ?? 'MANUAL_UPLOAD',
+      isActive: json['is_active'] ?? true,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'site_id': siteId,
+    'employee_id': employeeId,
+    'full_name': fullName,
+    'department': department,
+    'photo_rel_path': photoRelPath,
+    'source_type': sourceType,
+    'is_active': isActive,
+  };
+
+  @override
+  List<Object?> get props => [siteId, employeeId, fullName, department, photoRelPath, sourceType, isActive];
+}
+
+class EmployeePresence extends Equatable {
+  final String siteId;
+  final String employeeId;
+  final String fullName;
+  final String department;
+  final String cameraId;
+  final String? zoneId;
+  final double confidence;
+  final DateTime lastSeenAt;
+
+  const EmployeePresence({
+    required this.siteId,
+    required this.employeeId,
+    required this.fullName,
+    required this.department,
+    required this.cameraId,
+    this.zoneId,
+    required this.confidence,
+    required this.lastSeenAt,
+  });
+
+  factory EmployeePresence.fromJson(Map<String, dynamic> json) {
+    return EmployeePresence(
+      siteId: json['site_id'] ?? '',
+      employeeId: json['employee_id'] ?? '',
+      fullName: json['full_name'] ?? '',
+      department: json['department'] ?? 'OPERATIONS',
+      cameraId: json['camera_id'] ?? '',
+      zoneId: json['zone_id'],
+      confidence: (json['confidence'] as num?)?.toDouble() ?? 1.0,
+      lastSeenAt: json['last_seen_at'] != null
+          ? DateTime.tryParse(json['last_seen_at']) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'site_id': siteId,
+    'employee_id': employeeId,
+    'full_name': fullName,
+    'department': department,
+    'camera_id': cameraId,
+    'zone_id': zoneId,
+    'confidence': confidence,
+    'last_seen_at': lastSeenAt.toIso8601String(),
+  };
+
+  @override
+  List<Object?> get props => [siteId, employeeId, fullName, department, cameraId, zoneId, confidence, lastSeenAt];
+}

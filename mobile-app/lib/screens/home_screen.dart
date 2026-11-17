@@ -8,7 +8,9 @@ import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/site_switcher_banner.dart';
+import 'add_camera_screen.dart';
 import 'cameras_screen.dart';
+import 'employees_screen.dart';
 import 'inbox_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -179,6 +181,16 @@ class HomeScreen extends StatelessWidget {
               ),
             ],
           ),
+        ),
+        IconButton(
+          tooltip: 'Personnel & Presence',
+          icon: const Icon(Icons.people_alt_outlined, size: 20, color: AppTheme.primaryTeal),
+          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EmployeesScreen())),
+        ),
+        IconButton(
+          tooltip: 'Add Camera',
+          icon: const Icon(Icons.add_a_photo_outlined, size: 20, color: AppTheme.primaryTeal),
+          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddCameraScreen())),
         ),
         IconButton(
           tooltip: 'Logout',

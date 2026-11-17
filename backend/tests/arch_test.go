@@ -46,13 +46,24 @@ func TestCleanArchitecture_DomainPurity(t *testing.T) {
 
 // TestADR012_ZeroRawVideo asserts that proto definitions contain no raw byte image buffers
 func TestADR012_ZeroRawVideo(t *testing.T) {
-	protoFile := filepath.Join("..", "..", "proto", "surveillance", "v1", "events.proto")
-	if _, err := os.Stat(protoFile); os.IsNotExist(err) {
-		protoFile = "/proto/surveillance/v1/events.proto"
+	candidates := []string{
+		filepath.Join("..", "..", "proto", "surveillance", "v1", "events.proto"),
+		filepath.Join("..", "proto", "surveillance", "v1", "events.proto"),
+		"/app/proto/surveillance/v1/events.proto",
+		"/proto/surveillance/v1/events.proto",
 	}
-	data, err := os.ReadFile(protoFile)
-	if err != nil {
-		t.Fatalf("failed to read proto file: %v", err)
+
+	var data []byte
+	found := false
+	for _, p := range candidates {
+		if d, e := os.ReadFile(p); e == nil {
+			data = d
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("failed to locate proto file in candidates: %v", candidates)
 	}
 
 	content := string(data)

@@ -77,6 +77,12 @@ class EdgeIngestionClient:
                     snapshot_rel_path=event_data.get("snapshot_rel_path", ""),
                     subject_status=event_data.get("subject_status", "VIOLATION"),
                 )
+                # If stubs have employee_id/employee_name attributes, set them:
+                if hasattr(req, "employee_id") and "employee_id" in event_data:
+                    req.employee_id = event_data["employee_id"]
+                if hasattr(req, "employee_name") and "employee_name" in event_data:
+                    req.employee_name = event_data["employee_name"]
+
                 resp = self.stub.SubmitEvent(req, metadata=metadata, timeout=3.0)
                 if resp.accepted:
                     return True

@@ -57,6 +57,8 @@ type Event struct {
 	Confidence      float32    `json:"confidence"`
 	SnapshotRelPath string     `json:"snapshot_rel_path"`
 	SubjectStatus   string     `json:"subject_status"`
+	EmployeeID      string     `json:"employee_id,omitempty"`
+	EmployeeName    string     `json:"employee_name,omitempty"`
 	State           EventState `json:"state"`
 	DismissedReason string     `json:"dismissed_reason,omitempty"`
 	CreatedAt       time.Time  `json:"created_at"`

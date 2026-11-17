@@ -25,6 +25,8 @@ type SubmitEventRequest struct {
 	Confidence      float32         `json:"confidence"`
 	SnapshotRelPath string          `json:"snapshot_rel_path,omitempty"`
 	SubjectStatus   string          `json:"subject_status,omitempty"`
+	EmployeeID      string          `json:"employee_id,omitempty"`
+	EmployeeName    string          `json:"employee_name,omitempty"`
 	BBox            []float64       `json:"bbox,omitempty"`
 	Payload         interface{}     `json:"payload,omitempty"`
 }
@@ -92,6 +94,8 @@ func (s *IngestionService) SubmitEvent(ctx context.Context, req *SubmitEventRequ
 		Confidence:      req.Confidence,
 		SnapshotRelPath: req.SnapshotRelPath,
 		SubjectStatus:   subjectStatus,
+		EmployeeID:      req.EmployeeID,
+		EmployeeName:    req.EmployeeName,
 		State:           domain.StateNew,
 		CreatedAt:       time.Now().UTC(),
 	}

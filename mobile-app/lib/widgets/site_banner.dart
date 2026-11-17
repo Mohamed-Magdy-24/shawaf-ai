@@ -8,11 +8,11 @@ class SiteBanner extends StatelessWidget {
   final Function(Site) onSiteSelected;
 
   const SiteBanner({
-    Key? key,
+    super.key,
     required this.currentSite,
     required this.availableSites,
     required this.onSiteSelected,
-  }) : super(key: key);
+  });
 
   void _showSitePicker(BuildContext context) {
     showModalBottomSheet(
@@ -113,7 +113,7 @@ class SiteBanner extends StatelessWidget {
                       ),
                     ),
                   );
-                }).toList(),
+                }),
               ],
             ),
           ),

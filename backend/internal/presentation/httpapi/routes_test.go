@@ -306,3 +306,159 @@ func TestHandleSiteEmployees_503_BlockedByGovernance(t *testing.T) {
 		t.Fatalf("expected response to declare FEATURE_BLOCKED_BY_GOVERNANCE, got: %s", rec.Body.String())
 	}
 }
+
+type fullMockRepo struct {
+	mockCameraRepo
+	nvrs       []*ports.NVR
+	employees  []*ports.Employee
+	presence   []*ports.EmployeePresenceRecord
+	embeddings []*ports.EmployeeEmbeddingRecord
+}
+
+func (f *fullMockRepo) RegisterNVR(ctx context.Context, nvr *ports.NVR) error {
+	f.nvrs = append(f.nvrs, nvr)
+	return nil
+}
+
+func (f *fullMockRepo) GetNVRs(ctx context.Context, siteID string) ([]*ports.NVR, error) {
+	return f.nvrs, nil
+}
+
+func (f *fullMockRepo) GetNVR(ctx context.Context, siteID, nvrID string) (*ports.NVR, error) {
+	for _, n := range f.nvrs {
+		if n.NVRID == nvrID {
+			return n, nil
+		}
+	}
+	return nil, ports.ErrNVRNotFound
+}
+
+func (f *fullMockRepo) RegisterEmployee(ctx context.Context, emp *ports.Employee, embeddingBytes []byte, photoSHA string) error {
+	f.employees = append(f.employees, emp)
+	if len(embeddingBytes) > 0 {
+		f.embeddings = append(f.embeddings, &ports.EmployeeEmbeddingRecord{
+			SiteID:             emp.SiteID,
+			EmployeeID:         emp.EmployeeID,
+			FullName:           emp.FullName,
+			ModelVersion:       "mobilefacenet-v1",
+			EmbeddingFp32Bytes: embeddingBytes,
+			PhotoSHA256:        photoSHA,
+		})
+	}
+	return nil
+}
+
+func (f *fullMockRepo) GetEmployees(ctx context.Context, siteID string) ([]*ports.Employee, error) {
+	return f.employees, nil
+}
+
+func (f *fullMockRepo) GetEmployee(ctx context.Context, siteID, employeeID string) (*ports.Employee, error) {
+	for _, e := range f.employees {
+		if e.EmployeeID == employeeID {
+			return e, nil
+		}
+	}
+	return nil, ports.ErrEmployeeNotFound
+}
+
+func (f *fullMockRepo) GetEmployeePresence(ctx context.Context, siteID string) ([]*ports.EmployeePresenceRecord, error) {
+	return f.presence, nil
+}
+
+func (f *fullMockRepo) GetEmployeeEmbeddings(ctx context.Context, siteID string) ([]*ports.EmployeeEmbeddingRecord, error) {
+	return f.embeddings, nil
+}
+
+func TestHandleSiteNVRs_RegisterAndList(t *testing.T) {
+	server := NewServer(nil, nil, nil, nil, nil, "test_jwt_secret_32bytes_min_1234")
+	mock := &fullMockRepo{}
+	server.SetPorts(mock, nil, nil, nil)
+
+	payload := map[string]interface{}{
+		"nvr_id":   "nvr_bnf_01",
+		"name":     "BNF Main Gate NVR",
+		"vendor":   "HIKVISION",
+		"host_ip":  "10.0.1.10",
+		"port":     554,
+		"username": "admin",
+		"password": "supersecretpassword",
+	}
+	body, _ := json.Marshal(payload)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/sites/11111111-1111-1111-1111-111111111111/nvrs", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	server.handleSiteNVRs(rec, req, "11111111-1111-1111-1111-111111111111")
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected HTTP 201 Created, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// Verify GET list
+	reqGet := httptest.NewRequest(http.MethodGet, "/api/v1/sites/11111111-1111-1111-1111-111111111111/nvrs", nil)
+	recGet := httptest.NewRecorder()
+	server.handleSiteNVRs(recGet, reqGet, "11111111-1111-1111-1111-111111111111")
+
+	if recGet.Code != http.StatusOK {
+		t.Fatalf("expected HTTP 200 OK, got %d", recGet.Code)
+	}
+
+	var resp struct {
+		NVRs []*ports.NVR `json:"nvrs"`
+	}
+	_ = json.Unmarshal(recGet.Body.Bytes(), &resp)
+	if len(resp.NVRs) != 1 || resp.NVRs[0].NVRID != "nvr_bnf_01" {
+		t.Fatalf("expected 1 NVR with ID nvr_bnf_01, got %v", resp.NVRs)
+	}
+}
+
+func TestHandleSiteEmployees_RegisterAndPresence(t *testing.T) {
+	server := NewServer(nil, nil, nil, nil, nil, "test_jwt_secret_32bytes_min_1234")
+	mock := &fullMockRepo{
+		presence: []*ports.EmployeePresenceRecord{
+			{
+				SiteID:     "11111111-1111-1111-1111-111111111111",
+				EmployeeID: "EMP-001",
+				FullName:   "Ahmed Mansour",
+				Department: "OPERATIONS",
+				CameraID:   "bnf_cam_01",
+				ZoneID:     "gate_north",
+				Confidence: 0.94,
+				LastSeenAt: time.Now().UTC(),
+			},
+		},
+	}
+	server.SetPorts(mock, nil, nil, nil)
+
+	// Register employee
+	empPayload := map[string]interface{}{
+		"employee_id": "EMP-001",
+		"full_name":   "Ahmed Mansour",
+		"department":  "OPERATIONS",
+	}
+	body, _ := json.Marshal(empPayload)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/sites/11111111-1111-1111-1111-111111111111/employees", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	server.handleSiteEmployees(rec, req, "11111111-1111-1111-1111-111111111111")
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected HTTP 201 Created, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// Verify Presence GET
+	reqPres := httptest.NewRequest(http.MethodGet, "/api/v1/sites/11111111-1111-1111-1111-111111111111/presence", nil)
+	recPres := httptest.NewRecorder()
+	server.handleSitePresence(recPres, reqPres, "11111111-1111-1111-1111-111111111111")
+
+	if recPres.Code != http.StatusOK {
+		t.Fatalf("expected HTTP 200 OK, got %d", recPres.Code)
+	}
+
+	var presResp struct {
+		TotalPresent int                           `json:"total_present"`
+		Presence     []*ports.EmployeePresenceRecord `json:"presence"`
+	}
+	_ = json.Unmarshal(recPres.Body.Bytes(), &presResp)
+	if presResp.TotalPresent != 1 || presResp.Presence[0].EmployeeID != "EMP-001" {
+		t.Fatalf("expected 1 presence record for EMP-001, got %v", presResp)
+	}
+}

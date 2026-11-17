@@ -77,17 +77,30 @@ func (d *DB) InsertEvent(ctx context.Context, event *domain.Event) error {
 			INSERT INTO events (
 				event_id, site_id, camera_id, zone_id, event_type, severity,
 				occurred_at, received_at, model_id, model_version, rule_id, rule_version,
-				confidence, snapshot_rel_path, subject_status, state
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+				confidence, snapshot_rel_path, subject_status, employee_id, employee_name, state
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 			ON CONFLICT (event_id, site_id, occurred_at) DO NOTHING`
 
 		_, err := tx.ExecContext(ctx, eventQuery,
 			event.EventID, event.SiteID, event.CameraID, event.ZoneID, event.EventType, string(event.Severity),
 			event.OccurredAt, event.ReceivedAt, event.ModelID, event.ModelVersion, event.RuleID, event.RuleVersion,
-			event.Confidence, event.SnapshotRelPath, event.SubjectStatus, string(event.State),
+			event.Confidence, event.SnapshotRelPath, event.SubjectStatus, event.EmployeeID, event.EmployeeName, string(event.State),
 		)
 		if err != nil {
 			return fmt.Errorf("insert event: %w", err)
+		}
+
+		// 1b. Update real-time presence if subject is identified
+		if event.SubjectStatus == "IDENTIFIED" && event.EmployeeID != "" {
+			presenceQuery := `
+				INSERT INTO employee_presence (site_id, employee_id, camera_id, zone_id, confidence, last_seen_at)
+				VALUES ($1, $2, $3, $4, $5, $6)
+				ON CONFLICT (site_id, employee_id) DO UPDATE SET
+					camera_id = EXCLUDED.camera_id,
+					zone_id = EXCLUDED.zone_id,
+					confidence = EXCLUDED.confidence,
+					last_seen_at = EXCLUDED.last_seen_at`
+			_, _ = tx.ExecContext(ctx, presenceQuery, event.SiteID, event.EmployeeID, event.CameraID, event.ZoneID, event.Confidence, event.OccurredAt)
 		}
 
 		// 2. Enqueue in Transactional Outbox (ADR-013)

@@ -28,6 +28,8 @@ message SubmitEventRequest {
   float confidence = 14;
   string snapshot_rel_path = 15;
   string subject_status = 16;
+  string employee_id = 17;
+  string employee_name = 18;
 }
 
 message SubmitEventResponse {

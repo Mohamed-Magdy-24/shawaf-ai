@@ -17,7 +17,8 @@ services:
     volumes:
       - ./postgres/init-roles.sh:/docker-entrypoint-initdb.d/01-init-roles.sh:ro
       - ../backend/internal/infrastructure/postgres/migrations/00001_initial_schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
-      - ./postgres/seed-data.sql:/docker-entrypoint-initdb.d/03-seed.sql:ro
+      - ../backend/internal/infrastructure/postgres/migrations/00002_employees_and_nvrs.sql:/docker-entrypoint-initdb.d/03-employees-nvrs.sql:ro
+      - ./postgres/seed-data.sql:/docker-entrypoint-initdb.d/04-seed.sql:ro
       - pg_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPER_USER:-postgres}"]
@@ -80,6 +81,7 @@ services:
       GRPC_PORT: ${GRPC_PORT:-:50051}
       EDGED_JWT_SECRET: ${EDGED_JWT_SECRET:-local_dev_jwt_hmac_secret_32bytes_min_0001}
       JWT_SECRET: ${JWT_SECRET:-local_dev_jwt_hmac_secret_32bytes_min_0001}
+      EDGED_ENCRYPTION_KEY: ${EDGED_ENCRYPTION_KEY:-01234567890123456789012345678901}
       EDGED_VIDEO_GRANT_SECRET: ${EDGED_VIDEO_GRANT_SECRET:-local_dev_video_grant_hmac_secret_32bytes_02}
       EDGED_WORKER_SHARED_TOKEN: ${EDGED_WORKER_SHARED_TOKEN:-local_dev_worker_grpc_shared_secret_token_03}
       WORKER_TOKEN: ${WORKER_TOKEN:-local_dev_worker_grpc_shared_secret_token_03}

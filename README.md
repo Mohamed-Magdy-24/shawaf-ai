@@ -2,7 +2,7 @@
 
 <img src="assets/shawaf_ai_logo.png" alt="Shawaf AI Logo" width="240" style="border-radius: 20px; box-shadow: 0 0 35px rgba(45, 212, 191, 0.4);" />
 
-# SHAWAF AI 
+# SHAWAF AI (شوف AI)
 ### Industrial Computer Vision & Autonomous Safety Intelligence Platform
 **Next-Generation Multi-Site Edge Surveillance for Heavy Industry (BNF & RNF)**
 
@@ -14,7 +14,7 @@
 
 <br/>
 
-Shawaf AI ( "Observe") is a mission-critical, enterprise-grade computer vision safety platform engineered for high-risk industrial facilities. Designed specifically for the **  (BNF)** and the ** (RNF)**, Shawaf AI transforms dumb CCTV feeds into real-time safety automation grids that detect zone intrusions, hazardous equipment proximity, and camera blindness in sub-10 milliseconds.
+**Shawaf AI (شوف AI — "The Observer")** is an enterprise-grade, mission-critical computer vision safety and autonomous surveillance platform engineered for heavy industrial facilities (**BNF** & **RNF**). Shawaf AI transforms standard CCTV feeds into an intelligent, real-time safety automation grid that detects perimeter intrusions, hazardous machinery proximity, coverage loss, and identifies personnel in sub-10 milliseconds.
 
 </div>
 

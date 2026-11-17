@@ -36,6 +36,8 @@ func main() {
 	go2rtcURL := getEnvFirst([]string{"GO2RTC_INTERNAL_URL", "GO2RTC_URL"}, "http://localhost:1984")
 	jwtSecret := getEnvFirst([]string{"EDGED_JWT_SECRET", "JWT_SECRET"}, "local_dev_jwt_hmac_secret_32bytes_min_0001")
 	workerToken := getEnvFirst([]string{"EDGED_WORKER_SHARED_TOKEN", "WORKER_TOKEN"}, "local_dev_worker_grpc_shared_secret_token_03")
+	encKey := getEnvFirst([]string{"EDGED_ENCRYPTION_KEY", "ENCRYPTION_KEY"}, "local_dev_secret_key_32bytes_min_0001")
+	evidenceDir := getEnvFirst([]string{"EDGED_EVIDENCE_DIR", "EVIDENCE_DIR"}, "/var/lib/surveillance/evidence")
 	timeoutSecStr := getEnvFirst([]string{"EDGED_COVERAGE_LOST_TIMEOUT_SEC", "COVERAGE_LOST_TIMEOUT_SECONDS"}, "15.0")
 
 	timeoutSec, err := strconv.ParseFloat(timeoutSecStr, 64)
@@ -96,6 +98,8 @@ func main() {
 
 	// 9. HTTP REST & WebSocket Server (with Hexagonal Integration Ports)
 	apiServer := httpapi.NewServer(db, pgRepo, ingestionSvc, go2rtcProxy, wsHub, jwtSecret)
+	apiServer.SetEncryptionKey(encKey)
+	apiServer.SetEvidenceDir(evidenceDir)
 	apiServer.SetPorts(pgRepo, streamGateway, identityAdapter, identityAdapter)
 	mux := http.NewServeMux()
 	apiServer.RegisterRoutes(mux)
