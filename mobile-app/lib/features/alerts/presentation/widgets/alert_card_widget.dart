@@ -34,15 +34,18 @@ class AlertCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final timeStr = DateFormat('HH:mm:ss • dd MMM').format(alert.occurredAt.toLocal());
+    final timeStr =
+        DateFormat('HH:mm:ss • dd MMM').format(alert.occurredAt.toLocal());
     final stateColor = _getStateColor(alert.state);
     final isNew = alert.state == 'NEW';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
       child: AppCard(
         onTap: onTap,
-        borderColor: isNew ? AppColors.sev1Red.withValues(alpha: 0.6) : AppColors.border,
+        borderColor:
+            isNew ? AppColors.sev1Red.withValues(alpha: 0.6) : AppColors.border,
         borderWidth: isNew ? 1.5 : 1.0,
         padding: AppSpacing.p12,
         child: Column(
@@ -88,26 +91,31 @@ class AlertCardWidget extends StatelessWidget {
             AppSpacing.vGap4,
             Row(
               children: [
-                const Icon(Icons.videocam_outlined, size: 14, color: AppColors.textSecondary),
+                const Icon(Icons.videocam_outlined,
+                    size: 14, color: AppColors.textSecondary),
                 AppSpacing.hGap4,
                 Text(alert.cameraId, style: AppTypography.bodySmall),
                 AppSpacing.hGap16,
                 if (alert.zoneId.isNotEmpty) ...[
-                  const Icon(Icons.crop_square_outlined, size: 14, color: AppColors.textSecondary),
+                  const Icon(Icons.crop_square_outlined,
+                      size: 14, color: AppColors.textSecondary),
                   AppSpacing.hGap4,
                   Text(alert.zoneId, style: AppTypography.bodySmall),
                 ],
               ],
             ),
-            if (alert.employeeName != null && alert.employeeName!.isNotEmpty) ...[
+            if (alert.employeeName != null &&
+                alert.employeeName!.isNotEmpty) ...[
               AppSpacing.vGap4,
               Row(
                 children: [
-                  const Icon(Icons.person_pin_circle_outlined, size: 14, color: AppColors.primary),
+                  const Icon(Icons.person_pin_circle_outlined,
+                      size: 14, color: AppColors.primary),
                   AppSpacing.hGap4,
                   Text(
                     'Identified: ${alert.employeeName}',
-                    style: AppTypography.bodySmall.copyWith(color: AppColors.primary),
+                    style: AppTypography.bodySmall
+                        .copyWith(color: AppColors.primary),
                   ),
                 ],
               ),

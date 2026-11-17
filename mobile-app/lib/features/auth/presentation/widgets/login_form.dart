@@ -75,6 +75,26 @@ class LoginForm extends StatelessWidget {
           isLoading: isLoading,
           onPressed: onSubmit,
         ),
+        AppSpacing.vGap12,
+        OutlinedButton.icon(
+          icon: const Icon(Icons.flash_on, size: 16, color: AppColors.cobalt),
+          label: Text(
+            'QUICK SIGN IN (admin_corp)',
+            style: AppTypography.tabularMonoSmall.copyWith(color: AppColors.cobalt, fontWeight: FontWeight.bold),
+          ),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: AppColors.borderline),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedSm),
+          ),
+          onPressed: isLoading
+              ? null
+              : () {
+                  usernameController.text = 'admin_corp';
+                  passwordController.text = 'AdminPassword123!';
+                  onSubmit();
+                },
+        ),
       ],
     );
   }

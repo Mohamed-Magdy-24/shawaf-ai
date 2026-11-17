@@ -79,9 +79,28 @@ class AppTypography {
 
   static const TextStyle monospace = TextStyle(
     fontSize: 12,
-    fontFamily: 'monospace',
+    fontFamily: 'JetBrains Mono',
+    fontFeatures: [FontFeature.tabularFigures()],
     fontWeight: FontWeight.w500,
     letterSpacing: 0.2,
     color: AppColors.primary,
+  );
+
+  static const TextStyle tabularMono = TextStyle(
+    fontSize: 13,
+    fontFamily: 'JetBrains Mono',
+    fontFeatures: [FontFeature.tabularFigures()],
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.2,
+    color: AppColors.ink,
+  );
+
+  static const TextStyle tabularMonoSmall = TextStyle(
+    fontSize: 11,
+    fontFamily: 'JetBrains Mono',
+    fontFeatures: [FontFeature.tabularFigures()],
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.1,
+    color: AppColors.muted,
   );
 }

@@ -46,10 +46,6 @@ class HomeScreen extends StatelessWidget {
                 ),
                 AppSpacing.hGap8,
                 const Text('SHAWAF AI', style: AppTypography.titleLarge),
-                AppSpacing.hGap4,
-                Text('شوف',
-                    style: AppTypography.titleLarge
-                        .copyWith(color: AppColors.primary)),
               ],
             ),
             bottom: PreferredSize(

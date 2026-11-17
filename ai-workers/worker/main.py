@@ -64,7 +64,7 @@ def match_face(crop_bytes: bytes, gallery: List[Dict[str, Any]], threshold: floa
 def main():
     config = load_config()
     print("=================================================================")
-    print("   SHAWAF AI (شوف AI) — Computer Vision Safety Worker")
+    print("   SHAWAF AI — Computer Vision Safety Worker")
     print(f"   Worker ID: {config.worker_id} | Site ID: {config.site_id}")
     print("=================================================================")
 

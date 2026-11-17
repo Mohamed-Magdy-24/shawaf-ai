@@ -83,9 +83,40 @@ func (s *Server) RateLimiterMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// CORSMiddleware enables seamless browser access from Flutter web client
+func (s *Server) CORSMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, X-Requested-With, Origin")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Expose-Headers", "X-Response-Time-Ms")
+		} else {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, X-Requested-With, Origin")
+			w.Header().Set("Access-Control-Expose-Headers", "X-Response-Time-Ms")
+		}
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 // authMiddleware validates bearer JWT tokens
 func (s *Server) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 			http.Error(w, `{"error":"unauthorized: missing or invalid Authorization header"}`, http.StatusUnauthorized)
@@ -141,8 +172,8 @@ func (s *Server) TimingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// Handler wraps an http.Handler with production security headers, rate limiter, and timing middleware
+// Handler wraps an http.Handler with production security headers, rate limiter, timing, and CORS middleware
 func (s *Server) Handler(mux http.Handler) http.Handler {
-	return s.TimingMiddleware(s.SecurityHeadersMiddleware(s.RateLimiterMiddleware(mux)))
+	return s.TimingMiddleware(s.CORSMiddleware(s.SecurityHeadersMiddleware(s.RateLimiterMiddleware(mux))))
 }
 

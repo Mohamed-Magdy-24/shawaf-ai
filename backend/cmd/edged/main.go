@@ -25,7 +25,7 @@ import (
 
 func main() {
 	log.Println("=================================================================")
-	log.Println("   SHAWAF AI (شوف AI) — Industrial Surveillance Edge Daemon (edged)")
+	log.Println("   SHAWAF AI — Industrial Surveillance Edge Daemon (edged)")
 	log.Println("   Architecture: On-Premises Multi-Site Edge with RLS Isolation")
 	log.Println("=================================================================")
 

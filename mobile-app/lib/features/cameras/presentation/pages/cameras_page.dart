@@ -51,23 +51,39 @@ class CamerasPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<SiteCubit, SiteState>(
       builder: (context, siteState) {
+        if (siteState is SiteError) {
+          return ErrorStateView(
+            errorMessage: siteState.message,
+            onRetry: () => context.read<SiteCubit>().loadSites(),
+          );
+        }
+
         if (siteState is! SiteLoaded) {
-          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+          return const Center(child: CircularProgressIndicator(color: AppColors.cobalt));
         }
 
         final currentSite = siteState.selectedSite;
 
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: AppColors.canvas,
           floatingActionButton: FloatingActionButton(
-            backgroundColor: AppColors.primary,
-            foregroundColor: AppColors.primaryTextOn,
+            backgroundColor: AppColors.cobalt,
+            foregroundColor: AppColors.ink,
             onPressed: () => context.push('/cameras/add'),
             child: const Icon(Icons.add_a_photo_outlined),
           ),
           body: BlocBuilder<CameraStreamCubit, CameraStreamState>(
             builder: (context, cameraState) {
-              if (cameraState is CameraStreamLoading || cameraState is CameraStreamInitial) {
+              if (cameraState is CameraStreamInitial) {
+                context.read<CameraStreamCubit>().loadCameras(currentSite.id);
+                return ListView.builder(
+                  padding: AppSpacing.p16,
+                  itemCount: 4,
+                  itemBuilder: (_, __) => const ShimmerSkeletonCard(),
+                );
+              }
+
+              if (cameraState is CameraStreamLoading) {
                 return ListView.builder(
                   padding: AppSpacing.p16,
                   itemCount: 4,

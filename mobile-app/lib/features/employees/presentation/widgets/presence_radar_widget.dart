@@ -24,7 +24,8 @@ class PresenceRadarWidget extends StatelessWidget {
             children: [
               Icon(Icons.radar_outlined, size: 48, color: AppColors.textMuted),
               AppSpacing.vGap16,
-              Text('No Real-Time Presence Detected', style: AppTypography.titleMedium),
+              Text('No Real-Time Presence Detected',
+                  style: AppTypography.titleMedium),
               AppSpacing.vGap8,
               Text(
                 'AI worker has not matched facial embeddings in plant zones recently.',
@@ -57,7 +58,8 @@ class PresenceRadarWidget extends StatelessWidget {
                     border: Border.all(color: AppColors.primary, width: 1.5),
                   ),
                   child: const Center(
-                    child: Icon(Icons.person, color: AppColors.primary, size: 22),
+                    child:
+                        Icon(Icons.person, color: AppColors.primary, size: 22),
                   ),
                 ),
                 AppSpacing.hGap12,
@@ -67,7 +69,8 @@ class PresenceRadarWidget extends StatelessWidget {
                     children: [
                       Text(
                         item.fullName,
-                        style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold),
+                        style: AppTypography.titleSmall
+                            .copyWith(fontWeight: FontWeight.bold),
                       ),
                       AppSpacing.vGap4,
                       Text(
@@ -88,7 +91,8 @@ class PresenceRadarWidget extends StatelessWidget {
                       ),
                       child: Text(
                         'ACTIVE',
-                        style: AppTypography.labelSmall.copyWith(color: AppColors.successGreen),
+                        style: AppTypography.labelSmall
+                            .copyWith(color: AppColors.successGreen),
                       ),
                     ),
                     AppSpacing.vGap4,

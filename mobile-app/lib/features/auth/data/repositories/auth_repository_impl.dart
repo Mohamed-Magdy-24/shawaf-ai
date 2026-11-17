@@ -1,4 +1,6 @@
+import 'package:get_it/get_it.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../services/api_service.dart';
 import '../../domain/repositories/auth_repository.dart';
 
 class AuthRepositoryImpl implements IAuthRepository {
@@ -19,6 +21,9 @@ class AuthRepositoryImpl implements IAuthRepository {
       final token = response['token'] as String?;
       if (token != null) {
         _apiClient.setAuthToken(token);
+        if (GetIt.instance.isRegistered<ApiService>()) {
+          GetIt.instance<ApiService>().setAuthToken(token);
+        }
       }
       return response;
     }
@@ -28,5 +33,8 @@ class AuthRepositoryImpl implements IAuthRepository {
   @override
   void logout() {
     _apiClient.setAuthToken(null);
+    if (GetIt.instance.isRegistered<ApiService>()) {
+      GetIt.instance<ApiService>().setAuthToken(null);
+    }
   }
 }

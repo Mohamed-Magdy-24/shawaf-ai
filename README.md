@@ -2,7 +2,7 @@
 
 <img src="assets/shawaf_ai_logo.png" alt="Shawaf AI Logo" width="240" style="border-radius: 20px; box-shadow: 0 0 35px rgba(45, 212, 191, 0.4);" />
 
-# SHAWAF AI (شوف AI)
+# SHAWAF AI
 ### Industrial Computer Vision & Autonomous Safety Intelligence Platform
 **Next-Generation Multi-Site Edge Surveillance for Heavy Industry (BNF & RNF)**
 
@@ -14,7 +14,7 @@
 
 <br/>
 
-**Shawaf AI (شوف AI — "The Observer")** is an enterprise-grade, mission-critical computer vision safety and autonomous surveillance platform engineered for heavy industrial facilities (**BNF** & **RNF**). Shawaf AI transforms standard CCTV feeds into an intelligent, real-time safety automation grid that detects perimeter intrusions, hazardous machinery proximity, coverage loss, and identifies personnel in sub-10 milliseconds.
+**Shawaf AI ("The Observer")** is an enterprise-grade, mission-critical computer vision safety and autonomous surveillance platform engineered for heavy industrial facilities (**BNF** & **RNF**). Shawaf AI transforms standard CCTV feeds into an intelligent, real-time safety automation grid that detects perimeter intrusions, hazardous machinery proximity, coverage loss, and identifies personnel in sub-10 milliseconds.
 
 </div>
 
@@ -111,7 +111,7 @@ Empirical performance verified on Windows host via CPU Execution Provider using 
 
 ## 🛡️ Data Sovereignty & Egyptian Law 151/2020
 
-Shawaf AI is built from first principles to comply with the Egyptian Personal Data Protection Law (قانون حماية البيانات الشخصية رقم 151 لسنة 2020):
+Shawaf AI is built from first principles to comply with the Egyptian Personal Data Protection Law (Law No. 151 of 2020):
 
 1. **Strict On-Premises Boundary**: Video streams and employee visual data are strictly bound to local plant servers. No telemetry, clips, or unmasked biometric data leave the factory firewall.
 2. **Privacy-by-Design Masking**: Operator displays blur facial regions in non-incident streams. Only safety gear (helmets, high-vis vests) and spatial floor contact points are rendered for incident verification.
@@ -224,7 +224,7 @@ Verify services:
 Output:
 ```text
 =================================================================
-   SHAWAF AI (شوف AI) — Computer Vision Safety Worker
+   SHAWAF AI — Computer Vision Safety Worker
    Worker ID: worker-bnf-ai-01 | Site ID: 11111111-1111-1111-1111-111111111111
 =================================================================
 [Detector] Loaded cleanroom_yolox_nano_fp32.onnx on CPUExecutionProvider
@@ -267,6 +267,6 @@ CREATE POLICY events_tenant_isolation ON events
 
 <div align="center">
 
-**Shawaf AI (شوف AI)** • Built with Precision for Industrial Safety Excellence • 2026
+**Shawaf AI** • Built with Precision for Industrial Safety Excellence • 2026
 
 </div>

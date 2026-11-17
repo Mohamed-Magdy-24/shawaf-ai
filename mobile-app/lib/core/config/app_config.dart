@@ -13,5 +13,5 @@ class AppConfig {
     defaultValue: 'ws://127.0.0.1:8080/api/v1/ws',
   );
 
-  static const String appTitle = 'Shawaf AI (شوف AI)';
+  static const String appTitle = 'Shawaf AI';
 }

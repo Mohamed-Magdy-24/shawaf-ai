@@ -5,6 +5,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/empty_state_view.dart';
 import '../../../../core/widgets/error_state_view.dart';
 import '../../../../core/widgets/shimmer_skeleton.dart';
 import '../../../sites/presentation/cubit/site_cubit.dart';
@@ -68,8 +69,15 @@ class EmployeesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<SiteCubit, SiteState>(
       builder: (context, siteState) {
+        if (siteState is SiteError) {
+          return ErrorStateView(
+            errorMessage: siteState.message,
+            onRetry: () => context.read<SiteCubit>().loadSites(),
+          );
+        }
+
         if (siteState is! SiteLoaded) {
-          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+          return const Center(child: CircularProgressIndicator(color: AppColors.cobalt));
         }
 
         final currentSite = siteState.selectedSite;
@@ -77,13 +85,14 @@ class EmployeesPage extends StatelessWidget {
         return DefaultTabController(
           length: 2,
           child: Scaffold(
-            backgroundColor: AppColors.background,
+            backgroundColor: AppColors.canvas,
             appBar: AppBar(
-              title: Text('Personnel: ${currentSite.code}', style: AppTypography.titleLarge),
+              backgroundColor: AppColors.panel,
+              title: Text('Personnel & IDs: ${currentSite.code}', style: AppTypography.titleMedium),
               bottom: const TabBar(
-                indicatorColor: AppColors.primary,
-                labelColor: AppColors.primary,
-                unselectedLabelColor: AppColors.textSecondary,
+                indicatorColor: AppColors.cobalt,
+                labelColor: AppColors.cobalt,
+                unselectedLabelColor: AppColors.muted,
                 tabs: [
                   Tab(icon: Icon(Icons.radar), text: 'WHO & WHERE RADAR'),
                   Tab(icon: Icon(Icons.people_alt_outlined), text: 'DIRECTORY'),
@@ -91,14 +100,23 @@ class EmployeesPage extends StatelessWidget {
               ),
             ),
             floatingActionButton: FloatingActionButton(
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.primaryTextOn,
+              backgroundColor: AppColors.cobalt,
+              foregroundColor: AppColors.ink,
               onPressed: () => _showEnrollDialog(context, currentSite.id),
               child: const Icon(Icons.person_add_alt_1_outlined),
             ),
             body: BlocBuilder<EmployeeCubit, EmployeeState>(
               builder: (context, empState) {
-                if (empState is EmployeeLoading || empState is EmployeeInitial) {
+                if (empState is EmployeeInitial) {
+                  context.read<EmployeeCubit>().load(currentSite.id);
+                  return ListView.builder(
+                    padding: AppSpacing.p16,
+                    itemCount: 4,
+                    itemBuilder: (_, __) => const ShimmerSkeletonCard(),
+                  );
+                }
+
+                if (empState is EmployeeLoading) {
                   return ListView.builder(
                     padding: AppSpacing.p16,
                     itemCount: 4,
@@ -118,34 +136,42 @@ class EmployeesPage extends StatelessWidget {
                 return TabBarView(
                   children: [
                     PresenceRadarWidget(presenceList: loaded.presence),
-                    ListView.builder(
-                      padding: AppSpacing.p16,
-                      itemCount: loaded.employees.length,
-                      itemBuilder: (context, index) {
-                        final emp = loaded.employees[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                          child: AppCard(
-                            padding: AppSpacing.p12,
-                            child: Row(
-                              children: [
-                                const Icon(Icons.badge_outlined, color: AppColors.primary),
-                                AppSpacing.hGap12,
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                    loaded.employees.isEmpty
+                        ? EmptyStateView(
+                            icon: Icons.people_outline,
+                            title: 'No Enrolled Personnel',
+                            description: 'Zero mock mode active. Enroll staff for ${currentSite.code} using the + button.',
+                            actionLabel: 'REFRESH',
+                            onAction: () => context.read<EmployeeCubit>().load(currentSite.id),
+                          )
+                        : ListView.builder(
+                            padding: AppSpacing.p16,
+                            itemCount: loaded.employees.length,
+                            itemBuilder: (context, index) {
+                              final emp = loaded.employees[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                                child: AppCard(
+                                  padding: AppSpacing.p12,
+                                  child: Row(
                                     children: [
-                                      Text(emp.fullName, style: AppTypography.titleSmall),
-                                      Text('${emp.id} • ${emp.department}', style: AppTypography.bodySmall),
+                                      const Icon(Icons.badge_outlined, color: AppColors.cobalt),
+                                      AppSpacing.hGap12,
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(emp.fullName, style: AppTypography.titleSmall),
+                                            Text('${emp.id} • ${emp.department}', style: AppTypography.bodySmall),
+                                          ],
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
-                              ],
-                            ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
                   ],
                 );
               },

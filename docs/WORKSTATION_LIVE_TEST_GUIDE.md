@@ -1,4 +1,4 @@
-# Shawaf AI (شوف AI) — Workstation Live-Test & Identity Enablement Guide
+# Shawaf AI — Workstation Live-Test & Identity Enablement Guide
 
 **Authority**: `OWNER_AUTHORIZATION_LOCAL_DEV.md` (Updated 2026-11-17)  
 **Governance State**: Workstation Live-Testing Authorized for SPK-01 (ZKTeco), SPK-03 (NVR/Camera RTSP), SPK-04 (SQL Server), DEC-03..08, and Face Recognition / Employee Identification ("Who & Where").  

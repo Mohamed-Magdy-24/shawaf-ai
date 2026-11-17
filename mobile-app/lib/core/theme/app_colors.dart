@@ -1,48 +1,64 @@
 import 'package:flutter/material.dart';
 
-/// Centralized WCAG AA compliant color palette for Shawaf AI.
-/// Strict dark theme industrial palette.
+/// Centralized WCAG AA compliant matte-graphite industrial palette for Shawaf AI.
+/// Replicates exact design system from shawaf_ai_ui_prototype.html.
 class AppColors {
   const AppColors._();
 
-  // Background & Surfaces
-  static const Color background = Color(0xFF0B111E);
-  static const Color surface = Color(0xFF161F30);
-  static const Color surfaceLight = Color(0xFF1E293B);
-  static const Color surfaceCard = Color(0xFF121B2A);
-  static const Color border = Color(0xFF334155);
-  static const Color borderLight = Color(0xFF475569);
+  // Control Room Matte Graphite Surfaces
+  static const Color canvas = Color(0xFF0D0F13);
+  static const Color panel = Color(0xFF14171D);
+  static const Color elevated = Color(0xFF1B1F27);
+  static const Color borderline = Color(0xFF262B36);
 
-  // Brand Primary (Teal)
-  static const Color primary = Color(0xFF2DD4BF);
-  static const Color primaryDark = Color(0xFF0D9488);
-  static const Color primaryHover = Color(0xFF14B8A6);
-  static const Color primaryTextOn = Color(0xFF042F2E);
+  // Surface Aliases for backward compatibility
+  static const Color background = canvas;
+  static const Color surface = panel;
+  static const Color surfaceLight = elevated;
+  static const Color surfaceCard = elevated;
+  static const Color border = borderline;
+  static const Color borderLight = borderline;
 
-  // Industrial Safety Severities
-  static const Color sev1Red = Color(0xFFEF4444);
+  // Typography Tokens
+  static const Color ink = Color(0xFFF1F3F5);
+  static const Color muted = Color(0xFF8B93A1);
+  static const Color dim = Color(0xFF5A6270);
+
+  // Typography Aliases
+  static const Color textPrimary = ink;
+  static const Color textSecondary = muted;
+  static const Color textMuted = dim;
+  static const Color textDisabled = Color(0xFF3E4552);
+
+  // Operational Action Tokens
+  static const Color cobalt = Color(0xFF3B82F6);
+  static const Color emerald = Color(0xFF10B981);
+  static const Color amber = Color(0xFFD97706);
+  static const Color crimson = Color(0xFFDC2626);
+
+  // Brand & Severity Aliases
+  static const Color primary = cobalt;
+  static const Color primaryDark = Color(0xFF1D4ED8);
+  static const Color primaryHover = Color(0xFF2563EB);
+  static const Color primaryTextOn = Color(0xFFFFFFFF);
+
+  static const Color sev1Red = crimson;
   static const Color sev1RedDark = Color(0xFF991B1B);
-  static const Color sev1RedGlow = Color(0x33EF4444);
+  static const Color sev1RedGlow = Color(0x33DC2626);
 
-  static const Color sev2Amber = Color(0xFFF59E0B);
+  static const Color sev2Amber = amber;
   static const Color sev2AmberDark = Color(0xFF92400E);
-  static const Color sev2AmberGlow = Color(0x33F59E0B);
+  static const Color sev2AmberGlow = Color(0x33D97706);
   static const Color amberDark = Color(0xFF451A03);
 
-  static const Color sev3Blue = Color(0xFF3B82F6);
+  static const Color sev3Blue = cobalt;
   static const Color sev3BlueDark = Color(0xFF1E40AF);
   static const Color sev3BlueGlow = Color(0x333B82F6);
 
-  static const Color successGreen = Color(0xFF10B981);
+  static const Color successGreen = emerald;
   static const Color successDark = Color(0xFF065F46);
 
-  // Typography
-  static const Color textPrimary = Color(0xFFF8FAFC);
-  static const Color textSecondary = Color(0xFF94A3B8);
-  static const Color textMuted = Color(0xFF64748B);
-  static const Color textDisabled = Color(0xFF475569);
-
   // Overlays
-  static const Color overlayDark = Color(0xCC0B111E);
+  static const Color overlayDark = Color(0xCC0D0F13);
   static const Color transparent = Colors.transparent;
 }

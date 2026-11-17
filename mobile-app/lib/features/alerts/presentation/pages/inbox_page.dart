@@ -19,17 +19,33 @@ class InboxPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<SiteCubit, SiteState>(
       builder: (context, siteState) {
+        if (siteState is SiteError) {
+          return ErrorStateView(
+            errorMessage: siteState.message,
+            onRetry: () => context.read<SiteCubit>().loadSites(),
+          );
+        }
+
         if (siteState is! SiteLoaded) {
-          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+          return const Center(child: CircularProgressIndicator(color: AppColors.cobalt));
         }
 
         final currentSite = siteState.selectedSite;
 
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: AppColors.canvas,
           body: BlocBuilder<AlertInboxCubit, AlertInboxState>(
             builder: (context, alertState) {
-              if (alertState is AlertInboxLoading || alertState is AlertInboxInitial) {
+              if (alertState is AlertInboxInitial) {
+                context.read<AlertInboxCubit>().loadAlerts(currentSite.id);
+                return ListView.builder(
+                  padding: AppSpacing.p16,
+                  itemCount: 4,
+                  itemBuilder: (_, __) => const ShimmerSkeletonCard(),
+                );
+              }
+
+              if (alertState is AlertInboxLoading) {
                 return ListView.builder(
                   padding: AppSpacing.p16,
                   itemCount: 4,

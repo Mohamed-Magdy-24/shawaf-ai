@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import '../core/di/service_locator.dart';
+import '../core/network/api_client.dart';
 import '../features/auth/domain/repositories/auth_repository.dart';
 import '../features/sites/domain/repositories/site_repository.dart';
 import '../features/alerts/domain/repositories/alert_repository.dart';
@@ -69,10 +71,22 @@ class HttpSurveillanceRepository implements SurveillanceRepository {
   HttpSurveillanceRepository({required ApiService apiService}) : _apiService = apiService;
 
   @override
-  Future<Map<String, dynamic>> login(String username, String password) => _apiService.login(username, password);
+  Future<Map<String, dynamic>> login(String username, String password) async {
+    final res = await _apiService.login(username, password);
+    final token = res['token'] as String?;
+    if (token != null && sl.isRegistered<IApiClient>()) {
+      sl<IApiClient>().setAuthToken(token);
+    }
+    return res;
+  }
 
   @override
-  void logout() => _apiService.setAuthToken(null);
+  void logout() {
+    _apiService.setAuthToken(null);
+    if (sl.isRegistered<IApiClient>()) {
+      sl<IApiClient>().setAuthToken(null);
+    }
+  }
 
   @override
   String? get currentToken => _apiService.authToken;

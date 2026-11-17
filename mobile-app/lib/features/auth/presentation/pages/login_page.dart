@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_card.dart';
+import '../../../sites/presentation/cubit/site_cubit.dart';
 import '../cubit/auth_cubit.dart';
 import '../widgets/login_form.dart';
 
@@ -28,7 +29,8 @@ class LoginPage extends StatelessWidget {
             child: BlocConsumer<AuthCubit, AuthState>(
               listener: (context, state) {
                 if (state is AuthAuthenticated) {
-                  context.go('/inbox');
+                  context.read<SiteCubit>().loadSites();
+                  context.go('/overview');
                 }
               },
               builder: (context, state) {
@@ -54,7 +56,7 @@ class LoginPage extends StatelessWidget {
                       ),
                       AppSpacing.vGap16,
                       const Text(
-                        'SHAWAF AI (شوف AI)',
+                        'SHAWAF AI',
                         style: AppTypography.headlineMedium,
                       ),
                       AppSpacing.vGap4,
