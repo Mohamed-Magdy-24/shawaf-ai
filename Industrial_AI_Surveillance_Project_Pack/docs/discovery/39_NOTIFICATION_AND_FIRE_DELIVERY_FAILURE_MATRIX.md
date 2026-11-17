@@ -35,7 +35,7 @@ $$\text{Latency}_{\text{total}} = T_{\text{detect}} + T_{\text{ingest}} + T_{\te
 | 1. AI Flame/Smoke Detection| 100 – 250 ms (Historical Estimate)       | Candidate AI runtime (subject to ADR-011 & benchmarking).   |
 | 2. Event Normalization     | 10 – 30 ms                               | Payload construction and zone policy lookup.                |
 | 3. Database Outbox Commit  | 20 – 50 ms                               | Candidate PostgreSQL outbox table (subject to ADR-011).     |
-| 4. Broker Enqueue (Valkey) | 5 – 15 ms                                | Candidate Valkey high-priority fire queue.                  |
+| 4. Outbox Notify (LISTEN)  | 5 – 15 ms                                | PostgreSQL 16 LISTEN/NOTIFY fire channel (Valkey removed).  |
 +----------------------------+------------------------------------------+-------------------------------------------------------------+
 | SERVER DISPATCH LATENCY    | 135 – 345 ms (Historical Estimate)       | Candidate engineering target: <500 ms (not an approved SLO).|
 +----------------------------+------------------------------------------+-------------------------------------------------------------+

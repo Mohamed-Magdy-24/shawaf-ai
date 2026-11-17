@@ -33,7 +33,7 @@ Use one prompt only after the previous phase gate has been reviewed and approved
 > Execute this phase only after Gate 1 has an explicit written APPROVED status in the canonical owner/gate approval register.
 > Additionally, require `ADR-011 = APPROVED` before selecting, installing, or implementing the proposed runtime technology stack.
 > If ADR-011 remains PROPOSED, stop stack-specific implementation.
-> Do not assume Go/Python runtime allocation, PostgreSQL, Valkey, or other proposed runtime candidates have been approved merely because they appear in the SDD.
+> Do not assume Go/Python runtime allocation, PostgreSQL, PostgreSQL 16 transactional outbox (ADR-013), or other proposed runtime candidates have been approved merely because they appear in the SDD.
 > Do not authorize Sprint 1 by implication.
 > Before starting, verify: Gate ID, Gate status, Owner approval reference, Approved scope, Required completed predecessor deliverables.
 > If any required approval is absent, outdated, or ambiguous, STOP and report BLOCKED. Do not infer approval from a prior phase document or an AI-generated summary.
@@ -111,7 +111,7 @@ Use one prompt only after the previous phase gate has been reviewed and approved
 > **PREREQUISITE GATE VERIFICATION:**
 > Execute this phase only after Gate 4 has an explicit written APPROVED status in the canonical owner/gate approval register.
 > Additionally, require the following distinct prerequisites:
-> 1. `ADR-011 = APPROVED` before using PostgreSQL, Valkey, or another selected runtime component as an implementation dependency.
+> 1. `ADR-011 = APPROVED` before using PostgreSQL, PostgreSQL 16 transactional outbox (ADR-013), or another selected runtime component as an implementation dependency.
 > 2. `DEC-04 = OWNER SIGNED-OFF` before production deployment of the AI fire-alert auxiliary-status policy.
 > 3. `DEC-05 = SUBMITTED AND VERIFIED` before production fire routing is configured, because official BNF/RNF recipient rosters are still missing.
 > 4. `DEC-06 = LEGAL CLEARANCE & OWNER APPROVAL` before production alerting, notifications, or routing involving identifiable employee surveillance or biometric data.
@@ -124,7 +124,7 @@ Use one prompt only after the previous phase gate has been reviewed and approved
 > Before starting, verify: Gate ID, Gate status, Owner approval reference, Approved scope, Required completed predecessor deliverables.
 > If any required approval is absent, outdated, or ambiguous, STOP and report BLOCKED. Do not infer approval from a prior phase document or an AI-generated summary.
 >
-> Implement the approved event and alert workflow against the confirmed routing matrix per [30_ALERT_DELIVERY_AND_DEGRADED_MODE_SPEC.md](../docs/discovery/30_ALERT_DELIVERY_AND_DEGRADED_MODE_SPEC.md). Use durable PostgreSQL outbox, Valkey priority queue processing, local WebSocket dispatch, FCM auxiliary push, idempotency, retry, deduplication, audit, and dead-letter visibility. Test ordinary alert recipients for BNF and RNF, explicit cross-site exclusions, and the urgent fire path without waiting for manual confirmation. Measure server event creation and dispatch latency using a documented test protocol. Any existing <500ms target remains a candidate engineering target only, not an approved acceptance threshold. Report measured percentiles and failure cases. Do not claim the target is met without actual test evidence. Do not invent acknowledgement/rejection/incident states; implement only the separately approved workflow. Stop at Gate 5.
+> Implement the approved event and alert workflow against the confirmed routing matrix per [30_ALERT_DELIVERY_AND_DEGRADED_MODE_SPEC.md](../docs/discovery/30_ALERT_DELIVERY_AND_DEGRADED_MODE_SPEC.md). Use durable PostgreSQL outbox, PostgreSQL 16 transactional outbox (ADR-013) priority queue processing, local WebSocket dispatch, FCM auxiliary push, idempotency, retry, deduplication, audit, and dead-letter visibility. Test ordinary alert recipients for BNF and RNF, explicit cross-site exclusions, and the urgent fire path without waiting for manual confirmation. Measure server event creation and dispatch latency using a documented test protocol. Any existing <500ms target remains a candidate engineering target only, not an approved acceptance threshold. Report measured percentiles and failure cases. Do not claim the target is met without actual test evidence. Do not invent acknowledgement/rejection/incident states; implement only the separately approved workflow. Stop at Gate 5.
 
 ---
 

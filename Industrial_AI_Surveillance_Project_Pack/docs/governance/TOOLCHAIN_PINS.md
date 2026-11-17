@@ -20,3 +20,16 @@ Governing Rule: All versions verified directly by fetching official release page
 ## 2. Host Version Verification Rule (Anti-Failure Guardrail for WP-2 & WP-5)
 - Host strings reported in historical audit tables (such as `Flutter 3.44.7`, `Python 3.14.4`, `Node.js 24.15.0`, `Docker Desktop 29.8.0`) are tagged `OWNER_REPORTED_ENVIRONMENT_FACT (to be re-measured in WP-2)`.
 - Before writing `go.mod`, `pubspec.yaml`, or `Dockerfile`, the agent MUST execute `go version`, `flutter --version`, `python3 --version`, and `docker --version` in the shell and set the SDK constraint in `pubspec.yaml` (`environment: sdk: ...`) to match the **actual** installed Dart/Flutter SDK version on the machine. Never hardcode an unverified SDK constraint that causes `flutter pub get` to fail.
+
+## 3. Immutable Container Image SHA-256 Digest Pins
+All container images in `deploy/docker-compose.local.yml`, `backend/Dockerfile`, `ai-workers/Dockerfile`, and `deploy/camsim/Dockerfile` are strictly pinned by exact version tag and cryptographic SHA-256 digest:
+
+| Image Name | Tag & Cryptographic SHA-256 Digest | Purpose |
+|---|---|---|
+| `postgres` | `postgres:16-alpine@sha256:81e77a4833487b8132fe4b00bedd39dc3f74b8641e387f19312a48f7de218c2e` | Multi-tenant PostgreSQL 16 RLS datastore |
+| `bluenviron/mediamtx` | `bluenviron/mediamtx:latest@sha256:c730bccdbc8739f8f0c13cefe9bea8b61926f599b88fa4d0d229baa91846c7bc` | RTSP server & synthetic camera bridge |
+| `alexxit/go2rtc` | `alexxit/go2rtc:latest@sha256:e098de5c2f8040dc3d4784ed2d5cfdac3b0979f9349afe587ef6a670a14b9f4d` | WebRTC live streaming sidecar (internal-only) |
+| `golang` (Builder) | `golang:1.24-alpine@sha256:8bee1901f1e530bfb4a7850aa7a479d17ae3a18beb6e09064ed54cfd245b7191` | Go modular monolith multi-stage builder |
+| `alpine` (Runtime) | `alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc` | Hardened minimal container runtime |
+| `python` (Worker) | `python:3.11-slim@sha256:07d4824036af339fa1b6ef769cc99d9c10a141769538b52b3b597c84f7a7b535` | Python 3.11 edge AI worker & camsim |
+

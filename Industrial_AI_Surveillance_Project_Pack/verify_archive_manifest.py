@@ -88,12 +88,22 @@ def main():
 
     # 2. Inventory physical files on disk
     disk_files = set()
+    excluded_prefixes = ("Industrial_AI_Surveillance_Project/", ".git/")
+    excluded_files = {
+        "MANIFEST.sha256",
+        "ANTIGRAVITY_FIX_PROMPT.md",
+        "ANTIGRAVITY_FLASH_3_8_MASTER_REMEDIATION_PROMPT.md",
+        "ANTIGRAVITY_NEXT_PHASE_CODE_IMPLEMENTATION_PROMPT.md",
+        "CTO_DIRECTIVES_EN.md",
+    }
     for root, _, files in os.walk(pack_dir):
         for f in files:
             full_path = os.path.join(root, f)
             rel_path = os.path.relpath(full_path, pack_dir).replace(os.sep, "/")
-            if rel_path == "MANIFEST.sha256":
-                continue  # Self-excluded per standard cryptographic manifest convention
+            if rel_path in excluded_files:
+                continue  # Self-excluded per standard cryptographic manifest convention or non-pack prompt
+            if any(rel_path.startswith(p) for p in excluded_prefixes):
+                continue  # Application code directory / git objects excluded from spec pack
             disk_files.add(rel_path)
 
     # 3. Check missing and extra files

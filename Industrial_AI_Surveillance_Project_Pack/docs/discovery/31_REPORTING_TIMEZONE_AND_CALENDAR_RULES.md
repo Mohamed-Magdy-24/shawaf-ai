@@ -83,5 +83,5 @@ A critical engineering challenge in industrial surveillance is handling offline 
 ## 6. Timezone Rules Sign-Off
 
 - **Status:** CANONICAL SPECIFICATION.
-- **Action Item:** Integrate `Africa/Cairo` date truncation into PostgreSQL TimescaleDB rollup queries in Phase 2.
+- **Action Item:** Integrate `Africa/Cairo` date truncation into PostgreSQL 16 native partitioned rollup queries (TimescaleDB removed per ADR-013) in Phase 2.
 

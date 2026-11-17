@@ -19,7 +19,7 @@ In strict adherence to Finding P0-07 of the CTO Review:
 > 3. Active 4G/5G/WiFi data connectivity on the mobile handset.
 > 4. Google Play Services running unthrottled by Android OS battery optimization (Doze mode).
 > 
-> If the factory internet link is cut or mobile signal drops inside a reinforced steel manufacturing building, **external cloud push notifications fail completely**.
+> If the factory internet link is cut or mobile signal drops inside a reinforced industrial manufacturing building, **external cloud push notifications fail completely**.
 
 This document defines the **Multi-Tiered Hybrid Alert Delivery Model** and the **Degraded Mode Operating Topology** governing BNF and RNF.
 
@@ -123,7 +123,7 @@ To prevent creating a single point of failure:
 | **Scenario 1: Complete Inter-Factory WAN Outage** (Link between BNF and RNF severed) | **ZERO IMPACT.** BNF and RNF continue 100% of camera ingestion, AI inference, local WebSocket alerting, and video recording. | Managers cannot switch between factories. BNF managers see BNF only; RNF managers see RNF only. | When WAN restores, local event buffers re-sync to the central audit archive automatically. |
 | **Scenario 2: Total Internet Loss (WAN / ISP Down)** | **ZERO IMPACT.** All on-site camera monitoring, local WebSocket alerts, and NVR playback continue over local LAN. | Remote managers off-site cannot receive FCM pushes or view streams remotely. | FCM queue resumes when ISP link restores; local audit logs record offline duration. |
 | **Scenario 3: Single Camera / NVR Hardware Failure** | Affected camera flagged as `OFFLINE`. Other 199 cameras continue processing unaffected. | None. Offline status reflected in health dashboard. | Health watchdog polls RTSP port every 30s; automatically resumes streaming upon camera reboot. |
-| **Scenario 4: Edge AI Worker Process Crash** | Systemd watchdog instantly restarts worker process (<5s). Event stream buffered in Valkey. | Temporary 5-second gap in AI observations; zero impact on NVR video recording. | Worker resumes consumption from Valkey Streams checkpoint without losing unprocessed frames. |
+| **Scenario 4: Edge AI Worker Process Crash** | Systemd watchdog instantly restarts worker process (<5s). Worker reconnects to RTSP sub-stream and dispatches events to PostgreSQL 16 Outbox (Valkey removed per ADR-013). | Temporary 5-second gap in AI observations; zero impact on NVR video recording. | Worker resumes RTSP sub-stream decoding with bounded latest-frame queue (ADR-012) and idempotent PostgreSQL 16 Outbox persistence (ADR-013). |
 
 ---
 

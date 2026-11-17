@@ -202,7 +202,7 @@ Reference: OQ-021 in `planning/08_ADR_AND_OPEN_QUESTIONS.md`.
 
 | ID | Requirement | Priority |
 |---|---|---|
-| FR-WEB-001 | Subject to DEC-02 approval, the platform shall provide a desktop browser Web Administration Console (React / TypeScript / Vite) for comprehensive system management, configuration, and incident investigation. | PROPOSED |
+| FR-WEB-001 | Subject to DEC-02 approval, the platform shall provide a desktop browser Web Administration Console (Flutter Web per ADR-014; React/Vite removed) for comprehensive system management, configuration, and incident investigation. | PROPOSED |
 | FR-WEB-002 | Subject to DEC-02 approval, the Web Admin shall support camera discovery, inventory, stream configuration, stream health monitoring, and live preview. | PROPOSED |
 | FR-WEB-003 | Subject to DEC-02 approval, the Web Admin shall provide an interactive zone editor allowing administrators to draw and edit polygon boundaries for restricted zones, PPE check areas, and fall-risk zones. | PROPOSED |
 | FR-WEB-004 | Subject to DEC-02 approval, the Web Admin shall provide an incident investigation workspace featuring multi-camera synchronized playback, evidence clipping, and person tracking timeline visualization. | PROPOSED |
