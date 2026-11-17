@@ -17,6 +17,14 @@ class AppSpacing {
   // Touch Target minimums (WCAG 2.1 AAA)
   static const double minTouchTarget = 48.0;
 
+  // Command Center Layout Dimensions
+  static const double topBarHeight = 48.0;
+  static const double sidebarWidthExpanded = 224.0;
+  static const double sidebarWidthCollapsed = 64.0;
+  static const double contentPaddingDesktop = 20.0;
+  static const double contentPaddingMobile = 12.0;
+  static const double tableRowHeight = 40.0;
+
   // Radius values
   static const double radiusXs = 4.0;
   static const double radiusSm = 6.0;
@@ -38,6 +46,7 @@ class AppSpacing {
   static const EdgeInsets p8 = EdgeInsets.all(sm);
   static const EdgeInsets p12 = EdgeInsets.all(md);
   static const EdgeInsets p16 = EdgeInsets.all(lg);
+  static const EdgeInsets p20 = EdgeInsets.all(contentPaddingDesktop);
   static const EdgeInsets p24 = EdgeInsets.all(xl);
   static const EdgeInsets p32 = EdgeInsets.all(xxl);
 
@@ -57,10 +66,12 @@ class AppSpacing {
   static const Widget vGap8 = SizedBox(height: sm);
   static const Widget vGap12 = SizedBox(height: md);
   static const Widget vGap16 = SizedBox(height: lg);
+  static const Widget vGap20 = SizedBox(height: contentPaddingDesktop);
   static const Widget vGap24 = SizedBox(height: xl);
   static const Widget vGap32 = SizedBox(height: xxl);
 
   static const Widget hGap4 = SizedBox(width: xs);
+  static const Widget hGap6 = SizedBox(width: radiusSm);
   static const Widget hGap8 = SizedBox(width: sm);
   static const Widget hGap12 = SizedBox(width: md);
   static const Widget hGap16 = SizedBox(width: lg);

@@ -8,10 +8,8 @@ class ShawafApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'SHAWAF AI — Industrial Control Room',
+      title: 'Shawaf AI',
       debugShowCheckedModeBanner: false,
-      locale: const Locale('en', 'US'),
-      supportedLocales: const [Locale('en', 'US')],
       theme: AppTheme.darkTheme,
       routerConfig: appRouter,
     );

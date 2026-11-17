@@ -96,3 +96,9 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS employee_name VARCHAR(150);
 -- 6. Permissions
 GRANT SELECT, INSERT, UPDATE, DELETE ON nvrs, employees, employee_embeddings, employee_presence TO app_runtime;
 GRANT ALL ON nvrs, employees, employee_embeddings, employee_presence TO app_migrator;
+
+-- 7. Mandatory Hot-Path Performance Indexes (p95 <= 10ms LAN target)
+CREATE INDEX IF NOT EXISTS idx_events_site_occurred ON events (site_id, occurred_at DESC);
+CREATE INDEX IF NOT EXISTS idx_events_site_state_sev ON events (site_id, state, severity, occurred_at DESC);
+CREATE INDEX IF NOT EXISTS idx_employees_site_active ON employees (site_id, is_active, employee_id);
+

@@ -9,6 +9,8 @@ import 'features/cameras/presentation/cubit/camera_stream_cubit.dart';
 import 'features/cameras/presentation/cubit/camera_management_cubit.dart';
 import 'features/employees/presentation/cubit/employee_cubit.dart';
 import 'cubits/connectivity_cubit.dart';
+import 'repositories/surveillance_repository.dart';
+import 'services/api_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,35 +18,86 @@ void main() {
   runApp(const ShawafAiApp());
 }
 
-class ShawafAiApp extends StatelessWidget {
+class ShawafAiApp extends StatefulWidget {
+  final ApiService? apiService;
+  final SurveillanceRepository? repository;
   final Widget? homeOverride;
 
   const ShawafAiApp({
     super.key,
+    this.apiService,
+    this.repository,
     this.homeOverride,
   });
 
   @override
+  State<ShawafAiApp> createState() => _ShawafAiAppState();
+}
+
+class _ShawafAiAppState extends State<ShawafAiApp> with WidgetsBindingObserver {
+  late final SurveillanceRepository _repo;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    setupServiceLocator();
+    _repo = widget.repository ?? sl<SurveillanceRepository>();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        // Cleanly pause WebSocket & active streaming on backgrounding
+        _repo.disconnectWebSocket();
+        break;
+      case AppLifecycleState.resumed:
+        // Reconnect on resumption
+        break;
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _repo.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
+    return MultiRepositoryProvider(
       providers: [
-        BlocProvider<AuthCubit>(create: (_) => sl<AuthCubit>()),
-        BlocProvider<SiteCubit>(create: (_) => sl<SiteCubit>()..loadSites()),
-        BlocProvider<AlertInboxCubit>(create: (_) => sl<AlertInboxCubit>()),
-        BlocProvider<CameraStreamCubit>(create: (_) => sl<CameraStreamCubit>()),
-        BlocProvider<CameraManagementCubit>(create: (_) => sl<CameraManagementCubit>()),
-        BlocProvider<EmployeeCubit>(create: (_) => sl<EmployeeCubit>()),
-        BlocProvider<ConnectivityCubit>(create: (_) => sl<ConnectivityCubit>()),
+        RepositoryProvider<SurveillanceRepository>.value(value: _repo),
       ],
-      child: homeOverride != null
-          ? MaterialApp(
-              title: 'SHAWAF AI — Industrial Control Room',
-              debugShowCheckedModeBanner: false,
-              locale: const Locale('en', 'US'),
-              supportedLocales: const [Locale('en', 'US')],
-              home: homeOverride,
-            )
-          : const ShawafApp(),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider<AuthCubit>(create: (_) => AuthCubit(repository: _repo)),
+          BlocProvider<SiteCubit>(
+              create: (_) => SiteCubit(repository: _repo)..loadSites()),
+          BlocProvider<AlertInboxCubit>(
+              create: (_) => AlertInboxCubit(repository: _repo)),
+          BlocProvider<CameraStreamCubit>(
+              create: (_) => CameraStreamCubit(repository: _repo)),
+          BlocProvider<CameraManagementCubit>(
+              create: (_) => CameraManagementCubit(repository: _repo)),
+          BlocProvider<EmployeeCubit>(
+              create: (_) => EmployeeCubit(repository: _repo)),
+          BlocProvider<ConnectivityCubit>(create: (_) => ConnectivityCubit()),
+        ],
+        child: widget.homeOverride != null
+            ? MaterialApp(
+                title: 'Shawaf AI',
+                debugShowCheckedModeBanner: false,
+                home: widget.homeOverride,
+              )
+            : const ShawafApp(),
+      ),
     );
   }
 }

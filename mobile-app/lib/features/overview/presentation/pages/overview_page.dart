@@ -279,7 +279,7 @@ class OverviewPage extends StatelessWidget {
                 return CameraFeedCardWidget(
                   camera: cam,
                   activeZone: 'Zone ${index + 1}',
-                  identifiedSubject: index == 0 ? 'EMP-1042 (Ahmed H.)' : (index == 1 ? 'EMP-1018 (Tarek M.)' : 'UNKNOWN'),
+                  identifiedSubject: null,
                 );
               },
             );

@@ -73,7 +73,7 @@ class NavigationShell extends StatelessWidget {
 
             return LayoutBuilder(
               builder: (context, constraints) {
-                final isWide = constraints.maxWidth >= 840;
+                final isWide = constraints.maxWidth >= 720;
 
                 return Scaffold(
                   backgroundColor: AppColors.canvas,
@@ -138,8 +138,16 @@ class NavigationShell extends StatelessWidget {
   }
 
   Widget _buildSidebar(BuildContext context, int selectedIndex, String activeSiteCode, SiteState siteState) {
+    final alertState = context.watch<AlertInboxCubit>().state;
+    int alertCount = 0;
+    if (alertState is AlertInboxLoaded) {
+      alertCount = alertState.alerts.where((a) => a.state.toUpperCase() == 'NEW').length;
+    } else if (alertState is AlertInboxDegradedOffline) {
+      alertCount = alertState.cachedAlerts.where((a) => a.state.toUpperCase() == 'NEW').length;
+    }
+
     return Container(
-      width: 220,
+      width: 224,
       decoration: const BoxDecoration(
         color: AppColors.panel,
         border: Border(right: BorderSide(color: AppColors.borderline, width: 1.0)),
@@ -199,7 +207,7 @@ class NavigationShell extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
               children: [
                 _buildNavItem(context, 0, 'Live Overview', Icons.dashboard_outlined, selectedIndex == 0),
-                _buildNavItem(context, 1, 'Alert Inbox', Icons.notifications_active_outlined, selectedIndex == 1),
+                _buildNavItem(context, 1, 'Alert Inbox', Icons.notifications_active_outlined, selectedIndex == 1, badgeCount: alertCount),
                 _buildNavItem(context, 2, 'Cameras & NVRs', Icons.videocam_outlined, selectedIndex == 2),
                 _buildNavItem(context, 3, 'Employees & IDs', Icons.people_alt_outlined, selectedIndex == 3),
                 _buildNavItem(context, 4, 'Security & Controls', Icons.shield_outlined, selectedIndex == 4),
@@ -263,7 +271,7 @@ class NavigationShell extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem(BuildContext context, int index, String label, IconData icon, bool isSelected) {
+  Widget _buildNavItem(BuildContext context, int index, String label, IconData icon, bool isSelected, {int? badgeCount}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Material(
@@ -287,6 +295,23 @@ class NavigationShell extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (badgeCount != null && badgeCount > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.crimson.withValues(alpha: 0.2),
+                      borderRadius: AppSpacing.roundedXs,
+                      border: Border.all(color: AppColors.crimson.withValues(alpha: 0.4)),
+                    ),
+                    child: Text(
+                      '$badgeCount',
+                      style: AppTypography.tabularMonoSmall.copyWith(
+                        color: AppColors.crimson,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

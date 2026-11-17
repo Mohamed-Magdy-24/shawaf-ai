@@ -96,8 +96,18 @@ func (s *Server) handleSiteSubRoutes(w http.ResponseWriter, r *http.Request) {
 			return
 		case "employees":
 			if subSubResource == "import" {
+				action := ""
+				if len(parts) >= 7 {
+					action = parts[6]
+				}
 				withSiteAuth(func(w http.ResponseWriter, r *http.Request) {
-					s.handleSiteEmployeesImport(w, r, siteID)
+					s.handleSiteEmployeesImport(w, r, siteID, action)
+				})(w, r)
+				return
+			}
+			if subSubResource == "import-template" {
+				withSiteAuth(func(w http.ResponseWriter, r *http.Request) {
+					s.handleEmployeesImportTemplate(w, r, siteID)
 				})(w, r)
 				return
 			}

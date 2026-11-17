@@ -153,7 +153,14 @@ func (s *Server) handleSiteEmployees(w http.ResponseWriter, r *http.Request, sit
 	http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
 }
 
-func (s *Server) handleSiteEmployeesImport(w http.ResponseWriter, r *http.Request, siteID string) {
+func (s *Server) handleEmployeesImportTemplate(w http.ResponseWriter, r *http.Request, siteID string) {
+	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Disposition", `attachment; filename="shawaf_employee_import_template.csv"`)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte("employee_id,full_name,department,role\nEMP-101,Ahmed Ali,OPERATIONS,OPERATOR\nEMP-102,Tarek Mostafa,SECURITY,OFFICER\n"))
+}
+
+func (s *Server) handleSiteEmployeesImport(w http.ResponseWriter, r *http.Request, siteID string, action string) {
 	if s.employeePort == nil {
 		http.Error(w, `{"error":"employee registry port not configured"}`, http.StatusServiceUnavailable)
 		return
@@ -169,77 +176,189 @@ func (s *Server) handleSiteEmployeesImport(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var importedCount int
+	type ParsedRow struct {
+		RowNumber  int    `json:"row_number"`
+		EmployeeID string `json:"employee_id"`
+		FullName   string `json:"full_name"`
+		Department string `json:"department"`
+		Role       string `json:"role"`
+	}
 
+	type InvalidRow struct {
+		RowNumber int    `json:"row_number"`
+		Field     string `json:"field"`
+		Reason    string `json:"reason"`
+	}
+
+	var rows []ParsedRow
+	var headers []string
+
+	// Attempt JSON array decode first
 	var jsonRecords []struct {
 		EmployeeID string `json:"employee_id"`
 		FullName   string `json:"full_name"`
 		Department string `json:"department"`
+		Role       string `json:"role"`
 	}
+
 	if err := json.Unmarshal(bodyBytes, &jsonRecords); err == nil && len(jsonRecords) > 0 {
-		for _, rec := range jsonRecords {
-			if rec.EmployeeID == "" || rec.FullName == "" {
-				continue
+		headers = []string{"employee_id", "full_name", "department", "role"}
+		for i, rec := range jsonRecords {
+			dept := rec.Department
+			if dept == "" {
+				dept = "OPERATIONS"
 			}
-			seed := []byte(fmt.Sprintf("%s:%s", siteID, rec.EmployeeID))
-			embBytes := crypto.GenerateNormalizedEmbedding512(seed)
-			h := sha256.Sum256(seed)
-			emp := &ports.Employee{
-				SiteID:     siteID,
-				EmployeeID: rec.EmployeeID,
-				FullName:   rec.FullName,
-				Department: rec.Department,
-				SourceType: "CSV_IMPORT",
-				IsActive:   true,
+			role := rec.Role
+			if role == "" {
+				role = "WORKER"
 			}
-			if err := s.employeePort.RegisterEmployee(r.Context(), emp, embBytes, hex.EncodeToString(h[:])); err == nil {
-				importedCount++
-			}
+			rows = append(rows, ParsedRow{
+				RowNumber:  i + 1,
+				EmployeeID: strings.TrimSpace(rec.EmployeeID),
+				FullName:   strings.TrimSpace(rec.FullName),
+				Department: dept,
+				Role:       role,
+			})
 		}
 	} else {
+		// Attempt CSV parsing
 		reader := csv.NewReader(strings.NewReader(string(bodyBytes)))
 		records, err := reader.ReadAll()
 		if err != nil {
-			http.Error(w, fmt.Sprintf(`{"error":"failed to parse csv: %v"}`, err), http.StatusBadRequest)
+			http.Error(w, fmt.Sprintf(`{"error":"failed to parse payload: %v"}`, err), http.StatusBadRequest)
 			return
 		}
-		for i, row := range records {
-			if i == 0 && (strings.Contains(strings.ToLower(row[0]), "id") || strings.Contains(strings.ToLower(row[0]), "employee")) {
-				continue
+		if len(records) > 0 {
+			headers = records[0]
+			for i, record := range records[1:] {
+				if len(record) == 0 {
+					continue
+				}
+				empID := strings.TrimSpace(record[0])
+				fullName := ""
+				if len(record) > 1 {
+					fullName = strings.TrimSpace(record[1])
+				}
+				dept := "OPERATIONS"
+				if len(record) > 2 && strings.TrimSpace(record[2]) != "" {
+					dept = strings.TrimSpace(record[2])
+				}
+				role := "WORKER"
+				if len(record) > 3 && strings.TrimSpace(record[3]) != "" {
+					role = strings.TrimSpace(record[3])
+				}
+				rows = append(rows, ParsedRow{
+					RowNumber:  i + 2,
+					EmployeeID: empID,
+					FullName:   fullName,
+					Department: dept,
+					Role:       role,
+				})
 			}
-			if len(row) < 2 {
-				continue
-			}
-			empID := strings.TrimSpace(row[0])
-			fullName := strings.TrimSpace(row[1])
-			dept := "OPERATIONS"
-			if len(row) >= 3 && strings.TrimSpace(row[2]) != "" {
-				dept = strings.TrimSpace(row[2])
-			}
-			if empID == "" || fullName == "" {
-				continue
-			}
+		}
+	}
 
-			seed := []byte(fmt.Sprintf("%s:%s", siteID, empID))
-			embBytes := crypto.GenerateNormalizedEmbedding512(seed)
-			h := sha256.Sum256(seed)
-			emp := &ports.Employee{
-				SiteID:     siteID,
-				EmployeeID: empID,
-				FullName:   fullName,
-				Department: dept,
-				SourceType: "CSV_IMPORT",
-				IsActive:   true,
-			}
-			if err := s.employeePort.RegisterEmployee(r.Context(), emp, embBytes, hex.EncodeToString(h[:])); err == nil {
-				importedCount++
-			}
+	// Fetch existing DB employees for conflict checking
+	existingMap := make(map[string]bool)
+	if existingEmps, err := s.employeePort.GetEmployees(r.Context(), siteID); err == nil {
+		for _, e := range existingEmps {
+			existingMap[e.EmployeeID] = true
+		}
+	}
+
+	seenIDs := make(map[string]bool)
+	var invalidRows []InvalidRow
+	var validRows []ParsedRow
+	duplicateInFile := 0
+	conflictInDB := 0
+
+	for _, row := range rows {
+		if row.EmployeeID == "" {
+			invalidRows = append(invalidRows, InvalidRow{
+				RowNumber: row.RowNumber,
+				Field:     "employee_id",
+				Reason:    "MISSING_REQUIRED",
+			})
+			continue
+		}
+		if row.FullName == "" {
+			invalidRows = append(invalidRows, InvalidRow{
+				RowNumber: row.RowNumber,
+				Field:     "full_name",
+				Reason:    "MISSING_REQUIRED",
+			})
+			continue
+		}
+		if seenIDs[row.EmployeeID] {
+			duplicateInFile++
+			invalidRows = append(invalidRows, InvalidRow{
+				RowNumber: row.RowNumber,
+				Field:     "employee_id",
+				Reason:    "DUPLICATE_IN_FILE",
+			})
+			continue
+		}
+		seenIDs[row.EmployeeID] = true
+
+		if existingMap[row.EmployeeID] {
+			conflictInDB++
+			continue
+		}
+		validRows = append(validRows, row)
+	}
+
+	if action == "preview" {
+		sampleLimit := 5
+		if len(rows) < sampleLimit {
+			sampleLimit = len(rows)
+		}
+		sampleRows := rows[:sampleLimit]
+
+		s.writeJSON(w, http.StatusOK, map[string]interface{}{
+			"data": map[string]interface{}{
+				"detected_headers": headers,
+				"sample_rows":      sampleRows,
+				"validation_summary": map[string]interface{}{
+					"total_rows":              len(rows),
+					"valid_new_count":         len(validRows),
+					"duplicate_in_file_count": duplicateInFile,
+					"conflict_in_db_count":    conflictInDB,
+					"invalid_rows":            invalidRows,
+				},
+			},
+		})
+		return
+	}
+
+	// Commit action
+	created := 0
+	failed := 0
+	for _, row := range validRows {
+		seed := []byte(fmt.Sprintf("%s:%s", siteID, row.EmployeeID))
+		embBytes := crypto.GenerateNormalizedEmbedding512(seed)
+		h := sha256.Sum256(seed)
+		emp := &ports.Employee{
+			SiteID:     siteID,
+			EmployeeID: row.EmployeeID,
+			FullName:   row.FullName,
+			Department: row.Department,
+			SourceType: "CSV_IMPORT",
+			IsActive:   true,
+		}
+		if err := s.employeePort.RegisterEmployee(r.Context(), emp, embBytes, hex.EncodeToString(h[:])); err != nil {
+			failed++
+		} else {
+			created++
 		}
 	}
 
 	s.writeJSON(w, http.StatusOK, map[string]interface{}{
-		"ok":       true,
-		"imported": importedCount,
+		"data": map[string]interface{}{
+			"created":            created,
+			"skipped_conflicts": conflictInDB,
+			"failed":             failed + len(invalidRows),
+		},
+		"imported": created,
 	})
 }
 

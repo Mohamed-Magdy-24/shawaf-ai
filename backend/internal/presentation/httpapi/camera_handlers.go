@@ -227,7 +227,14 @@ func (s *Server) handleCameraTestConnection(w http.ResponseWriter, r *http.Reque
 	}
 
 	probeRes := network.TestRTSPConnection(r.Context(), targetURL, 3*time.Second)
-	s.writeJSON(w, http.StatusOK, probeRes)
+	s.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"data":          probeRes.Data,
+		"reachable":     probeRes.Reachable,
+		"sanitized_url": probeRes.SanitizedURL,
+		"latency_ms":    probeRes.LatencyMs,
+		"rtsp_status":   probeRes.RTSPStatus,
+		"error":         probeRes.Error,
+	})
 }
 
 func (s *Server) handleSiteActiveStreams(w http.ResponseWriter, r *http.Request, siteID string) {

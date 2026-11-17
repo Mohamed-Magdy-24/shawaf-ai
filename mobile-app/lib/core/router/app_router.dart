@@ -84,7 +84,7 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/cameras/add',
-      builder: (context, state) => AddCameraPage(),
+      builder: (context, state) => const AddCameraPage(),
     ),
   ],
 );
