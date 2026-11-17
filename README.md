@@ -35,6 +35,7 @@ Heavy industrial manufacturing plants cannot rely on generic cloud AI or consume
 - **Microsecond Ray-Casting Spatial Safety Rules**: Safety perimeters (overhead crane runways, induction furnace slag pits, molten ladle corridors) are defined as arbitrary n-point polygons. Point-in-polygon ray casting tracks worker foot-contact points in real-time.
 - **Zero-Trust WebRTC Video Proxy**: Mobile and web operators never access RTSP cameras or NVR credentials directly. `edged` acts as an authenticated SDP proxy to internal `go2rtc` sidecars.
 - **Coverage-Lost Watchdog (`NFR-OBS-002`)**: Continuous heartbeat telemetry flags stream freezes or camera drops within 15 seconds, raising automated SEV2 operational alarms.
+- **Identity & "Who & Where" Live Tracking**: Enrolls employee reference photos, computes 512-dimensional $L_2$-normalized float32 feature vectors, and tracks verified presence across factory zones without transmitting raw facial photos over WAN.
 
 ---
 
@@ -53,6 +54,7 @@ Heavy industrial manufacturing plants cannot rely on generic cloud AI or consume
                     |  - Cleanroom YOLOX-Nano ONNX FP32 (2.18ms CPU Inference)   |
                     |  - Deterministic ByteTrack Kalman Smoothing                 |
                     |  - Jordan-Curve Ray-Casting Polygon Zone Rules              |
+                    |  - Cosine-Similarity Face Match against 512-d Enrolled Embs |
                     +------------------------------+------------------------------+
                                                    | (Structured JSON / gRPC)
                                                    | ZERO RAW PIXELS OVER WIRE
@@ -65,8 +67,8 @@ Heavy industrial manufacturing plants cannot rely on generic cloud AI or consume
 |   |  - Site/Camera Check  |     | SET LOCAL app.site_id  |     | - Monthly Partitioned Events|   |
 |   |  - Deduplication      |     +------------------------+     | - Row-Level Security (RLS)  |   |
 |   +-----------------------+                 |                  | - Outbox Table (SKIP LOCKED)|   |
-|                                             v                  +-----------------------------+   |
-|   +-----------------------+     +------------------------+                   |                   |
+|                                             v                  | - nvrs & employee_presence  |   |
+|   +-----------------------+     +------------------------+     +-----------------------------+   |
 |   | Coverage Watchdog     |     | Outbox Dispatcher      | <-----------------+ LISTEN/NOTIFY     |
 |   | (NFR-OBS-002: <15s)   |     | FOR UPDATE SKIP LOCKED |                                       |
 |   +-----------------------+     +------------------------+                                       |
@@ -81,11 +83,12 @@ Heavy industrial manufacturing plants cannot rely on generic cloud AI or consume
 +--------------------------------------------------------------------------------------------------+
 | UNIFIED FLUTTER OPERATOR CONSOLE (Android Tablet & Industrial Web)                                |
 |                                                                                                  |
-|   [BNF]   <-- Two-Tap Site Switcher -->  [RNF]                    |
+|   [BNF]   <-- Two-Tap Site Switcher -->  [RNF]                                                    |
 |   --------------------------------------------------------------------------------------------   |
 |   * Real-Time Alert Inbox (SEV1 Red / SEV2 Amber / SEV3 Blue) with WebSocket Auto-Refresh       |
 |   * FR-ALT-008 Action Transitions: [ACKNOWLEDGE]  [DISMISS + AUDIT NOTE]  [ESCALATE]             |
-|   * Interactive CustomPainter Polygon Zone Visualizer with Real-Time Foot Contact Tracking       |
+|   * Onboard Camera Screen: Vendor presets (Hikvision, Dahua, Tiandy), Reachability Test & Zone   |
+|   * Personnel & Presence: "Who & Where" Real-Time Radar + Enrolled Directory + Bulk CSV Import   |
 |   * Zero-Trust WebRTC Video Live View (Embedded go2rtc Player with SDP Token Exchange)          |
 |   * Egyptian Law 151/2020 Automated Masking & Cryptographic Audit Trails                         |
 +--------------------------------------------------------------------------------------------------+
@@ -133,18 +136,21 @@ shawaf-ai/
 │   └── postgres/init-roles.sh           # DB Role Segregation (app_migrator / app_runtime)
 ├── backend/
 │   ├── cmd/edged/main.go                # Central Go Edge Daemon Entrypoint
-│   ├── internal/domain/event.go         # Pure Clean Architecture Domain Entities
+│   ├── internal/domain/                 # Clean Architecture Domain Entities & Ports
 │   ├── internal/application/            # Ingestion Service & NFR-OBS-002 Coverage Watchdog
-│   ├── internal/infrastructure/postgres/# RLS Transactions & 13-Table Schema Migrations
+│   ├── internal/infrastructure/crypto/  # AES-256-GCM & 512-d L2-Normalized Vector Generator
+│   ├── internal/infrastructure/network/ # RTSP Network Reachability Probe
+│   ├── internal/infrastructure/postgres/# RLS Transactions, NVRs, Employees & 13-Table Schema
+│   ├── internal/infrastructure/connectors/# SQL Server & ZKBioTime Attendance Adapters
 │   ├── internal/infrastructure/outbox/  # SKIP LOCKED Transactional Outbox Dispatcher
 │   ├── internal/infrastructure/go2rtc/  # Zero-Trust WebRTC SDP Proxy
 │   ├── internal/infrastructure/grpcserver/# Edge gRPC Ingestion Handler
-│   ├── internal/presentation/httpapi/   # REST Endpoints (/healthz, /metrics, /alerts, etc.)
+│   ├── internal/presentation/httpapi/   # REST Endpoints (/healthz, /metrics, /alerts, /presence)
 │   ├── internal/presentation/ws/        # Single-Use Ticket WebSocket Hub
 │   ├── Dockerfile                       # Multi-stage Alpine Build (<25MB)
 │   └── go.mod                           # Go 1.23 Module
 ├── ai-workers/
-│   ├── worker/main.py                   # Edge AI Video Processing Loop
+│   ├── worker/main.py                   # Edge AI Video Processing & Face Matching Loop
 │   ├── worker/decoder.py                # Bounded Queue (maxlen=2) Video Decoder
 │   ├── worker/detector.py               # ONNX Runtime CPU Inference Engine
 │   ├── worker/tracker.py                # Deterministic ByteTrack Kalman Tracker
@@ -156,14 +162,14 @@ shawaf-ai/
 ├── mobile-app/                          # Flutter Mobile & Web Client
 │   ├── lib/main.dart                    # App Entrypoint
 │   ├── lib/theme/app_theme.dart         # Design System Tokens (#0B111E / #2DD4BF)
-│   ├── lib/models/models.dart           # Domain Data Models
-│   ├── lib/services/api_service.dart    # REST & WebSocket Client with Offline Mock Fallback
-│   ├── lib/widgets/site_banner.dart     # Two-Tap Site Switcher Banner
-│   ├── lib/widgets/zone_painter.dart    # CustomPainter Polygon Safety Zone Overlay
+│   ├── lib/models/models.dart           # Domain Data Models (Site, Camera, Event, Employee, NVR)
+│   ├── lib/cubits/                      # BLoC Cubits (Auth, Site, Alert, Camera, Employee)
 │   ├── lib/screens/home_screen.dart     # Navigation & Compliance Dashboard
 │   ├── lib/screens/inbox_screen.dart    # Real-Time Alert Inbox with Severity Filtering
 │   ├── lib/screens/alert_detail_screen.dart # FR-ALT-008 Incident Review & Action Transitions
 │   ├── lib/screens/cameras_screen.dart  # Monitored Camera Health & WebRTC Stream Launcher
+│   ├── lib/screens/add_camera_screen.dart # Appliance Onboarding & Safety Zone Drawer
+│   ├── lib/screens/employees_screen.dart # Who & Where Presence Radar & Enrolled Directory
 │   └── pubspec.yaml                     # Flutter Dependencies
 ├── data/
 │   ├── generate_synthetic_assets.py     # Deterministic ONNX Model & Video Generator
@@ -184,8 +190,9 @@ In strict adherence to `OWNER_AUTHORIZATION_LOCAL_DEV.md`, Shawaf AI runs in com
 
 ### 1. Prerequisites
 - **Python 3.11+**
-- **Docker Desktop** (optional for containerized deployment)
-- **PowerShell** (Windows) or **Make** (Linux)
+- **Docker Desktop** (for containerized deployment)
+- **Go 1.23+**
+- **Flutter 3.24+**
 
 ### 2. Verify Architecture & Generate Assets (30 Seconds)
 ```powershell
@@ -208,7 +215,7 @@ Verify services:
 - **`edged` REST API**: `http://localhost:8080/healthz`
 - **Prometheus Metrics**: `http://localhost:8080/metrics`
 - **go2rtc WebRTC Gateway**: `http://localhost:1984`
-- **PostgreSQL 16**: `localhost:5432` (`surveillance_dev`)
+- **PostgreSQL 16**: `localhost:5432` (`surveillance`)
 
 ### 4. Run AI Worker Standalone
 ```powershell
@@ -217,13 +224,13 @@ Verify services:
 Output:
 ```text
 =================================================================
-   SHAWAF AI  — Computer Vision Safety Worker
+   SHAWAF AI (شوف AI) — Computer Vision Safety Worker
    Worker ID: worker-bnf-ai-01 | Site ID: 11111111-1111-1111-1111-111111111111
 =================================================================
 [Detector] Loaded cleanroom_yolox_nano_fp32.onnx on CPUExecutionProvider
 [Decoder] Connected to camera cam-bnf-01 (640x360)
 [Worker] Pipeline active. Processing stream...
-[ALERT] Violation detected! Zone: Overhead Crane Travel Zone | Track: #104 | Severity: SEV1
+[ALERT] Violation detected! Zone: Loading Dock Danger Perimeter | Track: #104 | Severity: SEV1
 ```
 
 ---
@@ -260,6 +267,6 @@ CREATE POLICY events_tenant_isolation ON events
 
 <div align="center">
 
-**Shawaf AI ** • Built with Precision for Industrial Safety Excellence • 2026
+**Shawaf AI (شوف AI)** • Built with Precision for Industrial Safety Excellence • 2026
 
 </div>
