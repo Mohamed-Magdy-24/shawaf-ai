@@ -1,0 +1,96 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/state/ui_state.dart';
+import '../../data/camera_repository.dart';
+import 'camera_event.dart';
+import 'camera_state.dart';
+
+class CameraBloc extends Bloc<CameraEvent, CameraState> {
+  final CameraRepository repository;
+  final String activeSiteId;
+
+  CameraBloc({
+    required this.repository,
+    this.activeSiteId = 'BNF',
+  }) : super(const CameraState()) {
+    on<LoadCameras>(_onLoadCameras);
+    on<SelectCamera>(_onSelectCamera);
+    on<SendPtzCommandEvent>(_onSendPtzCommand);
+    on<ToggleBoundingBoxes>(_onToggleBoundingBoxes);
+    on<ToggleTelemetryHud>(_onToggleTelemetryHud);
+  }
+
+  Future<void> _onLoadCameras(
+    LoadCameras event,
+    Emitter<CameraState> emit,
+  ) async {
+    emit(state.copyWith(
+      uiState: const UILoading('Retrieving camera telemetry fleet...'),
+    ));
+
+    try {
+      final cameras = await repository.getCameras(siteId: event.siteId);
+      if (cameras.isEmpty) {
+        emit(state.copyWith(
+          uiState: const UIEmpty('No cameras configured for this factory site.'),
+          cameras: [],
+        ));
+      } else {
+        emit(state.copyWith(
+          uiState: const UILive(38.0),
+          cameras: cameras,
+          selectedCameraId: state.selectedCameraId ?? cameras.first.id,
+        ));
+      }
+    } catch (e) {
+      emit(state.copyWith(
+        uiState: UIError(
+          errorCode: 'CAMERA_FLEET_ERR',
+          message: 'Failed to retrieve camera stream metadata: ${e.toString()}',
+        ),
+      ));
+    }
+  }
+
+  void _onSelectCamera(
+    SelectCamera event,
+    Emitter<CameraState> emit,
+  ) {
+    emit(state.copyWith(selectedCameraId: event.cameraId));
+  }
+
+  Future<void> _onSendPtzCommand(
+    SendPtzCommandEvent event,
+    Emitter<CameraState> emit,
+  ) async {
+    final camId = state.selectedCameraId;
+    if (camId == null) return;
+
+    try {
+      await repository.sendPtzCommand(
+        siteId: activeSiteId,
+        cameraId: camId,
+        pan: event.pan,
+        tilt: event.tilt,
+        zoom: event.zoom,
+      );
+    } catch (e) {
+      emit(state.copyWith(
+        feedbackMessage: 'PTZ Command Error: ${e.toString()}',
+      ));
+    }
+  }
+
+  void _onToggleBoundingBoxes(
+    ToggleBoundingBoxes event,
+    Emitter<CameraState> emit,
+  ) {
+    emit(state.copyWith(showBoundingBoxes: event.show));
+  }
+
+  void _onToggleTelemetryHud(
+    ToggleTelemetryHud event,
+    Emitter<CameraState> emit,
+  ) {
+    emit(state.copyWith(showTelemetryHud: event.show));
+  }
+}

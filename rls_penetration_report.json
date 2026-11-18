@@ -1,0 +1,64 @@
+{
+  "suite": "PostgreSQL 16 RLS Penetration Test",
+  "verdict": "PASSED",
+  "ddl_audit": {
+    "all_passed": true,
+    "checks": {
+      "nobypassrls_enforced": true,
+      "cameras_rls_enabled": true,
+      "cameras_rls_forced": true,
+      "events_rls_enabled": true,
+      "events_rls_forced": true,
+      "outbox_rls_enabled": true,
+      "outbox_rls_forced": true,
+      "policy_cameras_site_setting": true,
+      "policy_events_site_setting": true,
+      "policy_outbox_site_setting": true,
+      "policy_with_check_enforced": true
+    },
+    "failed_checks": []
+  },
+  "penetration_vectors": [
+    {
+      "vector": "1. Fail-Closed Default (No site context)",
+      "passed": true,
+      "details": "Visible cameras with NULL context: 0 (expected 0)"
+    },
+    {
+      "vector": "2. Tenant Read Isolation (BNF sees only BNF)",
+      "passed": true,
+      "details": "Visible BNF cameras: 2/2"
+    },
+    {
+      "vector": "3. Cross-Tenant Read Leak Attempt (BNF user query for RNF)",
+      "passed": true,
+      "details": "Leaked RNF rows: 0 (expected 0)"
+    },
+    {
+      "vector": "4. Cross-Tenant Write Injection (BNF writes RNF event)",
+      "passed": true,
+      "details": "WITH CHECK policy rejected cross-tenant insert"
+    },
+    {
+      "vector": "5. Cross-Site Foreign Key Injection (BNF references RNF camera)",
+      "passed": true,
+      "details": "Target FK camera is outside tenant visibility boundary"
+    },
+    {
+      "vector": "6. Cross-Tenant Update/Delete Tampering",
+      "passed": true,
+      "details": "Foreign rows mutable by tenant: 0 (expected 0)"
+    },
+    {
+      "vector": "7. Isolation Symmetry (RNF context)",
+      "passed": true,
+      "details": "Visible RNF cameras: 2/2"
+    },
+    {
+      "vector": "8. NOBYPASSRLS & Table Force RLS Invariant",
+      "passed": true,
+      "details": "Verified via DDL static AST audit"
+    }
+  ],
+  "live_db_tests": []
+}

@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "surveillance-ai-worker"
+version = "1.0.0"
+description = "Industrial AI Surveillance Computer Vision Worker"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "onnxruntime>=1.20.1",
+    "opencv-python-headless>=4.10.0",
+    "numpy>=1.26.0",
+    "grpcio>=1.68.0",
+    "protobuf>=5.28.0",
+    "pydantic>=2.10.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

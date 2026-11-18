@@ -1,0 +1,16 @@
+version: v1
+plugins:
+  - plugin: go
+    out: ../backend/internal/infrastructure/grpcserver/pb
+    opt:
+      - paths=source_relative
+  - plugin: go-grpc
+    out: ../backend/internal/infrastructure/grpcserver/pb
+    opt:
+      - paths=source_relative
+  - plugin: python
+    out: ../ai-workers/worker/pb
+  - plugin: pyi
+    out: ../ai-workers/worker/pb
+  - plugin: grpc-python
+    out: ../ai-workers/worker/pb

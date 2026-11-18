@@ -1,0 +1,47 @@
+# Binaries and build artifacts
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+/edged
+/backend/edged
+
+
+# Go artifacts
+*.out
+coverage.html
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+
+# Docker volumes and local data
+pgdata/
+snapshots_data/
+*.mp4
+!data/synthetic/*.mp4
+
+# Environment secrets
+.env
+*.pem
+*.key
+*.crt
+
+# IDE and OS
+.idea/
+.vscode/
+*.swp
+Thumbs.db

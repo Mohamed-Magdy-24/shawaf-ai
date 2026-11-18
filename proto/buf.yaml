@@ -1,0 +1,8 @@
+version: v1
+name: buf.build/industrial-ai/surveillance
+lint:
+  use:
+    - DEFAULT
+breaking:
+  use:
+    - FILE

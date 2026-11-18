@@ -1,0 +1,15 @@
+# MediaMTX configuration for local synthetic camera streaming simulation
+logLevel: info
+logDestinations: [stdout]
+
+rtsp: true
+rtspAddress: :8554
+
+webrtc: false
+hls: false
+rtmp: false
+
+paths:
+  all:
+    readUser: ""
+    readPass: ""

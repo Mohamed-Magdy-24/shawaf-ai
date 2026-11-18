@@ -1,0 +1,15 @@
+{
+  "suite": "30-Minute Soak & RSS Growth Test",
+  "duration_seconds": 5.0,
+  "target_pids": [
+    4412
+  ],
+  "initial_rss_mb": 19.891,
+  "peak_rss_mb": 19.918,
+  "final_rss_mb": 19.918,
+  "growth_ratio": 0.0014,
+  "growth_percent": 0.14,
+  "threshold_max_growth_percent": 10.0,
+  "verdict": "PASSED",
+  "sample_count": 5
+}

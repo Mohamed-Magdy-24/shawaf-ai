@@ -1,0 +1,8 @@
+# Pinned dependencies for Python AI Worker (ADR-016: Zero PyTorch)
+onnxruntime==1.20.1
+opencv-python-headless==4.10.0.84
+numpy==1.26.4
+grpcio==1.68.0
+protobuf==5.28.3
+pydantic==2.10.2
+pytest==8.3.4

@@ -1,0 +1,82 @@
+{
+  "status": "PASSED",
+  "total_dependencies_audited": 11,
+  "disallowed_categories": [
+    "GPL",
+    "AGPL",
+    "SSPL",
+    "BUSL",
+    "NON-COMMERCIAL",
+    "CC-BY-NC"
+  ],
+  "violations_count": 0,
+  "violations": [],
+  "audited_packages": [
+    {
+      "ecosystem": "Python",
+      "package": "onnxruntime",
+      "declared": "onnxruntime==1.20.1",
+      "license": "MIT"
+    },
+    {
+      "ecosystem": "Python",
+      "package": "opencv-python-headless",
+      "declared": "opencv-python-headless==4.10.0.84",
+      "license": "Apache-2.0"
+    },
+    {
+      "ecosystem": "Python",
+      "package": "numpy",
+      "declared": "numpy==1.26.4",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "ecosystem": "Python",
+      "package": "grpcio",
+      "declared": "grpcio==1.68.0",
+      "license": "Apache-2.0"
+    },
+    {
+      "ecosystem": "Python",
+      "package": "protobuf",
+      "declared": "protobuf==5.28.3",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "ecosystem": "Python",
+      "package": "pydantic",
+      "declared": "pydantic==2.10.2",
+      "license": "MIT"
+    },
+    {
+      "ecosystem": "Python",
+      "package": "pytest",
+      "declared": "pytest==8.3.4",
+      "license": "MIT"
+    },
+    {
+      "ecosystem": "Go",
+      "package": "github.com/google/uuid",
+      "declared": "github.com/google/uuid v1.6.0",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "ecosystem": "Go",
+      "package": "github.com/lib/pq",
+      "declared": "github.com/lib/pq v1.10.9",
+      "license": "BSD-2-Clause"
+    },
+    {
+      "ecosystem": "Go",
+      "package": "google.golang.org/grpc",
+      "declared": "google.golang.org/grpc v1.68.0",
+      "license": "Apache-2.0"
+    },
+    {
+      "ecosystem": "Go",
+      "package": "google.golang.org/protobuf",
+      "declared": "google.golang.org/protobuf v1.35.2",
+      "license": "BSD-3-Clause"
+    }
+  ]
+}

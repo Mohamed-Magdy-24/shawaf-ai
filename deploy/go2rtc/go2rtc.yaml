@@ -1,0 +1,24 @@
+# go2rtc configuration for Industrial AI Surveillance Platform
+# Hardened per Step 2.4 & Step 4.2 / Step 4.5: Internal Docker network only
+log:
+  level: info
+
+api:
+  listen: ":1984" # Kept on internal Docker network; NOT published to host!
+
+webrtc:
+  listen: ":8555"
+
+rtsp:
+  listen: ":8554"
+
+streams:
+  # Synthetic camera streams proxying from mediamtx
+  camera_bnf_01:
+    - rtsp://mediamtx:8554/bnf/camera01
+  camera_bnf_02:
+    - rtsp://mediamtx:8554/bnf/camera02
+  camera_rnf_01:
+    - rtsp://mediamtx:8554/rnf/camera01
+  camera_rnf_02:
+    - rtsp://mediamtx:8554/rnf/camera02

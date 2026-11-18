@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package surveillance.v1;
+
+option go_package = "github.com/industrial-ai/surveillance/backend/internal/infrastructure/grpcserver/pb;pb";
+
+service EdgeIngestionService {
+  rpc SubmitEvent(SubmitEventRequest) returns (SubmitEventResponse);
+  rpc SendHeartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+}
+
+message BoundingBox {
+  float x1 = 1;
+  float y1 = 2;
+  float x2 = 3;
+  float y2 = 4;
+  string label = 5;
+  float confidence = 6;
+  int64 track_id = 7;
+}
+
+message SubmitEventRequest {
+  string schema_version = 1;
+  string event_id = 2;              // Deterministic UUIDv5 or UUIDv4 idempotency key
+  string site_id = 3;               // Mandatory site UUID (BNF or RNF)
+  string camera_id = 4;
+  string zone_id = 5;
+  string event_type = 6;            // e.g., "restricted_zone.entry.detected", "fire.suspected"
+  string severity = 7;              // "INFO", "WARNING", "CRITICAL", "CRITICAL_FIRE"
+  int64 occurred_at_utc_ms = 8;
+  int64 received_at_utc_ms = 9;
+  string model_id = 10;
+  string model_version = 11;
+  string rule_id = 12;
+  string rule_version = 13;
+  float confidence = 14;
+  repeated BoundingBox bboxes = 15;
+  string snapshot_rel_path = 16;    // Strict format: "<site_id>/<yyyy>/<mm>/<dd>/<event_id>.jpg"
+  string subject_status = 17;       // Always "UNKNOWN_PERSON" or "UNCONFIRMED_OBJECT" in local MVP
+}
+
+message SubmitEventResponse {
+  bool accepted = 1;
+  bool duplicate = 2;
+  string status_message = 3;
+}
+
+message CameraStreamHealth {
+  string camera_id = 1;
+  bool online = 2;
+  double fps_decoded = 3;
+  uint64 dropped_frames = 4;
+  int64 last_frame_utc_ms = 5;
+}
+
+message HeartbeatRequest {
+  string worker_id = 1;
+  string site_id = 2;
+  int64 timestamp_utc_ms = 3;
+  repeated CameraStreamHealth camera_streams = 4;
+}
+
+message HeartbeatResponse {
+  bool ok = 1;
+}
