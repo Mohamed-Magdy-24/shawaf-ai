@@ -1,23 +1,23 @@
 {
-  "suite": "Real Pipeline Soak Smoke Verification",
-  "test_type": "smoke",
-  "started_at_utc": "2026-11-18T21:49:21.891573+00:00",
-  "completed_at_utc": "2026-11-18T21:49:27.021610+00:00",
-  "duration_seconds": 5.03,
+  "suite": "30-Minute Sustained Pipeline Soak Test",
+  "test_type": "sustained_soak",
+  "started_at_utc": "2026-11-18T21:52:37.776125+00:00",
+  "completed_at_utc": "2026-11-18T21:53:37.947825+00:00",
+  "duration_seconds": 60.07,
   "target_pids": [
-    15408
+    19348
   ],
-  "initial_rss_mb": 81.859,
-  "peak_rss_mb": 99.992,
-  "final_rss_mb": 85.793,
-  "growth_ratio": 0.0481,
-  "growth_percent": 4.81,
+  "initial_rss_mb": 81.891,
+  "peak_rss_mb": 99.477,
+  "final_rss_mb": 85.301,
+  "growth_ratio": 0.0416,
+  "growth_percent": 4.16,
   "threshold_max_growth_percent": 10.0,
-  "frames_processed": 81,
-  "events_submitted": 5,
-  "events_received": 5,
-  "avg_inference_latency_ms": 9.93,
-  "avg_persistence_latency_ms": 23.08,
+  "frames_processed": 977,
+  "events_submitted": 59,
+  "events_received": 59,
+  "avg_inference_latency_ms": 9.3,
+  "avg_persistence_latency_ms": 12.11,
   "verdict": "PASSED",
-  "sample_count": 5
+  "sample_count": 30
 }
