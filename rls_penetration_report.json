@@ -60,5 +60,46 @@
       "details": "Verified via DDL static AST audit"
     }
   ],
-  "live_db_tests": []
+  "live_db_tests": [
+    {
+      "vector": "Live: app_runtime NOBYPASSRLS",
+      "passed": true,
+      "details": "rolbypassrls = f"
+    },
+    {
+      "vector": "Live: Tables FORCE ROW LEVEL SECURITY",
+      "passed": true,
+      "details": "Verified 3 tables with relforcerowsecurity=t"
+    },
+    {
+      "vector": "Live: Fail-Closed Default (No site_id)",
+      "passed": true,
+      "details": "Returned 0 rows (expected 0)"
+    },
+    {
+      "vector": "Live: Tenant Read Isolation (site_bnf sees site_bnf)",
+      "passed": true,
+      "details": "Successfully isolated tenant rows: BEGIN\nsite_bnf\n1\nCOMMIT"
+    },
+    {
+      "vector": "Live: Cross-Tenant Read Leak Attempt (Negative Test)",
+      "passed": true,
+      "details": "Cross-tenant query returned 0 rows: BEGIN\nsite_bnf\n0\nCOMMIT"
+    },
+    {
+      "vector": "Live: Cross-Tenant Write Injection (Negative Test - WITH CHECK)",
+      "passed": true,
+      "details": "WITH CHECK policy rejected cross-tenant write: exit=1, msg=BEGIN\nsite_bnf ERROR:  new row violates row-level security policy for table \"cameras\""
+    },
+    {
+      "vector": "Live: Cross-Tenant Update Tampering (Negative Test)",
+      "passed": true,
+      "details": "Update affected BEGIN\nsite_bnf\nUPDATE 0\nCOMMIT"
+    },
+    {
+      "vector": "Live: Context Cleared Post-Transaction (Negative Test)",
+      "passed": true,
+      "details": "Subsequent query outside transaction returned 0 rows (expected 0)"
+    }
+  ]
 }

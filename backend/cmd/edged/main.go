@@ -55,19 +55,38 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// 2. Database Connection & Schema Migration
+	// 2. Database Connection & Privileged Schema Migrations
+	migratorURL := getEnv("MIGRATOR_DATABASE_URL", "")
+	if migratorURL != "" {
+		log.Println("[INFO] Connecting with dedicated migration role to execute schema migrations...")
+		migDB, err := postgres.NewDB(migratorURL)
+		if err != nil {
+			log.Fatalf("[FATAL] Failed to connect using migration credentials: %v", err)
+		}
+		migCtx, migCancel := context.WithTimeout(ctx, 30*time.Second)
+		if err := migDB.RunMigrations(migCtx); err != nil {
+			migCancel()
+			migDB.Close()
+			log.Fatalf("[FATAL] Privileged schema migration failed: %v", err)
+		}
+		migCancel()
+		migDB.Close()
+	}
+
+	// Connect with unprivileged app_runtime connection
 	db, err := postgres.NewDB(databaseURL)
 	if err != nil {
 		log.Fatalf("[FATAL] Failed to initialize database: %v", err)
 	}
 	defer db.Close()
 
-	// Run migrations (idempotent schema + RLS policies)
-	migCtx, migCancel := context.WithTimeout(ctx, 15*time.Second)
-	if err := db.RunMigrations(migCtx); err != nil {
-		log.Printf("[WARN] Initial migration attempt returned: %v (continuing)", err)
+	// Verify schema is available and fail closed if unavailable
+	verifyCtx, verifyCancel := context.WithTimeout(ctx, 5*time.Second)
+	if err := db.VerifySchema(verifyCtx); err != nil {
+		verifyCancel()
+		log.Fatalf("[FATAL] Application failing closed: schema unavailable for app_runtime: %v", err)
 	}
-	migCancel()
+	verifyCancel()
 
 	// 3. Infrastructure Repositories
 	incidentRepo := postgres.NewIncidentRepository(db)

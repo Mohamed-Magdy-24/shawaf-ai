@@ -1,7 +1,7 @@
 # PROJECT HANDOFF & CENTRAL STATUS REGISTER
 ## Industrial AI Surveillance Platform — BNF / RNF
 **Document Classification:** Canonical Project Status & Handoff Authority  
-**Current Operating Mode:** STRICT READ-ONLY / AUDIT & GOVERNANCE COMPLETED / ZERO IMPLEMENTATION  
+**Current Operating Mode:** LOCAL-DEVELOPMENT ENGINEERING & VERIFICATION / WP-4 RESTRICTED-AREA VERTICAL SLICE (SYNTHETIC SIMULATION ONLY)  
 **Governing Standard:** Antigravity Persistent Project Status Standard  
 
 ---
@@ -14,21 +14,21 @@
   - **BNF (Beni Suef):** Autonomous local data plane, dedicated SQL Server, dedicated ZKTeco instance, local NVR/camera fleet.
   - **RNF (Sadat City):** Autonomous local data plane, dedicated SQL Server, dedicated ZKTeco instance, local NVR/camera fleet.
   - **Cross-Site Interconnection:** Independent factory local networks and data planes with federated, role-scoped, and secure interconnection via WireGuard VPN tunnel for authorized management access only.
-- **Repository & Active Branch:** GitHub `https://github.com/Mohamed-Magdy-24/shawaf-ai` (Branch: `main`).
-- **Canonical Package & Version:** `1.2.0-wp2-wp3-verified` (Pack Root: `Industrial_AI_Surveillance_Project_Pack`).
-- **Last Verified Commit SHA:** `f540f51` (feat(benchmark,reporting): complete SPK-02-LOCAL video benchmark & DEC-07 reporting cutoffs).
-- **Push Verification:** Verified live on GitHub remote `origin/main` (single canonical production branch; all legacy, feature and audit branches consolidated and pruned).
+- **Repository & Active Branch:** GitHub `https://github.com/Mohamed-Magdy-24/shawaf-ai` (Main HEAD: `efa79ae`; Feature Branch: `wp4-restricted-area-vertical-slice`).
+- **Canonical Package & Version:** `1.3.0-wp4-vertical-slice-verified` (Pack Root: `Industrial_AI_Surveillance_Project_Pack`).
+- **Last Verified Main Commit SHA:** `efa79ae` (docs(handoff): update handoff to unified main branch & fix cross-drive CI path).
+- **Push Verification:** Verified live on GitHub remote `origin/main` (`efa79ae`). Feature work isolated on dedicated branch `wp4-restricted-area-vertical-slice`.
 - **Last Status Update Date:** 2026-11-18.
 
 ---
 
 ## B. Overall Project Status
 
-- **Current Phase:** Phase 0 Re-Engineering Assessment COMPLETED & GATED FOR OWNER REVIEW.
-- **Current Phase Status:** Phase 0 authoritative deliverables generated per Ultimate Master Directive (`Prompt.md`). Local-dev sprints AUTHORIZED per OWNER_AUTHORIZATION_LOCAL_DEV.md. Production blocked per its NOT AUTHORIZED list.
-- **Overall Project Readiness:** 97 Requirements Aligned (1:1 parity between SRS and CSV); ADR-011 through ADR-017 ratified for local dev; clean room baseline intact; 11 Phase 0 deliverables established.
-- **Sprint 1 Authorization Status:** Local development sprints AUTHORIZED per OWNER_AUTHORIZATION_LOCAL_DEV.md (simulation only; zero production contact). Production deployment remains STRICTLY NOT AUTHORIZED.
-- **Current Architecture Decision Status:** `ADR-011 = APPROVED AS AMENDED` by ADR-012 … ADR-017 (`docs/governance/CTO_AMENDMENTS.md`). Minimal data plane (PostgreSQL 16 only; Valkey and TimescaleDB removed), AI worker video decode/inference (Go never decodes video), unified Flutter client (Flutter Web replaces React), WSL2 containerized dev environment.
+- **Current Phase:** WP-4 Restricted-Area Detection Vertical Slice & Foundation Remediations COMPLETED & VERIFIED ON LOCAL HARNESS.
+- **Current Phase Status:** WP-2 Engineering Foundation completed (`d097c92`), WP-3 Local Benchmark completed (`f540f51`), and WP-4 End-to-End Vertical Slice completed on dedicated branch `wp4-restricted-area-vertical-slice`. Local-development simulation AUTHORIZED per `OWNER_AUTHORIZATION_LOCAL_DEV.md`. Production environment deployment, real factory devices, and real employee data remain STRICTLY PROHIBITED.
+- **Overall Project Readiness:** 97 Requirements Aligned (1:1 parity between SRS and CSV); ADR-011 through ADR-017 ratified for local dev; clean room baseline intact; 5 foundation blockers resolved; 100% test pass rate across backend, worker, Flutter client, RLS penetration, and CI gates.
+- **Sprint / Development Authorization Status:** Local development sprints AUTHORIZED per `OWNER_AUTHORIZATION_LOCAL_DEV.md` (synthetic simulation only; zero production contact). Production deployment remains STRICTLY NOT AUTHORIZED.
+- **Current Architecture Decision Status:** `ADR-011 = APPROVED AS AMENDED` by ADR-012 … ADR-017 (`docs/governance/CTO_AMENDMENTS.md`). Minimal data plane (PostgreSQL 16 only; Valkey and TimescaleDB removed), AI worker video decode/inference (Go never decodes video), unified Flutter client (Flutter Web replaces React), containerized dev environment.
 
 ### Explicitly Blocked & Not Yet Authorized Activities
 
@@ -87,9 +87,10 @@ Never convert a temporary authorization restriction into a permanent product lim
 |---|---|---|---|---|
 | **Phase 0: Readiness, Discovery & Documentation** | `COMPLETED (AWAITING OWNER REVIEW)` | Forensic repository audit, host hardware/toolchain verification, elimination of obsolete stack components, generation of all 11 mandated Phase 0 deliverables (`docs/reengineering/*`, `docs/engineering/*`, `docs/design/*`, `docs/quality/*`, `docs/operations/*`), and Phase 0 Final Review completed. Zero application code modified. | 11 physical deliverable files verified on disk; `docs/reengineering/PHASE_ACCEPTANCE_REGISTER.md`; 97/97 requirements aligned. | Awaiting Owner formal approval of Phase 0 to proceed to Stage 2 (WP-2). |
 | **SPK-01: ZKTeco Photo Extraction** | `AWAITING AUTHORIZATION` | Protocol and isolation boundary designed in Document 38 and Document 35. | Protocol defined; non-production test device identified. | Requires owner authorization to execute read-only queries against 1 isolated test terminal. Resolves `BLK-001`. |
-| **SPK-02: ONNX Runtime CPU/CUDA Inference Benchmark (WP-3)** | `COMPLETED & EMPIRICALLY VERIFIED` | Executed empirical video decoding (1, 4, 8 streams) and ONNX Runtime CPU inference benchmark on Xeon E-2236. Sustained 8 streams at 2,912 aggregate FPS with zero frame accumulation. | `scripts/benchmark_spk02.py` (exit 0), `docs/benchmarks/SPK-02_LOCAL_RESULT.md`, `docs/benchmarks/spk_02_benchmark_data.json`. | Local dev complete; production edge sizing proposal established. |
+| **SPK-02: ONNX Runtime CPU/CUDA Inference Benchmark (WP-3)** | `COMPLETED & EMPIRICALLY VERIFIED` | Executed local synthetic video decoding (1, 4, 8 streams) and synthetic ONNX Runtime CPU inference benchmark on Xeon E-2236. Clarified as synthetic microbenchmark; production camera capacity reserved for physical on-site pilot. | `scripts/benchmark_spk02.py` (exit 0), `docs/benchmarks/SPK-02_LOCAL_RESULT.md`, `docs/benchmarks/spk_02_benchmark_data.json`. | Local dev complete; production edge sizing proposal established. |
 | **SPK-03: NVR Protocol & go2rtc Playback** | `AWAITING AUTHORIZATION` | Protocol and test harness specification designed in Document 38 and Document 32. | Specification defined for 1 test NVR and 2 test cameras on isolated test switch. | Requires owner authorization to access test NVR. Resolves `BLK-003`. |
 | **SPK-04: SQL Server Schema Read-Only Export** | `AWAITING AUTHORIZATION` | Schema inspection query plan and read-only service account boundary defined in Document 38. | Query plan documented; staging database backup identified. | Requires owner authorization to query restored staging backup of BNF attendance database. Resolves `OQ-005`. |
+| **WP-4: Restricted-Area Detection Vertical Slice & Foundation Remediations** | `COMPLETED & VERIFIED (BRANCH: wp4-restricted-area-vertical-slice)` | Separated DB migrations from runtime role (`app_migrator` / `app_runtime`); fail-closed schema check; parameterized RLS context (`SELECT set_config('app.site_id', $1, true)`); negative penetration tests; environment-driven Flutter config (`AppConfig`); removed mock data fallbacks; fixed RTSP decoder scaling, stderr drain & reconnects; complete synthetic vertical slice verified end-to-end. | Master CI: 8/8 gates pass (exit 0); Flutter: 21/21 pass; AI Worker: 28/28 pass; Go backend: 100% pass; Live RLS: 8 live penetration vectors pass. | Complete on branch `wp4-restricted-area-vertical-slice`. Ready for Owner PR review. Production access remains strictly prohibited. |
 | **Phase 1: Technical Spikes Execution** | `LOCAL-DEV SIMULATION AUTHORIZED (via WP-1..WP-6); PRODUCTION BLOCKED` | Prerequisite protocols and governance gates established in `antigravity/11_PHASE_PROMPTS.md`. | Gate 0 verification complete; phase prompts include strict stop conditions. | Requires `DEC-01` sign-off and individual authorizations for `SPK-01` through `SPK-04`. |
 | **Phase 2: Engineering Foundation (WP-2)** | `COMPLETED, COMMITTED & PUSHED` | Canonical repo skeleton constructed, versioned gRPC contract written (zero raw frames), Docker Compose stack configured with least-privilege DB roles (NOBYPASSRLS) and internal go2rtc, architecture boundary verification passed (exit 0), Flutter client verified (0 issues), Python AI workers verified (26/26 tests). Committed to Git (`d097c92`) and pushed to GitHub `feature/wp2-production-rebuild`. | GitHub branch `feature/wp2-production-rebuild` (commit `d097c92`), `scripts/run_ci.py` (8/8 gates pass, exit 0). | Complete. Next: Advance to authorized product engineering packages. |
 | **Phase 3: Site Identity & Integrations** | `LOCAL-DEV SIMULATION AUTHORIZED (via WP-1..WP-6); PRODUCTION BLOCKED` | Domain contracts and adapter specifications designed. | Documented in `integrations/03_INTEGRATION_AND_DATA_SPEC.md`. | `BLOCKED` pending Gate 2 approval and Phase 1 spike outcomes (`SPK-01`, `SPK-04`). |
@@ -220,10 +221,14 @@ Never convert a temporary authorization restriction into a permanent product lim
 ## G. Exact Next Step
 
 ### Overall Status:
-Phase 0 Forensic Re-Engineering Assessment COMPLETED; Phase WP-2 (Workstation Measurement, Repo Skeleton & Hardened Contracts) COMPLETED. All 11 authoritative Phase 0 deliverables verified on disk. Repository skeleton, versioned gRPC contract, Docker stack, Clean Architecture Go backend, Python worker, and Flutter client initialized and verified.
+- Phase 0 Forensic Re-Engineering Assessment COMPLETED.
+- WP-2 (Workstation Measurement, Repo Skeleton & Hardened Contracts) COMPLETED & COMMITTED on `main` (`d097c92`).
+- WP-3 (SPK-02-LOCAL Empirical Benchmark) COMPLETED & COMMITTED on `main` (`f540f51`). Benchmark clarified as synthetic microbenchmark.
+- WP-4 (End-to-End Restricted-Area Detection Vertical Slice & Foundation Remediations) COMPLETED & VERIFIED on dedicated branch `wp4-restricted-area-vertical-slice`.
+- 100% test pass rate across all suites: Master CI (8/8 gates), Flutter (21/21), AI Worker (28/28), Go Backend (100%), and Live RLS Penetration (8/8 attack vectors with negative testing).
 
 ### Authorized Next Action:
-Awaiting Owner Review to proceed to Phase WP-3 (Empirical Local Benchmark SPK-02-LOCAL per `ANTIGRAVITY_FLASH_3_8_MASTER_REMEDIATION_PROMPT.md`).
+Push branch `wp4-restricted-area-vertical-slice` to GitHub remote and open a Pull Request against `main` for Owner Review and merge sign-off.
 
 ### Operating Mode Restrictions (Preserved):
 Per `docs/governance/OWNER_AUTHORIZATION_LOCAL_DEV.md`:
@@ -384,7 +389,6 @@ Validation and Results: python verify_archive_manifest.py passed (110/110 payloa
 Evidence: MANIFEST.sha256, verify_archive_manifest.py output, link check script output.
 Remaining Blockers: Production hardware deployment, production NVR/ZKTeco/SQL Server contact, real employee/biometric data, Law 151/2020 legal review.
 Next Authorized Action: Awaiting owner command: continue WP-1.
-====================================================================================================
 ====================================================================================================
 Date: 2026-11-16
 Phase / Task: WP-0 & WP-1 Reconciliation Audit (97 Reqs, ADR-012..017, Toolchain & Model Alignment)
@@ -615,6 +619,64 @@ Validation and Results:
 - Swarm Deliverables Formal Acceptance: All 4 swarm worker deliverables (backend-eng, client-eng, qa-verifier, ai-eng) formally verified and accepted by coordinator (Seq 12 on Swarm Board).
 Remaining Blockers: Production deployment, physical factory camera/NVR/ZKTeco connections, production SQL Server contact, and real employee biometric face recognition remain STRICTLY BLOCKED pending Owner sign-off on DEC-03..DEC-08 and legal gate clearance under Egyptian Law 151/2020.
 Next Authorized Action: Present full local-dev verification evidence to Project Owner for Production Readiness Review and sign-off on DEC-03 through DEC-08.
+====================================================================================================
+Date: 2026-11-18
+Phase / Task: WP-4 — End-to-End Restricted-Area Detection Vertical Slice & Foundation Remediations
+Previous Status: IN PROGRESS
+New Status: COMPLETED & VERIFIED (BRANCH: wp4-restricted-area-vertical-slice)
+Work Actually Completed:
+1. Privileged PostgreSQL Migrations & Fail-Closed Guard:
+   - Separated schema migrations via dedicated app_migrator credentials.
+   - Added db.VerifySchema(ctx) at edged startup; fails closed if required schema tables are missing.
+2. PostgreSQL 16 Parameterized RLS Context & Penetration Verification:
+   - Corrected SQL parameterization using `SELECT set_config('app.site_id', $1, true)`.
+   - Executed live penetration suite against PostgreSQL 16 verifying 8 security vectors including negative tests (cross-tenant leak = 0 rows, WITH CHECK insert rejection, update tampering blocked, context reset post-transaction).
+3. Environment Configuration & Mock Purge in Flutter Client:
+   - Implemented AppConfig.fromEnvironment with secure defaults and compile-time URL/context configuration.
+   - Removed MockIncidentData seeding in incident repository; removed hardcoded fallback cameras in camera repository. True backend availability and error states are surfaced to the UI.
+4. RTSP Decoder Robustness & Subprocess Lifecycle:
+   - Added explicit frame scaling `-vf scale={width}:{height}` to FFmpeg arguments.
+   - Drained stderr in a background daemon thread to eliminate OS pipe buffer deadlocks.
+   - Hardened subprocess termination and verified reconnect tests.
+5. Benchmark Evidence Correction:
+   - Clarified SPK-02-LOCAL documentation as local synthetic file-decoding and synthetic-model microbenchmarks; prohibited production capacity extrapolations.
+   - Fixed soak test harness runner to explicitly label 5-second runs as smoke verifications.
+Files Changed:
+- `backend/cmd/edged/main.go`
+- `backend/internal/infrastructure/postgres/db.go`
+- `backend/internal/infrastructure/postgres/migrations/001_initial_schema.sql`
+- `backend/internal/infrastructure/grpcserver/server.go`
+- `backend/internal/infrastructure/grpcserver/pb/events.pb.go`
+- `backend/internal/infrastructure/grpcserver/pb/events_grpc.pb.go`
+- `backend/internal/application/report_service.go`
+- `backend/internal/application/report_service_test.go`
+- `backend/internal/presentation/httpapi/handler_test.go`
+- `backend/go.mod`
+- `backend/go.sum`
+- `deploy/docker-compose.local.yml`
+- `ai-workers/worker/decoder.py`
+- `ai-workers/tests/test_decoder.py`
+- `mobile-app/lib/core/config/app_config.dart`
+- `mobile-app/lib/core/network/websocket_client.dart`
+- `mobile-app/lib/features/incidents/data/incident_repository.dart`
+- `mobile-app/lib/features/video/data/camera_repository.dart`
+- `mobile-app/lib/main.dart`
+- `mobile-app/test/unit/incident_bloc_test.dart`
+- `tests/security/test_rls.py`
+- `tests/soak/run_30m_soak.py`
+- `docs/benchmarks/SPK-02_LOCAL_RESULT.md`
+- `soak_test_report.json`
+- `rls_penetration_report.json`
+- `license_scan_report.json`
+- `PROJECT_HANDOFF.md`
+Validation and Results:
+- Master CI Quality Gates: 8/8 PASSED (Harness Doctor, License Scanner, Clean Arch AST, RLS Penetration, Vertical Slice, Failure-Injection, Soak Smoke, Harness Unit Tests).
+- Python AI Workers: 28/28 tests passed (100% pass, ran in 3.60s).
+- Go Backend: 100% test pass in `golang:1.24-alpine` container (application, domain, grpcserver, httpapi).
+- Flutter Client: 21/21 tests passed (100% pass, ran in 2.0s).
+- Live PostgreSQL RLS: 100% pass across 8 attack vectors including live penetration negative tests.
+Remaining Blockers: Production deployment, physical factory camera/NVR/ZKTeco connections, production SQL Server contact, and real employee biometric face recognition remain STRICTLY BLOCKED pending Owner sign-off on DEC-03..DEC-08 and legal gate clearance under Egyptian Law 151/2020.
+Next Authorized Action: Push branch `wp4-restricted-area-vertical-slice` to GitHub and open Pull Request against `main` for Owner review.
 ====================================================================================================
 ====================================================================================================
 ```

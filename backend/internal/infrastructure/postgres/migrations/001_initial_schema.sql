@@ -171,17 +171,13 @@ INSERT INTO sites (id, name) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- Seed cameras temporarily bypassing RLS via superuser/migrator session setting
-SET LOCAL app.site_id = 'site_bnf';
+SELECT set_config('app.site_id', 'ALL', false);
 INSERT INTO cameras (id, site_id, name, rtsp_main_url, rtsp_sub_url, zone_id, status)
 VALUES
-    ('camera01', 'site_bnf', 'BNF Gate & Loading Dock', 'rtsp://mediamtx:8554/bnf/camera01', 'rtsp://mediamtx:8554/bnf/camera01', 'zone_gate_01', 'ONLINE')
-ON CONFLICT (site_id, id) DO NOTHING;
-
-SET LOCAL app.site_id = 'site_rnf';
-INSERT INTO cameras (id, site_id, name, rtsp_main_url, rtsp_sub_url, zone_id, status)
-VALUES
+    ('camera01', 'site_bnf', 'BNF Gate & Loading Dock', 'rtsp://mediamtx:8554/bnf/camera01', 'rtsp://mediamtx:8554/bnf/camera01', 'zone_gate_01', 'ONLINE'),
     ('camera01', 'site_rnf', 'RNF Assembly Line North', 'rtsp://mediamtx:8554/rnf/camera01', 'rtsp://mediamtx:8554/rnf/camera01', 'zone_assembly_01', 'ONLINE')
 ON CONFLICT (site_id, id) DO NOTHING;
+RESET app.site_id;
 
 -- Permissions grant to app_runtime
 DO $$

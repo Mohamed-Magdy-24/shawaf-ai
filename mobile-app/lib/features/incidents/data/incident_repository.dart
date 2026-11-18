@@ -32,6 +32,7 @@ abstract class IncidentRepository {
   });
 
   Stream<SafetyIncident> get liveIncidentStream;
+  void setSite(String siteId, {String? wsTicket});
   void dispose();
 }
 
@@ -47,8 +48,7 @@ class IncidentRepositoryImpl implements IncidentRepository {
     required this.apiClient,
     this.webSocketClient,
   }) {
-    _cache.addAll(MockIncidentData.generateMockIncidents());
-
+    // Zero mock data seeding in vertical slice - real events from backend only
     if (webSocketClient != null) {
       _wsSubscription = webSocketClient!.messages.listen((json) {
         if (json['event_type'] != null && json['id'] != null) {
@@ -60,6 +60,11 @@ class IncidentRepositoryImpl implements IncidentRepository {
         }
       });
     }
+  }
+
+  @override
+  void setSite(String siteId, {String? wsTicket}) {
+    webSocketClient?.switchSite(siteId, ticket: wsTicket);
   }
 
   void _insertOrUpdate(SafetyIncident incident) {

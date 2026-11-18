@@ -45,3 +45,19 @@ snapshots_data/
 .vscode/
 *.swp
 Thumbs.db
+
+# Local workspace and agent tools
+.agents/
+flutter-brain/
+flutter_app_specs/
+higs/
+repos/
+skills/
+skills-lock.json
+Verify-SkillsEcosystem.ps1
+pyrefly.toml
+
+# Temporary prompts and unpacked working copies
+Industrial_AI_Surveillance_Project_Pack/ANTIGRAVITY_*.md
+Industrial_AI_Surveillance_Project_Pack/CTO_DIRECTIVES_EN.md
+Industrial_AI_Surveillance_Project_Pack/Industrial_AI_Surveillance_Project/

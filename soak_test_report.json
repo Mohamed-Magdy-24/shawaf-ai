@@ -1,14 +1,15 @@
 {
-  "suite": "30-Minute Soak & RSS Growth Test",
+  "suite": "Soak Test Smoke Verification (5s)",
+  "test_type": "smoke",
   "duration_seconds": 5.0,
   "target_pids": [
-    7604
+    9944
   ],
-  "initial_rss_mb": 19.57,
-  "peak_rss_mb": 19.598,
-  "final_rss_mb": 19.598,
-  "growth_ratio": 0.0014,
-  "growth_percent": 0.14,
+  "initial_rss_mb": 15.836,
+  "peak_rss_mb": 15.863,
+  "final_rss_mb": 15.863,
+  "growth_ratio": 0.0017,
+  "growth_percent": 0.17,
   "threshold_max_growth_percent": 10.0,
   "verdict": "PASSED",
   "sample_count": 5

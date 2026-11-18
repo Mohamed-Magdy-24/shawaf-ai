@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'core/config/app_config.dart';
 import 'core/network/api_client.dart';
 import 'core/network/websocket_client.dart';
 import 'core/theme/app_theme.dart';
@@ -12,10 +13,16 @@ import 'features/video/presentation/bloc/camera_bloc.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final apiClient = ApiClient(baseUrl: 'http://127.0.0.1:8080');
+  final config = AppConfig.fromEnvironment();
+
+  final apiClient = ApiClient(baseUrl: config.apiBaseUrl);
+  if (config.authToken != null) {
+    apiClient.setAuthToken(config.authToken);
+  }
+
   final wsClient = IndustrialWebSocketClient(
-    baseWsUrl: 'ws://127.0.0.1:8080',
-    siteId: 'BNF',
+    baseWsUrl: config.wsBaseUrl,
+    siteId: config.defaultSiteId,
   );
 
   final incidentRepo = IncidentRepositoryImpl(
@@ -26,17 +33,20 @@ void main() {
   final cameraRepo = CameraRepositoryImpl(apiClient: apiClient);
 
   runApp(SurveillanceApp(
+    config: config,
     incidentRepository: incidentRepo,
     cameraRepository: cameraRepo,
   ));
 }
 
 class SurveillanceApp extends StatelessWidget {
+  final AppConfig config;
   final IncidentRepository incidentRepository;
   final CameraRepository cameraRepository;
 
   const SurveillanceApp({
     super.key,
+    required this.config,
     required this.incidentRepository,
     required this.cameraRepository,
   });
@@ -53,13 +63,13 @@ class SurveillanceApp extends StatelessWidget {
           BlocProvider<IncidentBloc>(
             create: (context) => IncidentBloc(
               repository: incidentRepository,
-              activeSiteId: 'BNF',
+              activeSiteId: config.defaultSiteId,
             ),
           ),
           BlocProvider<CameraBloc>(
             create: (context) => CameraBloc(
               repository: cameraRepository,
-              activeSiteId: 'BNF',
+              activeSiteId: config.defaultSiteId,
             ),
           ),
         ],
@@ -67,7 +77,7 @@ class SurveillanceApp extends StatelessWidget {
           title: 'Industrial AI Surveillance — BNF / RNF',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.industrialDark,
-          home: const ResponsiveMainLayout(initialSiteId: 'BNF'),
+          home: ResponsiveMainLayout(initialSiteId: config.defaultSiteId),
         ),
       ),
     );

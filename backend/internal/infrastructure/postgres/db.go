@@ -53,8 +53,21 @@ func (db *DB) RunMigrations(ctx context.Context) error {
 	return nil
 }
 
+// VerifySchema validates that all required tables exist and are queryable.
+// If any table is missing, it returns an error ensuring the application fails closed.
+func (db *DB) VerifySchema(ctx context.Context) error {
+	requiredTables := []string{"sites", "cameras", "events", "outbox"}
+	for _, table := range requiredTables {
+		query := fmt.Sprintf("SELECT 1 FROM %s LIMIT 0", table)
+		if _, err := db.ExecContext(ctx, query); err != nil {
+			return fmt.Errorf("required schema table %q is unavailable: %w", table, err)
+		}
+	}
+	return nil
+}
+
 // WithTenantTx executes a database operation inside a transaction scoped to a tenant
-// Enforces SET LOCAL app.site_id per the postgres-rls skill to prevent connection-pool leakage
+// Enforces SELECT set_config('app.site_id', $1, true) per the postgres-rls skill to prevent connection-pool leakage
 func (db *DB) WithTenantTx(ctx context.Context, siteID string, fn func(tx *sql.Tx) error) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -63,8 +76,8 @@ func (db *DB) WithTenantTx(ctx context.Context, siteID string, fn func(tx *sql.T
 	defer tx.Rollback()
 
 	if siteID != "" {
-		// SET LOCAL guarantees parameter is cleared automatically when transaction commits or aborts
-		if _, err := tx.ExecContext(ctx, "SET LOCAL app.site_id = $1", siteID); err != nil {
+		// Parameterized set_config with is_local=true guarantees parameter is cleared automatically when transaction commits or aborts
+		if _, err := tx.ExecContext(ctx, "SELECT set_config('app.site_id', $1, true)", siteID); err != nil {
 			return fmt.Errorf("failed to set tenant context for site %s: %w", siteID, err)
 		}
 	}

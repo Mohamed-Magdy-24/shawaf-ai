@@ -11,7 +11,8 @@ enum WsConnectionStatus {
 
 class IndustrialWebSocketClient {
   final String baseWsUrl;
-  final String siteId;
+  String _siteId;
+  String get siteId => _siteId;
   final Duration heartbeatTimeout;
 
   WebSocketChannel? _channel;
@@ -32,9 +33,26 @@ class IndustrialWebSocketClient {
 
   IndustrialWebSocketClient({
     this.baseWsUrl = 'ws://127.0.0.1:8080',
-    required this.siteId,
+    required String siteId,
     this.heartbeatTimeout = const Duration(seconds: 10),
-  });
+  }) : _siteId = siteId;
+
+  void switchSite(String newSiteId, {String? ticket}) {
+    if (_siteId == newSiteId && currentStatus == WsConnectionStatus.connected) return;
+    _siteId = newSiteId;
+    disconnect();
+    connect(ticket: ticket);
+  }
+
+  void disconnect() {
+    _heartbeatCheckTimer?.cancel();
+    _reconnectTimer?.cancel();
+    _subscription?.cancel();
+    _subscription = null;
+    _channel?.sink.close();
+    _channel = null;
+    _updateStatus(WsConnectionStatus.disconnected);
+  }
 
   void connect({String? ticket, WebSocketChannel? customChannel}) {
     if (_isDisposed) return;

@@ -72,8 +72,8 @@ func (s *ReportService) GenerateDailyReport(ctx context.Context, siteID string, 
 			report.DismissedIncidents++
 		}
 
-		if inc.AcknowledgedAtUTC != nil && !inc.AcknowledgedAtUTC.IsZero() {
-			diff := inc.AcknowledgedAtUTC.Sub(inc.OccurredAtUTC).Seconds()
+		if inc.AcknowledgedAt != nil && !inc.AcknowledgedAt.IsZero() {
+			diff := inc.AcknowledgedAt.Sub(inc.OccurredAtUTC).Seconds()
 			if diff >= 0 {
 				ackDurations = append(ackDurations, diff)
 			}

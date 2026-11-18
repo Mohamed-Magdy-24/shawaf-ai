@@ -10,12 +10,17 @@
 
 ## 1. Executive Summary
 
-This empirical benchmark validates the video decoding throughput, bounded buffer behavior, and ONNX Runtime CPU inference performance on the local development workstation (Intel Xeon E-2236 6C/12T, 16GB RAM).
+> **CRITICAL EVIDENCE CLARIFICATION (WP-4 Requirement 3):**  
+> The measurements in this document are strictly **local synthetic file-decoding and synthetic-model microbenchmarks** using local MP4 test fixtures (`data/synthetic/test_stream_01.mp4`) and an ultra-lightweight synthetic ONNX graph.  
+> **These measurements DO NOT represent live factory RTSP camera streams, physical network decoding, or production camera capacity.** Production camera capacity and multi-stream sizing CANNOT be claimed from these local synthetic microbenchmarks.  
+> Full synthetic RTSP pipeline metrics (MediaMTX / camsim ingestion, frame drops, bounded queue depth, inference latency, event persistence, and WebSocket dispatch) are measured during WP-4 end-to-end integration testing.
+
+This empirical benchmark validates the video decoding throughput, bounded buffer behavior, and ONNX Runtime CPU inference performance on the local development workstation (Intel Xeon E-2236 6C/12T, 16GB RAM) under synthetic local file playback conditions.
 
 ### Key Empirical Findings:
-1. **Multi-Stream Decoding:** Decodes up to **8 concurrent sub-streams** with zero uncontrolled memory growth and high aggregate throughput.
+1. **Multi-Stream Local File Decoding:** Decodes up to **8 concurrent local synthetic sub-streams** with zero uncontrolled memory growth and high aggregate throughput.
 2. **Backpressure & Queue Bounds:** Bounded ring buffer (`maxsize=2` per `ADR-012`) successfully prevents frame latency accumulation.
-3. **ONNX Runtime CPU Inference:** P95 latency is sub-10ms for synthetic detector on CPU baseline, exceeding the 2.0 FPS intrusion and 0.5 FPS PPE requirements with >90% headroom.
+3. **Synthetic ONNX Model CPU Inference:** P95 latency is sub-10ms for synthetic detector on CPU baseline, proving basic ONNX Runtime operator execution on the CPU host.
 4. **License & Framework Integrity:** Zero PyTorch, zero AGPL dependencies in runtime pipeline.
 
 ---
@@ -58,14 +63,14 @@ Evaluated using synthetic object detector ($1 \times 3 \times 640 \times 360$ in
 
 ## 5. Architectural Compliance & Sizing Verdict
 
-1. **Capacity for BNF/RNF Pilot:**
-   - The workstation easily handles 8 concurrent streams at >100 aggregate FPS with low CPU consumption.
-   - Per-stream CPU decoding overhead is ~2-4% on a single Xeon core.
+1. **Microbenchmark Scope & Limitations:**
+   - The test demonstrates that the host hardware handles 8 concurrent local file-read streams without runaway CPU consumption.
+   - **Production Caveat:** This does not predict live RTSP network performance, camera network jitter, packet reordering, or real factory lighting/motion workloads.
+   - Sizing for factory cameras must await authorized on-site physical camera validation under real network switches and NVR feeds.
 2. **Buffer Memory Stability:**
    - Memory delta remains < 15 MB across all decoding test cycles.
-   - Bounded FIFO discard policy guarantees zero memory accumulation during network or inference pauses.
-3. **Inference Latency Budget:**
-   - Required rate for C-06 Intrusion: 2.0 FPS (500ms budget). Measured: < 10ms (50x safety margin).
-   - Required rate for C-05 PPE: 0.5 FPS (2000ms budget). Measured: < 10ms (200x safety margin).
+   - Bounded FIFO discard policy (`maxsize=2`) guarantees zero memory accumulation during backpressure.
+3. **Inference Latency Budget (Synthetic Model):**
+   - Required rate for C-06 Intrusion: 2.0 FPS (500ms budget). Synthetic model test: < 10ms. Real production models (YOLO / PPE) will require empirical benchmarking on target models when authorized.
 
-**Verdict:** `SPK-02-LOCAL BENCHMARK: PASSED (READY FOR STAGE 2 / WP-4 PILOT ADVANCEMENT)`
+**Verdict:** `SPK-02-LOCAL SYNTHETIC MICROBENCHMARK: COMPLETE (BOUNDED BUFFER & CPU OPERATOR VERIFIED; PRODUCTION CAMERA SIZING RESERVED FOR PILOT PHASE)`

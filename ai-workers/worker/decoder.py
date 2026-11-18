@@ -63,6 +63,7 @@ class RTSPStreamDecoder:
             "-loglevel", "error",
             "-rtsp_transport", "tcp",
             "-i", self.rtsp_url,
+            "-vf", f"scale={self.width}:{self.height}",
             "-f", "image2pipe",
             "-pix_fmt", "bgr24",
             "-vcodec", "rawvideo",
@@ -82,13 +83,33 @@ class RTSPStreamDecoder:
         cmd = self.build_ffmpeg_cmd()
         safe_log = scrub_credentials(" ".join(cmd))
         logger.debug("Spawning FFmpeg subprocess: %s", safe_log)
-        return subprocess.Popen(
+        proc = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             shell=False,
             bufsize=10**7
         )
+
+        # Prevent OS pipe deadlock by draining stderr in a background daemon thread
+        def _drain_stderr(pipe, cam_id):
+            try:
+                for line in iter(pipe.readline, b''):
+                    if line:
+                        logger.debug("[FFmpeg-%s] %s", cam_id, line.decode(errors='replace').strip())
+            except Exception:
+                pass
+            finally:
+                try:
+                    pipe.close()
+                except Exception:
+                    pass
+
+        if proc.stderr:
+            drain_t = threading.Thread(target=_drain_stderr, args=(proc.stderr, self.camera_id), daemon=True)
+            drain_t.start()
+
+        return proc
 
     def _reader_loop(self):
         reconnect_delay = 1.0
@@ -172,16 +193,29 @@ class RTSPStreamDecoder:
             return data
 
     def _terminate_process(self):
-        if self.process:
+        proc = self.process
+        self.process = None
+        if proc:
             try:
-                self.process.terminate()
-                self.process.wait(timeout=2)
+                proc.terminate()
+                proc.wait(timeout=2)
             except Exception:
                 try:
-                    self.process.kill()
+                    proc.kill()
+                    proc.wait(timeout=1)
                 except Exception:
                     pass
-            self.process = None
+            finally:
+                if proc.stdout:
+                    try:
+                        proc.stdout.close()
+                    except Exception:
+                        pass
+                if proc.stderr:
+                    try:
+                        proc.stderr.close()
+                    except Exception:
+                        pass
 
     def stop(self):
         """Stops the decoder and worker thread."""

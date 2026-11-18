@@ -1,6 +1,6 @@
 {
   "status": "PASSED",
-  "total_dependencies_audited": 11,
+  "total_dependencies_audited": 14,
   "disallowed_categories": [
     "GPL",
     "AGPL",
@@ -56,12 +56,6 @@
     },
     {
       "ecosystem": "Go",
-      "package": "github.com/google/uuid",
-      "declared": "github.com/google/uuid v1.6.0",
-      "license": "BSD-3-Clause"
-    },
-    {
-      "ecosystem": "Go",
       "package": "github.com/lib/pq",
       "declared": "github.com/lib/pq v1.10.9",
       "license": "BSD-2-Clause"
@@ -77,6 +71,30 @@
       "package": "google.golang.org/protobuf",
       "declared": "google.golang.org/protobuf v1.35.2",
       "license": "BSD-3-Clause"
+    },
+    {
+      "ecosystem": "Go",
+      "package": "golang.org/x/net",
+      "declared": "golang.org/x/net v0.29.0 // indirect",
+      "license": "Permissive (Go)"
+    },
+    {
+      "ecosystem": "Go",
+      "package": "golang.org/x/sys",
+      "declared": "golang.org/x/sys v0.25.0 // indirect",
+      "license": "Permissive (Go)"
+    },
+    {
+      "ecosystem": "Go",
+      "package": "golang.org/x/text",
+      "declared": "golang.org/x/text v0.18.0 // indirect",
+      "license": "Permissive (Go)"
+    },
+    {
+      "ecosystem": "Go",
+      "package": "google.golang.org/genproto/googleapis/rpc",
+      "declared": "google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect",
+      "license": "Permissive (Go)"
     }
   ]
 }

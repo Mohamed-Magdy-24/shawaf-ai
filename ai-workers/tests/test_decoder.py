@@ -44,6 +44,8 @@ class TestRTSPDecoderAndSanitization(unittest.TestCase):
         self.assertIsInstance(cmd, list)
         self.assertIn("-rtsp_transport", cmd)
         self.assertIn("tcp", cmd)
+        self.assertIn("-vf", cmd)
+        self.assertIn("scale=640:360", cmd)
         self.assertIn("image2pipe", cmd)
         self.assertIn("bgr24", cmd)
         self.assertIn("rawvideo", cmd)
@@ -55,6 +57,42 @@ class TestRTSPDecoderAndSanitization(unittest.TestCase):
         self.assertEqual(health.fps_decoded, 0.0)
         self.assertEqual(health.dropped_frames, 0)
         self.assertEqual(health.last_frame_utc_ms, 0)
+
+    def test_subprocess_lifecycle_and_terminate(self):
+        decoder = RTSPStreamDecoder(
+            camera_id="cam-lifecycle",
+            rtsp_url="rtsp://localhost:8554/live",
+            width=320,
+            height=240
+        )
+        # Mock process
+        import io
+        from unittest.mock import MagicMock
+        mock_proc = MagicMock()
+        mock_proc.stdout = io.BytesIO(b"")
+        mock_proc.stderr = io.BytesIO(b"")
+        mock_proc.poll.return_value = None
+
+        decoder.process = mock_proc
+        decoder._terminate_process()
+
+        self.assertIsNone(decoder.process)
+        mock_proc.terminate.assert_called_once()
+        self.assertTrue(mock_proc.stdout.closed)
+        self.assertTrue(mock_proc.stderr.closed)
+
+    def test_reconnection_loop_backoff(self):
+        decoder = RTSPStreamDecoder(
+            camera_id="cam-recon",
+            rtsp_url="rtsp://localhost:8554/stream",
+            width=320,
+            height=240
+        )
+        # Test stop sets online=False
+        decoder.start()
+        decoder.stop()
+        self.assertFalse(decoder.health.online)
+        self.assertFalse(decoder._running)
 
 if __name__ == '__main__':
     unittest.main()

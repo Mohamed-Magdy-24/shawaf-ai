@@ -98,7 +98,7 @@ func (d *dummyCameraRepo) UpdateTelemetry(ctx context.Context, siteID, cameraID 
 	return nil
 }
 
-func setupTestServer(t *testing.T, snapDir string) (*http.ServeMux, *dummyIncidentRepo, *application.TicketService) {
+func setupTestServer(t *testing.T, snapDir string) (*http.ServeMux, *dummyIncidentRepo, *application.TicketService, *Handler) {
 	incRepo := newDummyIncidentRepo()
 	outboxRepo := &dummyOutboxRepo{}
 	camRepo := newDummyCameraRepo()
@@ -113,11 +113,11 @@ func setupTestServer(t *testing.T, snapDir string) (*http.ServeMux, *dummyIncide
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)
 
-	return mux, incRepo, tickets
+	return mux, incRepo, tickets, handler
 }
 
 func TestHandler_Healthz(t *testing.T) {
-	mux, _, _ := setupTestServer(t, "")
+	mux, _, _, _ := setupTestServer(t, "")
 
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	rec := httptest.NewRecorder()
@@ -137,7 +137,7 @@ func TestHandler_Healthz(t *testing.T) {
 }
 
 func TestHandler_IssueWSTicket(t *testing.T) {
-	mux, _, tickets := setupTestServer(t, "")
+	mux, _, tickets, _ := setupTestServer(t, "")
 
 	reqBody := []byte(`{"user_id":"operator_patrol"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sites/site_bnf/ws-ticket", bytes.NewReader(reqBody))
@@ -168,7 +168,7 @@ func TestHandler_IssueWSTicket(t *testing.T) {
 }
 
 func TestHandler_IncidentLifecycle(t *testing.T) {
-	mux, incRepo, _ := setupTestServer(t, "")
+	mux, incRepo, _, _ := setupTestServer(t, "")
 
 	// Seed incident
 	now := time.Now().UTC()
@@ -212,7 +212,7 @@ func TestHandler_SnapshotTraversalProtection(t *testing.T) {
 	_ = os.MkdirAll(filepath.Dir(safeFile), 0755)
 	_ = os.WriteFile(safeFile, []byte("fake_jpeg_data"), 0644)
 
-	mux, _, _ := setupTestServer(t, tmpDir)
+	mux, _, _, handler := setupTestServer(t, tmpDir)
 
 	// Safe request -> 200
 	req := httptest.NewRequest(http.MethodGet, "/snapshots/site_bnf/test.jpg", nil)
@@ -225,7 +225,7 @@ func TestHandler_SnapshotTraversalProtection(t *testing.T) {
 	// Traversal attempt -> 403 Forbidden
 	travReq := httptest.NewRequest(http.MethodGet, "/snapshots/../secret.txt", nil)
 	travRec := httptest.NewRecorder()
-	mux.ServeHTTP(travRec, travReq)
+	handler.handleSnapshotFile(travRec, travReq)
 	if travRec.Code != http.StatusForbidden {
 		t.Fatalf("expected 403 for path traversal, got %d", travRec.Code)
 	}

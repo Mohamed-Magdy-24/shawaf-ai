@@ -98,6 +98,9 @@ class FakeIncidentRepository implements IncidentRepository {
   @override
   Stream<SafetyIncident> get liveIncidentStream => _streamController.stream;
 
+  @override
+  void setSite(String siteId, {String? wsTicket}) {}
+
   void emitLiveIncident(SafetyIncident incident) {
     _streamController.add(incident);
   }

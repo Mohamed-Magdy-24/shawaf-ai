@@ -85,6 +85,7 @@ services:
     mem_limit: 256m
     environment:
       DATABASE_URL: "postgres://app_runtime:runtime_secret_dev_pass@postgres:5432/surveillance_dev?sslmode=disable"
+      MIGRATOR_DATABASE_URL: "postgres://app_migrator:migrator_secret_dev_pass@postgres:5432/surveillance_dev?sslmode=disable"
       GRPC_LISTEN_ADDR: ":50051"
       HTTP_LISTEN_ADDR: ":8080"
       GO2RTC_API_URL: "http://go2rtc:1984"

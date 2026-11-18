@@ -94,8 +94,12 @@ class SoakTestRunner:
         overall_growth = (final_rss - initial_rss) / max(0.001, initial_rss)
         passed = overall_growth < self.max_growth
 
+        suite_name = "Soak Test Smoke Verification (5s)" if self.duration < 60 else "30-Minute Sustained Soak Test"
+        test_type = "smoke" if self.duration < 60 else "sustained_soak"
+
         report = {
-            "suite": "30-Minute Soak & RSS Growth Test",
+            "suite": suite_name,
+            "test_type": test_type,
             "duration_seconds": round(elapsed, 2),
             "target_pids": self.target_pids,
             "initial_rss_mb": round(initial_rss, 3),
