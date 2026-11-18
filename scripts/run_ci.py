@@ -14,19 +14,24 @@ Executes all mandated quality assurance gates in sequence:
 8. Unit Test Suites (pytest ai-workers/tests/ tests/test_harness.py)
 """
 import sys
+import os
 import time
 import subprocess
 from typing import List, Tuple
 
+repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+venv_py = os.path.join(repo_root, "ai-workers", ".venv", "Scripts", "python.exe")
+py_exec = venv_py if os.path.exists(venv_py) else sys.executable
+
 GATES: List[Tuple[str, List[str]]] = [
-    ("Harness Doctor", [sys.executable, "scripts/doctor.py"]),
-    ("License Compliance Scanner", [sys.executable, "scripts/license_scanner.py", "--scan-dir", ".", "--disallow", "GPL,AGPL,SSPL,BUSL,Non-Commercial,CC-BY-NC"]),
-    ("Clean Architecture AST Verification", [sys.executable, "scripts/verify_architecture_boundaries.py"]),
-    ("PostgreSQL 16 RLS Penetration Suite", [sys.executable, "tests/security/test_rls.py"]),
-    ("Vertical Slice Integration Test", [sys.executable, "tests/e2e/test_vertical_slice.py"]),
-    ("Failure-Injection & Recovery Suite", [sys.executable, "tests/e2e/test_failure_injection.py"]),
-    ("30-Minute Soak Smoke Verification", [sys.executable, "tests/soak/run_30m_soak.py", "--smoke"]),
-    ("Harness & Integration Unit Tests", [sys.executable, "-m", "pytest", "tests/"])
+    ("Harness Doctor", [py_exec, "scripts/doctor.py"]),
+    ("License Compliance Scanner", [py_exec, "scripts/license_scanner.py", "--scan-dir", ".", "--disallow", "GPL,AGPL,SSPL,BUSL,Non-Commercial,CC-BY-NC"]),
+    ("Clean Architecture AST Verification", [py_exec, "scripts/verify_architecture_boundaries.py"]),
+    ("PostgreSQL 16 RLS Penetration Suite", [py_exec, "tests/security/test_rls.py"]),
+    ("Vertical Slice Integration Test", [py_exec, "tests/e2e/test_vertical_slice.py"]),
+    ("Failure-Injection & Recovery Suite", [py_exec, "tests/e2e/test_failure_injection.py"]),
+    ("30-Minute Soak Smoke Verification", [py_exec, "tests/soak/run_30m_soak.py", "--smoke"]),
+    ("Harness & Integration Unit Tests", [py_exec, "-m", "pytest", "tests/"])
 ]
 
 def main():
