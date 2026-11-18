@@ -14,10 +14,11 @@
   - **BNF (Beni Suef):** Autonomous local data plane, dedicated SQL Server, dedicated ZKTeco instance, local NVR/camera fleet.
   - **RNF (Sadat City):** Autonomous local data plane, dedicated SQL Server, dedicated ZKTeco instance, local NVR/camera fleet.
   - **Cross-Site Interconnection:** Independent factory local networks and data planes with federated, role-scoped, and secure interconnection via WireGuard VPN tunnel for authorized management access only.
-- **Repository & Active Branch:** GitHub `https://github.com/Mohamed-Magdy-24/shawaf-ai` (Main HEAD: `efa79ae`; Feature Branch: `wp4-restricted-area-vertical-slice`).
+- **Repository & Active Branch:** GitHub `https://github.com/Mohamed-Magdy-24/shawaf-ai` (Main HEAD: `efa79ae`; Feature Branch: `wp4-restricted-area-vertical-slice` @ `b3f2610`).
 - **Canonical Package & Version:** `1.3.0-wp4-vertical-slice-verified` (Pack Root: `Industrial_AI_Surveillance_Project_Pack`).
 - **Last Verified Main Commit SHA:** `efa79ae` (docs(handoff): update handoff to unified main branch & fix cross-drive CI path).
-- **Push Verification:** Verified live on GitHub remote `origin/main` (`efa79ae`). Feature work isolated on dedicated branch `wp4-restricted-area-vertical-slice`.
+- **Last Verified Feature Commit SHA:** `b3f2610` (fix(harness): resolve protobuf/grpc cross-runtime compatibility and auto-detect venv in CI).
+- **Push Verification:** Verified live on GitHub remote `origin/main` (`efa79ae`) and `origin/wp4-restricted-area-vertical-slice` (`b3f2610`). Dedicated PR ready for owner review.
 - **Last Status Update Date:** 2026-11-18.
 
 ---
