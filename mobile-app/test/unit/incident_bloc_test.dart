@@ -187,5 +187,34 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 50));
       expect(bloc.currentSiteId, 'site_rnf');
     });
+
+    test('LiveIncidentReceived from different site is strictly ignored', () async {
+      bloc.add(const LoadIncidents(siteId: 'site_bnf'));
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      final initialCount = bloc.state.incidents.length;
+      final crossSiteIncident = SafetyIncident(
+        id: 'INC-RNF-99',
+        siteId: 'site_rnf',
+        cameraId: 'cam_02',
+        cameraName: 'RNF Camera 02',
+        zoneId: 'zone_assembly',
+        eventType: 'restricted_zone.entry.detected',
+        severity: IncidentSeverity.critical,
+        status: IncidentStatus.newStatus,
+        occurredAtUtc: DateTime.now().toUtc(),
+        modelId: 'yolox-nano',
+        modelVersion: '1.0.0',
+        confidence: 0.95,
+        bboxes: const [],
+        snapshotRelPath: 'site_rnf/test.jpg',
+      );
+
+      bloc.add(LiveIncidentReceived(crossSiteIncident));
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      expect(bloc.state.incidents.length, initialCount);
+      expect(bloc.state.incidents.any((i) => i.id == 'INC-RNF-99'), isFalse);
+    });
   });
 }

@@ -49,6 +49,7 @@ class IncidentRepositoryImpl implements IncidentRepository {
   }) {
     // Zero mock data seeding in vertical slice - real events from backend only
     if (webSocketClient != null) {
+      webSocketClient!.ticketProvider = fetchWsTicket;
       _wsSubscription = webSocketClient!.messages.listen((json) {
         final id = json['id'] ?? json['event_id'];
         if (json['event_type'] != null && id != null) {
@@ -62,9 +63,20 @@ class IncidentRepositoryImpl implements IncidentRepository {
     }
   }
 
+  Future<String?> fetchWsTicket(String siteId) async {
+    try {
+      final response = await apiClient.post('/api/v1/sites/$siteId/ws-ticket');
+      if (response is Map && response['ticket'] != null) {
+        return response['ticket'] as String;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   @override
-  void setSite(String siteId, {String? wsTicket}) {
-    webSocketClient?.switchSite(siteId, ticket: wsTicket);
+  void setSite(String siteId, {String? wsTicket}) async {
+    final ticket = wsTicket ?? await fetchWsTicket(siteId);
+    webSocketClient?.switchSite(siteId, ticket: ticket);
   }
 
   void _insertOrUpdate(SafetyIncident incident) {
@@ -107,19 +119,23 @@ class IncidentRepositoryImpl implements IncidentRepository {
     required String operatorId,
   }) async {
     final index = _cache.indexWhere((i) => i.id == incidentId);
-    if (index < 0) {
-      throw StateTransitionException('Incident $incidentId not found');
-    }
-
-    final target = _cache[index];
-    final updated = IncidentStateMachine.acknowledge(target, operatorId: operatorId);
+    final target = index >= 0 ? _cache[index] : null;
 
     // Strict backend confirmation: no optimistic fake success if network or backend rejects
-    await apiClient.post(
+    final response = await apiClient.post(
       '/api/v1/sites/$siteId/incidents/$incidentId/acknowledge',
     );
 
-    _cache[index] = updated;
+    SafetyIncident updated;
+    if (response is Map<String, dynamic>) {
+      updated = SafetyIncident.fromJson(response);
+    } else if (target != null) {
+      updated = IncidentStateMachine.acknowledge(target, operatorId: operatorId);
+    } else {
+      throw StateTransitionException('Failed to acknowledge incident $incidentId');
+    }
+
+    _insertOrUpdate(updated);
     _incidentStreamController.add(updated);
     return updated;
   }
@@ -131,19 +147,23 @@ class IncidentRepositoryImpl implements IncidentRepository {
     required String operatorId,
   }) async {
     final index = _cache.indexWhere((i) => i.id == incidentId);
-    if (index < 0) {
-      throw StateTransitionException('Incident $incidentId not found');
-    }
-
-    final target = _cache[index];
-    final updated = IncidentStateMachine.resolve(target, operatorId: operatorId);
+    final target = index >= 0 ? _cache[index] : null;
 
     // Strict backend confirmation: no optimistic fake success if network or backend rejects
-    await apiClient.post(
+    final response = await apiClient.post(
       '/api/v1/sites/$siteId/incidents/$incidentId/resolve',
     );
 
-    _cache[index] = updated;
+    SafetyIncident updated;
+    if (response is Map<String, dynamic>) {
+      updated = SafetyIncident.fromJson(response);
+    } else if (target != null) {
+      updated = IncidentStateMachine.resolve(target, operatorId: operatorId);
+    } else {
+      throw StateTransitionException('Failed to resolve incident $incidentId');
+    }
+
+    _insertOrUpdate(updated);
     _incidentStreamController.add(updated);
     return updated;
   }
@@ -156,24 +176,28 @@ class IncidentRepositoryImpl implements IncidentRepository {
     required String reason,
   }) async {
     final index = _cache.indexWhere((i) => i.id == incidentId);
-    if (index < 0) {
-      throw StateTransitionException('Incident $incidentId not found');
-    }
-
-    final target = _cache[index];
-    final updated = IncidentStateMachine.dismiss(
-      target,
-      operatorId: operatorId,
-      reason: reason,
-    );
+    final target = index >= 0 ? _cache[index] : null;
 
     // Strict backend confirmation: no optimistic fake success if network or backend rejects
-    await apiClient.post(
+    final response = await apiClient.post(
       '/api/v1/sites/$siteId/incidents/$incidentId/dismiss',
       body: {'reason': reason},
     );
 
-    _cache[index] = updated;
+    SafetyIncident updated;
+    if (response is Map<String, dynamic>) {
+      updated = SafetyIncident.fromJson(response);
+    } else if (target != null) {
+      updated = IncidentStateMachine.dismiss(
+        target,
+        operatorId: operatorId,
+        reason: reason,
+      );
+    } else {
+      throw StateTransitionException('Failed to dismiss incident $incidentId');
+    }
+
+    _insertOrUpdate(updated);
     _incidentStreamController.add(updated);
     return updated;
   }

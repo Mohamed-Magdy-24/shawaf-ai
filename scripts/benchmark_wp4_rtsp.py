@@ -190,26 +190,26 @@ def run_rtsp_pipeline_benchmark(duration_sec: int = 15) -> Dict[str, Any]:
                         snapshot_rel_path=f"site_bnf/2026/11/18/{event_id}.jpg"
                     )
 
-                t_grpc_start = time.perf_counter()
-                resp = grpc_client.submit_event(submit_req, timeout=3.0)
-                t_grpc_end = time.perf_counter()
-                persist_ms = (t_grpc_end - t_grpc_start) * 1000.0
-                persistence_latencies_ms.append(persist_ms)
+                    t_grpc_start = time.perf_counter()
+                    resp = grpc_client.submit_event(submit_req, timeout=3.0)
+                    t_grpc_end = time.perf_counter()
+                    persist_ms = (t_grpc_end - t_grpc_start) * 1000.0
+                    persistence_latencies_ms.append(persist_ms)
 
-                with stats_lock:
-                    stats["events_generated"] += 1
+                    with stats_lock:
+                        stats["events_generated"] += 1
 
-                # Measure WebSocket delivery latency
-                try:
-                    ws_msg = ws_client.recv_json(timeout=2.0)
-                    t_ws_end = time.perf_counter()
-                    if ws_msg:
-                        ws_lat_ms = (t_ws_end - t_grpc_start) * 1000.0
-                        ws_dispatch_latencies_ms.append(ws_lat_ms)
-                        with stats_lock:
-                            stats["ws_events_received"] += 1
-                except (TimeoutError, Exception) as e:
-                    pass
+                    # Measure WebSocket delivery latency
+                    try:
+                        ws_msg = ws_client.recv_json(timeout=2.0)
+                        t_ws_end = time.perf_counter()
+                        if ws_msg:
+                            ws_lat_ms = (t_ws_end - t_grpc_start) * 1000.0
+                            ws_dispatch_latencies_ms.append(ws_lat_ms)
+                            with stats_lock:
+                                stats["ws_events_received"] += 1
+                    except (TimeoutError, Exception) as e:
+                        pass
 
     # Start workers
     t_ingest_thread = threading.Thread(target=rtsp_ingestion_worker, daemon=True)
@@ -313,7 +313,8 @@ def run_rtsp_pipeline_benchmark(duration_sec: int = 15) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    dur = 15
-    if len(sys.argv) > 1 and sys.argv[1].isdigit():
-        dur = int(sys.argv[1])
-    run_rtsp_pipeline_benchmark(duration_sec=dur)
+    import argparse
+    parser = argparse.ArgumentParser(description="WP-4 Synthetic RTSP Pipeline Benchmark")
+    parser.add_argument("--duration", type=int, default=15, help="Benchmark duration in seconds (default: 15)")
+    args = parser.parse_args()
+    run_rtsp_pipeline_benchmark(duration_sec=args.duration)

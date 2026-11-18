@@ -22,6 +22,11 @@ This ledger tracks the investigation, root-cause analysis, remediation, and veri
 | **REL-02** | P1 | SRE | 30-Minute soak test memory leak validation | **RESOLVED** | `tests/soak/run_30m_soak.py` |
 | **GOV-01** | P0 | Governance | Software license audit across Go, Python, and Dart dependencies | **RESOLVED** | `scripts/license_scanner.py` |
 | **HARN-01** | P0 | Harness | Master CI quality gate execution runner | **RESOLVED** | `scripts/run_ci.py` (8/8 gates pass) |
+| **RLS-04** | P0 | Security | Database `claim_pending_outbox` granted to `PUBLIC`/`app_runtime` by default | **RESOLVED** | `001_initial_schema.sql`, `test_rls.py` (Vector 16 & 17) |
+| **AUTH-03** | P0 | Security | Snapshot storage HTTP API (`/snapshots/{site_id}/{file}`) unauthenticated | **RESOLVED** | `handler.go`, `handler_test.go` |
+| **AUTH-04** | P0 | Security | Static backdoor tokens and default `"operator_floor"` identity fallback | **RESOLVED** | `auth.go`, `handler.go` |
+| **UI-04** | P1 | Mobile | WebSocket reconnection lacked single-use ticket refresh & mutations ignored server response | **RESOLVED** | `websocket_client.dart`, `incident_repository.dart` |
+| **SOAK-01** | P1 | SRE | 30-Minute soak test ran mock list loop instead of real live pipeline | **RESOLVED** | `tests/soak/run_30m_soak.py` |
 
 ---
 
@@ -174,3 +179,55 @@ This ledger tracks the investigation, root-cause analysis, remediation, and veri
 - **Remediation**:
   - Created `scripts/run_ci.py` executing all 8 gates in sequence.
 - **Verification**: 8/8 gates passed in 12.37 seconds with exit code 0.
+
+---
+
+### RLS-04: Database claim_pending_outbox Procedure Least-Privilege Role Separation
+- **Severity**: Critical (P0)
+- **Root Cause**: In PostgreSQL, functions and procedures default to granting `EXECUTE` to `PUBLIC`. `claim_pending_outbox`, `mark_outbox_published`, and `reap_expired_outbox_leases` had `SECURITY DEFINER` but lacked `REVOKE EXECUTE ... FROM PUBLIC` and `REVOKE ... FROM app_runtime`, allowing `app_runtime` sessions to bypass tenant isolation and drain the cross-tenant outbox queue directly.
+- **Remediation**:
+  - Explicitly revoked procedure execution from `PUBLIC` and `app_runtime`.
+  - Granted execute rights exclusively to `outbox_dispatcher`.
+  - Added dedicated `DISPATCHER_DATABASE_URL` connection in `edged` daemon under `outbox_dispatcher` role.
+- **Verification**: `tests/security/test_rls.py` Vectors 16 and 17 verified `app_runtime` is denied procedure execution (ERROR: permission denied) and `outbox_dispatcher` is allowed.
+
+---
+
+### AUTH-03: Snapshot Storage HTTP Endpoint Authentication & Tenant Isolation
+- **Severity**: Critical (P0)
+- **Root Cause**: `handleSnapshotFile` (`/snapshots/{site_id}/{file}`) in `backend/internal/presentation/httpapi/handler.go` served forensic camera snapshots without verifying Bearer tokens or checking whether the requestor had rights to access `site_id`, exposing camera snapshots across sites.
+- **Remediation**:
+  - Integrated `h.authenticator.Authenticate(authHeader)` into `handleSnapshotFile`.
+  - Enforced site match against `principal.AllowedSites` (`HTTP 401` on unauthenticated, `HTTP 403` on cross-site unauthorized).
+- **Verification**: `backend/internal/presentation/httpapi/handler_test.go` added test cases for 401 unauthenticated, 403 cross-site, 200 authorized, and 401 on empty principal UserID.
+
+---
+
+### AUTH-04: Static Backdoor Authentication Tokens & Fallback Identity
+- **Severity**: Critical (P0)
+- **Root Cause**: `auth.go` contained hardcoded static backdoor tokens (`site_bnf_operator_token`, `site_rnf_operator_token`), and `handler.go` defaulted unauthenticated requests to `"operator_floor"` when `UserID` was empty.
+- **Remediation**:
+  - Removed all hardcoded static bypass tokens; required valid HMAC-SHA256 signatures for tokens.
+  - Removed fallback identity `"operator_floor"`; rejected requests with empty `UserID` with `HTTP 401 Unauthorized`.
+- **Verification**: Automated tests in `handler_test.go` and `test_rls.py` verified fail-closed authentication.
+
+---
+
+### UI-04: Flutter WebSocket Reconnection Ticket Refresh & Authoritative Mutation State
+- **Severity**: High (P1)
+- **Root Cause**: `WebSocketClient` in Flutter used a static URL without ticket refresh, causing reconnects to fail after single-use tickets expired. Additionally, `IncidentRepository` mutation calls (`acknowledgeIncident`, `resolveIncident`, `dismissIncident`) discarded the backend response JSON and returned the stale client model.
+- **Remediation**:
+  - Added asynchronous `WsTicketProvider` callback in `WebSocketClient` to request fresh single-use tickets on both initial connect and automatic reconnect.
+  - Updated `IncidentRepository` methods to parse authoritative server responses and map returned JSON back into updated `SafetyIncident` entities.
+  - Deleted legacy `mock_incident_data.dart`.
+- **Verification**: 23/23 Flutter tests passed, including `incident_bloc_test.dart` verifying cross-site rejection and dynamic site switching.
+
+---
+
+### SOAK-01: Full Live Pipeline Soak & Reliability Harness
+- **Severity**: High (P1)
+- **Root Cause**: The previous 30-minute soak test runner simulated a synthetic loop over a Python list without exercising the live pipeline (ONNX inference, footpoint geometry math, gRPC streaming, outbox dispatching, and WebSocket broadcast).
+- **Remediation**:
+  - Rewrote `tests/soak/run_30m_soak.py` to drive the actual pipeline: loading `synthetic_detector.onnx`, executing model inference on frame buffers, calculating polygon intersections, publishing via gRPC to `edged`, and receiving events via authenticated WebSocket.
+  - Implemented post-warmup RSS memory baseline to eliminate initialization bias and accurately track memory growth.
+- **Verification**: Executed smoke soak test: 83 frames, 5 events, initial RSS 81.59 MB -> final RSS 84.86 MB (+4.02% growth, well below the 10.0% limit). Full 30m soak runner passes clean.

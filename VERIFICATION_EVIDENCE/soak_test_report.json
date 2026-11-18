@@ -1,16 +1,23 @@
 {
-  "suite": "Soak Test Smoke Verification (5s)",
+  "suite": "Real Pipeline Soak Smoke Verification",
   "test_type": "smoke",
-  "duration_seconds": 5.0,
+  "started_at_utc": "2026-11-18T21:37:47.734490+00:00",
+  "completed_at_utc": "2026-11-18T21:37:52.866995+00:00",
+  "duration_seconds": 5.04,
   "target_pids": [
-    19400
+    19028
   ],
-  "initial_rss_mb": 15.828,
-  "peak_rss_mb": 15.855,
-  "final_rss_mb": 15.855,
-  "growth_ratio": 0.0017,
-  "growth_percent": 0.17,
+  "initial_rss_mb": 81.074,
+  "peak_rss_mb": 98.641,
+  "final_rss_mb": 84.52,
+  "growth_ratio": 0.0425,
+  "growth_percent": 4.25,
   "threshold_max_growth_percent": 10.0,
+  "frames_processed": 84,
+  "events_submitted": 5,
+  "events_received": 5,
+  "avg_inference_latency_ms": 7.8,
+  "avg_persistence_latency_ms": 23.32,
   "verdict": "PASSED",
   "sample_count": 5
 }

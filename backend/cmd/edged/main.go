@@ -39,6 +39,7 @@ func main() {
 	httpAddr := getEnv("HTTP_LISTEN_ADDR", ":8080")
 	grpcAddr := getEnv("GRPC_LISTEN_ADDR", ":50051")
 	databaseURL := getEnv("DATABASE_URL", "postgres://app_runtime:runtime_secret_dev_pass@127.0.0.1:5432/surveillance_dev?sslmode=disable")
+	dispatcherURL := getEnv("DISPATCHER_DATABASE_URL", "postgres://outbox_dispatcher:dispatcher_secret_dev_pass@127.0.0.1:5432/surveillance_dev?sslmode=disable")
 	go2rtcURL := getEnv("GO2RTC_API_URL", "http://go2rtc:1984")
 	sharedSecret := getEnv("SHARED_SECRET_TOKEN", "dev_shared_secret_token_change_in_prod")
 	snapshotDir := getEnv("SNAPSHOT_BASE_DIR", "/var/lib/surveillance/snapshots")
@@ -93,6 +94,22 @@ func main() {
 	cameraRepo := postgres.NewCameraRepository(db)
 	outboxRepo := postgres.NewOutboxRepository(db)
 
+	// Dedicated least-privilege dispatcher connection
+	var dispatcherOutboxRepo *postgres.OutboxRepository
+	if dispatcherURL != "" {
+		dispDB, err := postgres.NewDB(dispatcherURL)
+		if err != nil {
+			log.Printf("[WARN] Failed to connect with dedicated dispatcher role: %v; falling back to db", err)
+			dispatcherOutboxRepo = outboxRepo
+		} else {
+			defer dispDB.Close()
+			dispatcherOutboxRepo = postgres.NewOutboxRepository(dispDB)
+			log.Println("[INFO] Outbox dispatcher initialized with dedicated least-privilege role (outbox_dispatcher)")
+		}
+	} else {
+		dispatcherOutboxRepo = outboxRepo
+	}
+
 	// 4. WebSocket Hub (Broadcaster Port)
 	wsHub := ws.NewHub()
 	go wsHub.Run()
@@ -101,7 +118,7 @@ func main() {
 	eventService := application.NewEventService(incidentRepo, outboxRepo, cameraRepo)
 	cameraService := application.NewCameraService(cameraRepo, eventService)
 	ticketService := application.NewTicketService()
-	outboxService := application.NewOutboxService(outboxRepo, wsHub)
+	outboxService := application.NewOutboxService(dispatcherOutboxRepo, wsHub)
 
 	// 6. Transactional Outbox Background Dispatcher & Lease Reaper Loops
 	wakeDispatchChan := make(chan struct{}, 1)

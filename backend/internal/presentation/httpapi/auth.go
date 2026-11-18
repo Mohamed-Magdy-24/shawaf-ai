@@ -103,25 +103,7 @@ func (a *Authenticator) AuthenticateToken(token string) (*Principal, error) {
 		}, nil
 	}
 
-	// 2. Check for site-scoped operational tokens
-	if token == "site_bnf_operator_token" {
-		return &Principal{
-			UserID:       "operator_bnf",
-			Role:         "operator",
-			AllowedSites: []string{"site_bnf", "BNF"},
-			ExpiresAt:    time.Now().Add(24 * time.Hour),
-		}, nil
-	}
-	if token == "site_rnf_operator_token" {
-		return &Principal{
-			UserID:       "operator_rnf",
-			Role:         "operator",
-			AllowedSites: []string{"site_rnf", "RNF"},
-			ExpiresAt:    time.Now().Add(24 * time.Hour),
-		}, nil
-	}
-
-	// 3. Structured signed token: base64(payload).base64(signature)
+	// 2. Structured signed token: base64(payload).base64(signature)
 	parts := strings.Split(token, ".")
 	if len(parts) == 2 {
 		payloadBytes, err := base64.RawURLEncoding.DecodeString(parts[0])

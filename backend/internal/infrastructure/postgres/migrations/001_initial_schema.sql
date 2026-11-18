@@ -264,15 +264,21 @@ ON CONFLICT (site_id, id) DO NOTHING;
 
 RESET app.site_id;
 
+-- Revoke execution from PUBLIC to enforce strict least-privilege role boundaries
+REVOKE EXECUTE ON FUNCTION claim_pending_outbox(int, interval) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION mark_outbox_published(bigint) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION reap_expired_outbox_leases() FROM PUBLIC;
+
 -- Permissions grant to app_runtime and outbox_dispatcher
 DO $$
 BEGIN
     IF EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'app_runtime') THEN
         GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_runtime;
         GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_runtime;
-        GRANT EXECUTE ON FUNCTION claim_pending_outbox(int, interval) TO app_runtime;
-        GRANT EXECUTE ON FUNCTION mark_outbox_published(bigint) TO app_runtime;
-        GRANT EXECUTE ON FUNCTION reap_expired_outbox_leases() TO app_runtime;
+        -- app_runtime CANNOT execute outbox dispatch procedures (least-privilege outbox isolation)
+        REVOKE EXECUTE ON FUNCTION claim_pending_outbox(int, interval) FROM app_runtime;
+        REVOKE EXECUTE ON FUNCTION mark_outbox_published(bigint) FROM app_runtime;
+        REVOKE EXECUTE ON FUNCTION reap_expired_outbox_leases() FROM app_runtime;
     END IF;
     IF EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'outbox_dispatcher') THEN
         GRANT USAGE ON SCHEMA public TO outbox_dispatcher;

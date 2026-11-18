@@ -242,6 +242,21 @@ func TestHandler_IssueWSTicket(t *testing.T) {
 	if userID != "operator_patrol" {
 		t.Fatalf("expected principal operator_patrol (spoofed body ignored), got %s", userID)
 	}
+
+	// Negative Test: Principal with missing UserID must be rejected with 401
+	emptyUserToken, _ := auth.GenerateSignedToken(&Principal{
+		UserID:       "",
+		Role:         "operator",
+		AllowedSites: []string{"site_bnf"},
+		ExpiresAt:    time.Now().UTC().Add(1 * time.Hour),
+	})
+	emptyReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/site_bnf/ws-ticket", bytes.NewReader([]byte(`{}`)))
+	emptyReq.Header.Set("Authorization", "Bearer "+emptyUserToken)
+	emptyRec := httptest.NewRecorder()
+	mux.ServeHTTP(emptyRec, emptyReq)
+	if emptyRec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 when principal UserID is empty, got %d", emptyRec.Code)
+	}
 }
 
 func TestHandler_IncidentLifecycle(t *testing.T) {
@@ -299,17 +314,48 @@ func TestHandler_SnapshotTraversalProtection(t *testing.T) {
 	_ = os.MkdirAll(filepath.Dir(safeFile), 0755)
 	_ = os.WriteFile(safeFile, []byte("fake_jpeg_data"), 0644)
 
-	mux, _, _, handler, _ := setupTestServer(t, tmpDir)
+	mux, _, _, handler, auth := setupTestServer(t, tmpDir)
 
-	// Safe request -> 200
+	bnfToken, _ := auth.GenerateSignedToken(&Principal{
+		UserID:       "op_bnf",
+		Role:         "operator",
+		AllowedSites: []string{"site_bnf"},
+		ExpiresAt:    time.Now().UTC().Add(1 * time.Hour),
+	})
+	rnfToken, _ := auth.GenerateSignedToken(&Principal{
+		UserID:       "op_rnf",
+		Role:         "operator",
+		AllowedSites: []string{"site_rnf"},
+		ExpiresAt:    time.Now().UTC().Add(1 * time.Hour),
+	})
+
+	// 1. Unauthenticated request -> 401 Unauthorized
+	unauthReq := httptest.NewRequest(http.MethodGet, "/snapshots/site_bnf/test.jpg", nil)
+	unauthRec := httptest.NewRecorder()
+	mux.ServeHTTP(unauthRec, unauthReq)
+	if unauthRec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for unauthenticated snapshot access, got %d", unauthRec.Code)
+	}
+
+	// 2. Cross-site tenant request -> 403 Forbidden
+	crossReq := httptest.NewRequest(http.MethodGet, "/snapshots/site_bnf/test.jpg", nil)
+	crossReq.Header.Set("Authorization", "Bearer "+rnfToken)
+	crossRec := httptest.NewRecorder()
+	mux.ServeHTTP(crossRec, crossReq)
+	if crossRec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 for cross-site snapshot access, got %d", crossRec.Code)
+	}
+
+	// 3. Authorized request -> 200 OK
 	req := httptest.NewRequest(http.MethodGet, "/snapshots/site_bnf/test.jpg", nil)
+	req.Header.Set("Authorization", "Bearer "+bnfToken)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("expected 200 for safe snapshot, got %d", rec.Code)
+		t.Fatalf("expected 200 for safe authorized snapshot, got %d", rec.Code)
 	}
 
-	// Traversal attempt -> 403 Forbidden
+	// 4. Traversal attempt -> 403 Forbidden
 	travReq := httptest.NewRequest(http.MethodGet, "/snapshots/../secret.txt", nil)
 	travRec := httptest.NewRecorder()
 	handler.handleSnapshotFile(travRec, travReq)

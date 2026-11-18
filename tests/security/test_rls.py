@@ -388,6 +388,24 @@ def run_live_postgres_tests(db_url: str = None) -> List[Dict[str, Any]]:
             "details": f"Invalid tenant context returned {count} rows (expected 0)"
         })
 
+    # 16. Negative Test: app_runtime role CANNOT execute claim_pending_outbox (Least Privilege)
+    ret, out = run_query("SELECT * FROM claim_pending_outbox(10, '30s'::interval);", user="app_runtime")
+    app_denied = (ret != 0) and ("permission denied" in out.lower())
+    results.append({
+        "vector": "Live: Worker Boundary - app_runtime cannot execute claim_pending_outbox (Negative Test)",
+        "passed": app_denied,
+        "details": f"app_runtime outbox procedure access rejected: exit={ret}, msg={out.strip()[:80]}"
+    })
+
+    # 17. Positive Test: Dedicated outbox_dispatcher role CAN execute claim_pending_outbox
+    ret, out = run_query("SELECT count(*) FROM claim_pending_outbox(10, '30s'::interval);", user="outbox_dispatcher")
+    disp_allowed = (ret == 0) and ("permission denied" not in out.lower())
+    results.append({
+        "vector": "Live: Worker Boundary - outbox_dispatcher permitted claim_pending_outbox",
+        "passed": disp_allowed,
+        "details": f"outbox_dispatcher successfully executed claim_pending_outbox: exit={ret}"
+    })
+
     return results
 
 

@@ -74,6 +74,11 @@ class IncidentBloc extends Bloc<IncidentEvent, IncidentState> {
     LiveIncidentReceived event,
     Emitter<IncidentState> emit,
   ) {
+    // Strictly isolate live events: ignore events not belonging to current active site
+    if (event.incident.siteId != _currentSiteId) {
+      return;
+    }
+
     final updatedList = List<SafetyIncident>.from(state.incidents);
     final index = updatedList.indexWhere((i) => i.id == event.incident.id);
     if (index >= 0) {

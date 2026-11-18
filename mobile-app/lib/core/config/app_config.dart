@@ -19,8 +19,8 @@ class AppConfig {
     const api = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://127.0.0.1:8080');
     const ws = String.fromEnvironment('WS_BASE_URL', defaultValue: 'ws://127.0.0.1:8080');
     const site = String.fromEnvironment('DEFAULT_SITE_ID', defaultValue: 'site_bnf');
-    const token = String.fromEnvironment('AUTH_TOKEN', defaultValue: '');
     const isProd = bool.fromEnvironment('dart.vm.product', defaultValue: false);
+    const token = String.fromEnvironment('AUTH_TOKEN', defaultValue: isProd ? '' : 'dev_shared_secret_token_change_in_prod');
 
     // Validate production URL constraints (anti-insecure defaults)
     if (isProd) {

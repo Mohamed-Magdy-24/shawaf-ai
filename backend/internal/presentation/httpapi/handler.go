@@ -145,10 +145,11 @@ type issueTicketResponse struct {
 
 func (h *Handler) handleIssueWSTicket(w http.ResponseWriter, r *http.Request, siteID string, principal *Principal) {
 	// Derive identity strictly from authenticated principal (VULN-08 mitigation & zero spoofing)
-	userID := principal.UserID
-	if userID == "" {
-		userID = "operator_floor"
+	if principal == nil || principal.UserID == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "authenticated principal missing valid user identity"})
+		return
 	}
+	userID := principal.UserID
 
 	ticket, err := h.tickets.IssueTicket(siteID, userID, 15*time.Second)
 	if err != nil {
@@ -309,10 +310,11 @@ func (h *Handler) handleIncidents(w http.ResponseWriter, r *http.Request, siteID
 	_ = json.NewDecoder(r.Body).Decode(&reqBody)
 
 	// Operator identity is strictly derived from the authenticated principal (zero client-side spoofing)
-	operatorID := principal.UserID
-	if operatorID == "" {
-		operatorID = "operator_floor"
+	if principal == nil || principal.UserID == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "authenticated principal missing valid operator identity"})
+		return
 	}
+	operatorID := principal.UserID
 
 	switch action {
 	case "acknowledge":
@@ -359,6 +361,31 @@ func (h *Handler) handleSnapshotFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Extract site ID from the first path segment (<site_id>/<yyyy>/<mm>/<dd>/<event_id>.jpg or <site_id>/<filename>)
+	slashPath := filepath.ToSlash(cleanRel)
+	parts := strings.Split(slashPath, "/")
+	if len(parts) < 1 || parts[0] == "" {
+		http.Error(w, "invalid snapshot path: missing site identifier", http.StatusBadRequest)
+		return
+	}
+	siteID := parts[0]
+
+	// Verify authentication and site authorization for snapshot access
+	principal, err := h.authenticator.AuthenticateRequest(r)
+	if err != nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{
+			"error": fmt.Sprintf("unauthorized snapshot access: %v", err),
+		})
+		return
+	}
+
+	if !principal.CanAccessSite(siteID) {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error": fmt.Sprintf("forbidden: user %s has no access to site %s snapshots", principal.UserID, siteID),
+		})
+		return
+	}
+
 	fullPath := filepath.Join(h.snapshotDir, cleanRel)
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 		http.NotFound(w, r)
@@ -366,7 +393,7 @@ func (h *Handler) handleSnapshotFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "image/jpeg")
-	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.Header().Set("Cache-Control", "private, max-age=86400")
 	http.ServeFile(w, r, fullPath)
 }
 

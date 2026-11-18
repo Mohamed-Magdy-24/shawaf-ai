@@ -9,11 +9,14 @@ enum WsConnectionStatus {
   reconnecting,
 }
 
+typedef WsTicketProvider = Future<String?> Function(String siteId);
+
 class IndustrialWebSocketClient {
   final String baseWsUrl;
   String _siteId;
   String get siteId => _siteId;
   final Duration heartbeatTimeout;
+  WsTicketProvider? ticketProvider;
 
   WebSocketChannel? _channel;
   StreamSubscription? _subscription;
@@ -35,12 +38,14 @@ class IndustrialWebSocketClient {
     this.baseWsUrl = 'ws://127.0.0.1:8080',
     required String siteId,
     this.heartbeatTimeout = const Duration(seconds: 10),
+    this.ticketProvider,
   }) : _siteId = siteId;
 
-  void switchSite(String newSiteId, {String? ticket}) {
+  Future<void> switchSite(String newSiteId, {String? ticket}) async {
     if (_siteId == newSiteId && currentStatus == WsConnectionStatus.connected) return;
     _siteId = newSiteId;
     disconnect();
+    ticket ??= await ticketProvider?.call(newSiteId);
     connect(ticket: ticket);
   }
 
@@ -54,7 +59,7 @@ class IndustrialWebSocketClient {
     _updateStatus(WsConnectionStatus.disconnected);
   }
 
-  void connect({String? ticket, WebSocketChannel? customChannel}) {
+  Future<void> connect({String? ticket, WebSocketChannel? customChannel}) async {
     if (_isDisposed) return;
 
     _updateStatus(
@@ -67,6 +72,7 @@ class IndustrialWebSocketClient {
       if (customChannel != null) {
         _channel = customChannel;
       } else {
+        ticket ??= await ticketProvider?.call(_siteId);
         final queryParam = ticket != null ? '?ticket=$ticket' : '';
         final uri = Uri.parse('$baseWsUrl/api/v1/sites/$siteId/ws-events$queryParam');
         _channel = WebSocketChannel.connect(uri);

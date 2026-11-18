@@ -1,6 +1,6 @@
 {
-  "timestamp_utc": "2026-11-18T21:02:48Z",
-  "test_duration_sec": 15.64,
+  "timestamp_utc": "2026-11-18T21:28:58Z",
+  "test_duration_sec": 6.97,
   "source_pipeline": {
     "type": "synthetic_rtsp",
     "server": "MediaMTX/camsim",
@@ -9,39 +9,39 @@
     "bounded_queue_limit": 2
   },
   "frame_metrics": {
-    "frames_ingested": 214,
-    "ingestion_fps": 13.68,
-    "frames_dropped": 166,
-    "drop_rate_pct": 77.57,
-    "average_queue_depth": 1.58,
+    "frames_ingested": 64,
+    "ingestion_fps": 9.18,
+    "frames_dropped": 59,
+    "drop_rate_pct": 92.19,
+    "average_queue_depth": 1.89,
     "peak_queue_depth": 2
   },
   "latency_metrics_ms": {
     "inference": {
-      "samples": 11,
-      "mean_ms": 13.16,
-      "p50_ms": 14.19,
-      "p95_ms": 21.48,
-      "p99_ms": 22.6
+      "samples": 3,
+      "mean_ms": 12.31,
+      "p50_ms": 10.53,
+      "p95_ms": 19.66,
+      "p99_ms": 20.47
     },
     "event_persistence_grpc": {
-      "samples": 11,
-      "mean_ms": 13.38,
-      "min_ms": 2.92,
-      "max_ms": 55.19
+      "samples": 3,
+      "mean_ms": 26.03,
+      "min_ms": 6.85,
+      "max_ms": 57.77
     },
     "websocket_dispatch": {
-      "samples": 5,
-      "mean_ms": 27.79,
+      "samples": 0,
+      "mean_ms": 0.0,
       "target_ms": "< 500ms (ADR-009)",
       "passed_target": true
     }
   },
   "resource_metrics": {
-    "avg_cpu_pct": 3.32,
-    "peak_cpu_pct": 43.8,
-    "rss_start_mb": 69.01,
-    "rss_end_mb": 84.66,
-    "rss_delta_mb": 15.65
+    "avg_cpu_pct": 8.11,
+    "peak_cpu_pct": 34.4,
+    "rss_start_mb": 69.68,
+    "rss_end_mb": 86.78,
+    "rss_delta_mb": 17.1
   }
 }

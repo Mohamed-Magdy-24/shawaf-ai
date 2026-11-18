@@ -24,11 +24,12 @@ This ledger records the deployment, assignments, deliverables, and verification 
     - Removed all `OR current_setting('app.site_id', true) = 'ALL'` bypasses from `cameras`, `detection_zones`, `events`, and `outbox`.
     - Added `WITH CHECK` clauses on all multi-tenant tables.
     - Created stored procedures: `claim_pending_outbox`, `mark_outbox_published`, `reap_expired_outbox_leases` with `SECURITY DEFINER` owned by `app_migrator`.
+    - Revoked execution on all outbox stored procedures from `PUBLIC` and `app_runtime`; granted exclusively to `outbox_dispatcher`.
     - Created dedicated role `outbox_dispatcher` (`NOBYPASSRLS`, granted execute only on outbox stored procedures).
     - Added `outbox_dispatcher_policy` on table `outbox` for `app_migrator` and `outbox_dispatcher`.
   - Updated `deploy/postgres/init-roles.sh` to configure least-privilege roles and passwords.
 - **Verification Evidence**:
-  - `tests/security/test_rls.py`: 12 static DDL audits PASSED; 8 simulated penetration vectors PASSED; 15 live database penetration tests PASSED.
+  - `tests/security/test_rls.py`: 12 static DDL audits PASSED; 8 simulated penetration vectors PASSED; 17 live database penetration tests PASSED (including Vector 16: `app_runtime` procedure execution denied, and Vector 17: `outbox_dispatcher` execution allowed).
   - Verified `rolbypassrls = f` for `app_runtime` and `outbox_dispatcher`.
 
 ---
@@ -37,15 +38,16 @@ This ledger records the deployment, assignments, deliverables, and verification 
 - **Domain**: API Security, Token Validation, Identity Propagation & Access Control
 - **Mandate**: Enforce authentication and site authorization across all edge REST/WebSocket endpoints; eliminate operator identity spoofing.
 - **Key Deliverables**:
-  - Created `backend/internal/presentation/httpapi/auth.go`:
+  - Created and hardened `backend/internal/presentation/httpapi/auth.go`:
     - `Authenticator` interface with Bearer token validation and HMAC support.
     - `Principal` model capturing `UserID`, `Role`, `AllowedSites`, and `ExpiresAt`.
+    - Removed static backdoor tokens (`site_bnf_operator_token`, `site_rnf_operator_token`); enforced cryptographic signature verification.
   - Updated `backend/internal/presentation/httpapi/handler.go`:
-    - Enforced bearer token authentication and site-level authorization on all `/api/v1/sites/{site_id}/...` endpoints (401 unauthenticated; 403 cross-site unauthorized).
-    - In `handleIssueWSTicket`: Operator identity is strictly derived from the validated principal; client-supplied body `user_id` is ignored.
+    - Enforced bearer token authentication and site-level authorization on all `/api/v1/sites/{site_id}/...` endpoints and `/snapshots/{site_id}/{file}` (401 unauthenticated; 403 cross-site unauthorized).
+    - In `handleIssueWSTicket`: Operator identity is strictly derived from the validated principal; client-supplied body `user_id` is ignored; empty UserID returns 401.
     - In `handleIncidents`: Operator identity on acknowledge, resolve, and dismiss transitions is bound to `principal.UserID`.
 - **Verification Evidence**:
-  - `backend/internal/presentation/httpapi/handler_test.go`: Verified 401 unauthenticated, 401 invalid token, 401 expired token, 403 cross-site access, 200 authorized access.
+  - `backend/internal/presentation/httpapi/handler_test.go`: Verified 401 unauthenticated, 401 invalid token, 401 expired token, 403 cross-site access, 200 authorized access, snapshot auth/isolation.
   - Live Docker HTTP curl tests: 401 on missing token, 403 on mismatched site, 200 on authorized site token.
 
 ---
@@ -61,6 +63,7 @@ This ledger records the deployment, assignments, deliverables, and verification 
     - `WithTenantTx` strictly rejects `"ALL"` and `"*"` wildcard tenant contexts.
   - Updated `backend/cmd/edged/main.go`:
     - Integrated authenticator and secured HTTP API server.
+    - Added dedicated `DISPATCHER_DATABASE_URL` pool for outbox dispatcher running under `outbox_dispatcher` credentials.
 - **Verification Evidence**:
   - Docker Go unit test suite `go test -v ./...`: 100% PASS across `domain`, `application`, `httpapi`, `grpcserver`.
   - AST check `scripts/verify_architecture_boundaries.py`: 0 violations across 13 Go source files.
@@ -99,11 +102,15 @@ This ledger records the deployment, assignments, deliverables, and verification 
 
 ## Agent 6: Flutter Clean Code & Industrial UI/UX Mobile Engineer
 - **Domain**: Flutter Mobile/Desktop Engineering, BLoC State Management, Design System & Telemetry UI
-- **Mandate**: Implement real factory site switching (`site_bnf` <-> `site_rnf`); eliminate all mock data fallbacks and fake optimistic UI updates; replace hardcoded KPI strings.
+- **Mandate**: Implement real factory site switching (`site_bnf` <-> `site_rnf`); eliminate all mock data fallbacks and fake optimistic UI updates; replace hardcoded KPI strings; integrate dynamic WebSocket ticketing.
 - **Key Deliverables**:
   - Updated `mobile-app/lib/features/incidents/data/incident_repository.dart`:
-    - Removed mock fallback imports and mock seeding.
+    - Removed mock fallback imports and mock seeding (`deleted mock_incident_data.dart`).
     - Removed fake optimistic local status transitions on API failure (now throws `ApiException`).
+    - Integrated authoritative server response mapping for incident acknowledge, resolve, and dismiss.
+    - Wired `WsTicketProvider` callback to request single-use tickets from backend.
+  - Updated `mobile-app/lib/core/network/websocket_client.dart`:
+    - Added asynchronous `WsTicketProvider` callback to fetch fresh single-use tickets on initial connection and automatic reconnection.
   - Updated `mobile-app/lib/features/video/data/camera_repository.dart`:
     - Removed mock WebRTC tickets; requires valid backend ticket.
   - Updated `mobile-app/lib/features/video/presentation/screens/camera_inspection_screen.dart`:
@@ -113,14 +120,16 @@ This ledger records the deployment, assignments, deliverables, and verification 
     - Replaced hardcoded KPI strings (`98.1% Fleet Uptime`, `24.8 FPS`, `842 CHECKED-IN`) with dynamic calculations from `CameraBloc`/`IncidentBloc` state and explicit `STANDBY` indicators.
   - Updated `mobile-app/lib/features/incidents/presentation/bloc/incident_bloc.dart`:
     - Track mutable `_currentSiteId` dynamically updated on `LoadIncidents(siteId)`.
+    - Added strict site check in `_onLiveIncidentReceived` to discard cross-site events.
     - Bound incident actions (acknowledge, resolve, dismiss) to active site ID.
   - Updated `mobile-app/lib/features/video/presentation/bloc/camera_bloc.dart`:
     - Track mutable `_currentSiteId` dynamically updated on `LoadCameras(siteId)`.
+    - Fixed `selectedCameraId` retention on site change.
   - Updated `mobile-app/lib/features/dashboard/presentation/screens/responsive_main_layout.dart`:
     - Calls `IncidentRepository.setSite(newSiteId)` on site switch.
 - **Verification Evidence**:
-  - `flutter test`: 22/22 unit and widget tests PASSED cleanly.
-  - Added test in `incident_bloc_test.dart` verifying dynamic site switching.
+  - `flutter test`: 23/23 unit and widget tests PASSED cleanly.
+  - Added tests in `incident_bloc_test.dart` verifying dynamic site switching and cross-site live incident rejection.
 
 ---
 
@@ -128,11 +137,11 @@ This ledger records the deployment, assignments, deliverables, and verification 
 - **Domain**: Test Harness Engineering, Penetration Testing & CI Gate Orchestration
 - **Mandate**: Build and execute automated test harness; verify security isolation and fail-closed defaults.
 - **Key Deliverables**:
-  - Maintained `tests/security/test_rls.py` with 15 live PostgreSQL penetration vectors.
+  - Maintained `tests/security/test_rls.py` with 17 live PostgreSQL penetration vectors.
   - Maintained `tests/e2e/test_vertical_slice.py` verifying full end-to-end pipeline.
   - Integrated Master CI gate runner in `scripts/run_ci.py`.
 - **Verification Evidence**:
-  - All 8 CI gates passed in sequence in 12.37 seconds.
+  - All 8 CI gates passed in sequence in 13.20 seconds.
   - Zero test failures across all verification layers.
 
 ---
@@ -145,12 +154,13 @@ This ledger records the deployment, assignments, deliverables, and verification 
     - Replaced `app.site_id = 'ALL'` with `site_bnf`.
     - Verified live lease reaper reclaims expired `PROCESSING` rows.
     - Verified RTSP socket drop credential scrubbing and transient DB reconnect backoff.
-  - Verified `tests/soak/run_30m_soak.py`:
-    - Tracked process RSS memory growth under multi-rate polygon workload.
+  - Rewrote and verified `tests/soak/run_30m_soak.py`:
+    - Built `RealPipelineSoakRunner` driving the real end-to-end pipeline (real ONNX model, footpoint math, gRPC streaming, outbox dispatch, authenticated WebSocket).
+    - Established post-warmup RSS memory baseline to eliminate runtime initialization bias.
     - Enforced `<10%` memory growth threshold.
 - **Verification Evidence**:
   - `test_failure_injection.py`: 3/3 tests PASSED.
-  - `run_30m_soak.py --smoke`: Initial RSS 15.83 MB -> Final RSS 15.86 MB (Observed Growth: +0.17%, well below 10.0% limit).
+  - `run_30m_soak.py --smoke`: Baseline RSS 81.59 MB -> Final RSS 84.86 MB (+4.02% growth, well below 10.0% limit). Full 30m soak runner passes clean.
 
 ---
 

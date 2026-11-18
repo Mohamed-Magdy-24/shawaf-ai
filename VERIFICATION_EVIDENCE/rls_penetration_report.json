@@ -136,6 +136,16 @@
       "vector": "Live: Invalid Tenant Injection Attempt (Negative Test)",
       "passed": true,
       "details": "Invalid tenant context returned 0 rows (expected 0)"
+    },
+    {
+      "vector": "Live: Worker Boundary - app_runtime cannot execute claim_pending_outbox (Negative Test)",
+      "passed": true,
+      "details": "app_runtime outbox procedure access rejected: exit=1, msg=ERROR:  permission denied for function claim_pending_outbox"
+    },
+    {
+      "vector": "Live: Worker Boundary - outbox_dispatcher permitted claim_pending_outbox",
+      "passed": true,
+      "details": "outbox_dispatcher successfully executed claim_pending_outbox: exit=0"
     }
   ]
 }

@@ -1,0 +1,92 @@
+name: CI Quality Gates
+
+on:
+  push:
+    branches: [ main, "wp4-*" ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend-checks:
+    name: Backend Go Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go 1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache-dependency-path: backend/go.sum
+
+      - name: Run Go Unit & Handler Tests
+        working-directory: backend
+        run: |
+          go test -v -race ./...
+
+  flutter-checks:
+    name: Flutter Web & Cockpit Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        working-directory: mobile-app
+        run: flutter pub get
+
+      - name: Run Flutter Tests
+        working-directory: mobile-app
+        run: flutter test
+
+  master-ci-gates:
+    name: Master CI Quality Gates & Security Verification
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: surveillance_dev
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_master_dev_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f ai-workers/requirements.txt ]; then pip install -r ai-workers/requirements.txt; fi
+          pip install psutil pytest onnxruntime numpy opencv-python-headless
+
+      - name: Initialize PostgreSQL Roles and Schema
+        env:
+          PGPASSWORD: postgres_master_dev_pass
+        run: |
+          bash deploy/postgres/init-roles.sh || true
+          psql -h 127.0.0.1 -U postgres -d surveillance_dev -f backend/internal/infrastructure/postgres/migrations/001_initial_schema.sql || true
+
+      - name: Execute Master CI Gates Runner
+        run: |
+          python scripts/run_ci.py

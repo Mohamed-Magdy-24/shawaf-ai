@@ -38,12 +38,15 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
         emit(state.copyWith(
           uiState: const UIEmpty('No cameras configured for this factory site.'),
           cameras: [],
+          selectedCameraId: null,
         ));
       } else {
+        final isSelectionValid = cameras.any((c) => c.id == state.selectedCameraId);
+        final newSelectedId = isSelectionValid ? state.selectedCameraId : cameras.first.id;
         emit(state.copyWith(
           uiState: const UILive(38.0),
           cameras: cameras,
-          selectedCameraId: state.selectedCameraId ?? cameras.first.id,
+          selectedCameraId: newSelectedId,
         ));
       }
     } catch (e) {

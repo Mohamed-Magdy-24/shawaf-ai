@@ -30,7 +30,7 @@ GATES: List[Tuple[str, List[str]]] = [
     ("PostgreSQL 16 RLS Penetration Suite", [py_exec, "tests/security/test_rls.py"]),
     ("Vertical Slice Integration Test", [py_exec, "tests/e2e/test_vertical_slice.py"]),
     ("Failure-Injection & Recovery Suite", [py_exec, "tests/e2e/test_failure_injection.py"]),
-    ("30-Minute Soak Smoke Verification", [py_exec, "tests/soak/run_30m_soak.py", "--smoke"]),
+    ("Real Pipeline Soak & Reliability Smoke Check", [py_exec, "tests/soak/run_30m_soak.py", "--smoke"]),
     ("Harness & Integration Unit Tests", [py_exec, "-m", "pytest", "tests/"])
 ]
 
