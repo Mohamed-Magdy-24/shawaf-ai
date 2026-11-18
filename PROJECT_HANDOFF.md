@@ -724,4 +724,32 @@ Validation and Results:
 Remaining Blockers: Production deployment, physical factory camera/NVR/ZKTeco connections, production SQL Server contact, and real employee biometric face recognition remain STRICTLY BLOCKED pending Owner sign-off on DEC-03..DEC-08 and legal gate clearance under Egyptian Law 151/2020.
 Next Authorized Action: Proceed to next authorized engineering package (WP-5 / Edge Provisioning) or export clean code tree as requested by Project Owner.
 ====================================================================================================
+Date: 2026-11-19
+Phase / Task: GitHub Actions CI Verification & TCP Connectivity Hardening
+Previous Status: FAILED (Container missing in CI runner for RLS Live Suite)
+New Status: RESOLVED & VERIFIED 100% GREEN ON GITHUB ACTIONS
+Work Actually Completed:
+1. GitHub Actions PostgreSQL Runner Hardening:
+   - Updated `deploy/postgres/init-roles.sh` to accept `$PGHOST` and `$PGPORT` over TCP in CI.
+   - Updated `tests/security/test_rls.py` to support direct TCP connection via `psql` using role credentials (`postgres`, `app_runtime`, `outbox_dispatcher`, `app_migrator`), dynamic container lookup, and preflight connection probe.
+   - Updated `tests/e2e/test_failure_injection.py` to use local `psql` over TCP as primary runner.
+   - Configured `.github/workflows/ci.yml` with explicit role credentials and connection variables.
+2. GitHub Actions Live Run Evidence:
+   - Run ID: `44408143355` on commit `a3fb9b9`.
+   - Result: 3/3 Jobs COMPLETED SUCCESS (Backend Go Verification, Flutter Web & Cockpit Verification, Master CI Quality Gates & Security Verification).
+Files Changed:
+- `.github/workflows/ci.yml`
+- `deploy/postgres/init-roles.sh`
+- `tests/security/test_rls.py`
+- `tests/e2e/test_failure_injection.py`
+- `PROJECT_HANDOFF.md`
+Validation and Results:
+- GitHub Actions CI: 3/3 Jobs PASSED (Exit 0).
+- Master CI Quality Gates: 8/8 PASSED.
+- Flutter Tests: 23/23 PASSED.
+- AI Worker Tests: 28/28 PASSED.
+- Release Tag: `v1.4.0-wp4-release` updated to verified commit.
+Remaining Blockers: Production deployment, physical factory camera/NVR/ZKTeco connections, production SQL Server contact, and real employee biometric face recognition remain STRICTLY BLOCKED pending Owner sign-off on DEC-03..DEC-08 and legal gate clearance under Egyptian Law 151/2020.
+Next Authorized Action: Deliver final verified release report to Project Owner.
+====================================================================================================
 ```
