@@ -82,11 +82,22 @@ jobs:
 
       - name: Initialize PostgreSQL Roles and Schema
         env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          POSTGRES_USER: postgres
+          POSTGRES_DB: surveillance_dev
           PGPASSWORD: postgres_master_dev_pass
         run: |
-          bash deploy/postgres/init-roles.sh || true
-          psql -h 127.0.0.1 -U postgres -d surveillance_dev -f backend/internal/infrastructure/postgres/migrations/001_initial_schema.sql || true
+          bash deploy/postgres/init-roles.sh
+          psql -h 127.0.0.1 -p 5432 -U postgres -d surveillance_dev -f backend/internal/infrastructure/postgres/migrations/001_initial_schema.sql
 
       - name: Execute Master CI Gates Runner
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          POSTGRES_PASSWORD: postgres_master_dev_pass
+          APP_RUNTIME_PASSWORD: runtime_secret_dev_pass
+          DISPATCHER_PASSWORD: dispatcher_secret_dev_pass
+          MIGRATOR_PASSWORD: migrator_secret_dev_pass
         run: |
           python scripts/run_ci.py

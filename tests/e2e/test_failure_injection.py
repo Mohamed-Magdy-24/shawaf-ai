@@ -51,10 +51,32 @@ class TestFailureInjectionRecovery(unittest.TestCase):
             f"COMMIT;"
         )
 
-        cmd = ["docker", "exec", "surv_postgres", "psql", "-U", "postgres", "-d", "surveillance_dev", "-c", insert_sql]
-        p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
+        import shutil
+        def run_db_query(sql: str, extra_flags: list = None) -> subprocess.CompletedProcess:
+            extra = extra_flags or []
+            if shutil.which("psql"):
+                env = os.environ.copy()
+                env["PGPASSWORD"] = os.getenv("POSTGRES_PASSWORD", "postgres_master_dev_pass")
+                pghost = os.getenv("PGHOST", "127.0.0.1")
+                pgport = os.getenv("PGPORT", "5432")
+                try:
+                    p = subprocess.run(["psql", "-h", pghost, "-p", pgport, "-U", "postgres", "-d", "surveillance_dev"] + extra + ["-c", sql],
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10, env=env)
+                    if "could not connect to server" not in p.stderr.lower():
+                        return p
+                except Exception:
+                    pass
+            # Fallback to docker exec
+            try:
+                return subprocess.run(["docker", "exec", "surv_postgres", "psql", "-U", "postgres", "-d", "surveillance_dev"] + extra + ["-c", sql],
+                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
+            except Exception as e:
+                # Mock a failed CompletedProcess
+                return subprocess.CompletedProcess(args=[], returncode=-1, stdout="", stderr=str(e))
+
+        p = run_db_query(insert_sql)
         if p.returncode != 0:
-            self.skipTest(f"Docker postgres container unreachable: {p.stderr}")
+            self.skipTest(f"Live postgres database unreachable: {p.stderr}")
 
         # 2. Execute Lease Reaper query directly in live database
         reap_sql = (
@@ -65,8 +87,7 @@ class TestFailureInjectionRecovery(unittest.TestCase):
             f"SELECT status, retry_count FROM outbox WHERE event_id = '{event_id}'; "
             f"COMMIT;"
         )
-        cmd_reap = ["docker", "exec", "surv_postgres", "psql", "-U", "postgres", "-d", "surveillance_dev", "-t", "-A", "-c", reap_sql]
-        p_reap = subprocess.run(cmd_reap, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
+        p_reap = run_db_query(reap_sql, extra_flags=["-t", "-A"])
         self.assertEqual(p_reap.returncode, 0, f"Lease reaper query failed: {p_reap.stderr}")
 
         # Verify row transitioned back to PENDING with retry_count = 1

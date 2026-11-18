@@ -193,16 +193,63 @@ class SimulatedRLSEngine:
 def run_live_postgres_tests(db_url: str = None) -> List[Dict[str, Any]]:
     """Runs live RLS penetration tests against a live PostgreSQL 16 database."""
     results = []
+    import subprocess
+    import shutil
+
+    user_passwords = {
+        "postgres": os.getenv("POSTGRES_PASSWORD", "postgres_master_dev_pass"),
+        "app_runtime": os.getenv("APP_RUNTIME_PASSWORD", "runtime_secret_dev_pass"),
+        "outbox_dispatcher": os.getenv("DISPATCHER_PASSWORD", "dispatcher_secret_dev_pass"),
+        "app_migrator": os.getenv("MIGRATOR_PASSWORD", "migrator_secret_dev_pass"),
+    }
+    pghost = os.getenv("PGHOST", "127.0.0.1")
+    pgport = os.getenv("PGPORT", "5432")
+    has_local_psql = shutil.which("psql") is not None
 
     def run_query(sql_cmd: str, user: str = "app_runtime", db: str = "surveillance_dev") -> Tuple[int, str]:
-        # Try docker exec surv_postgres psql first, then local psql
-        import subprocess
+        # Strategy 1: Local psql via TCP if available
+        if has_local_psql:
+            env = os.environ.copy()
+            env["PGPASSWORD"] = user_passwords.get(user, "postgres_master_dev_pass")
+            cmd = ["psql", "-h", pghost, "-p", pgport, "-U", user, "-d", db, "-t", "-A", "-c", sql_cmd]
+            try:
+                p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10, env=env)
+                # If connection refused or socket missing, fall through to docker
+                if "could not connect to server" not in p.stderr.lower() and "connection refused" not in p.stderr.lower():
+                    return p.returncode, p.stdout.strip() + " " + p.stderr.strip()
+            except Exception:
+                pass
+
+        # Strategy 2: docker exec surv_postgres
         try:
             cmd = ["docker", "exec", "surv_postgres", "psql", "-U", user, "-d", db, "-t", "-A", "-c", sql_cmd]
             p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
-            return p.returncode, p.stdout.strip() + " " + p.stderr.strip()
-        except Exception as e:
-            return -1, str(e)
+            if p.returncode == 0 or ("Error response from daemon: No such container" not in p.stderr and "No such container" not in p.stderr):
+                return p.returncode, p.stdout.strip() + " " + p.stderr.strip()
+        except Exception:
+            pass
+
+        # Strategy 3: Dynamic lookup of any running postgres container
+        try:
+            find_proc = subprocess.run(
+                ["docker", "ps", "--filter", "ancestor=postgres:16-alpine", "--format", "{{.Names}}"],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5
+            )
+            cname = find_proc.stdout.strip().split("\n")[0].strip() if find_proc.returncode == 0 else ""
+            if cname:
+                cmd = ["docker", "exec", cname, "psql", "-U", user, "-d", db, "-t", "-A", "-c", sql_cmd]
+                p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
+                return p.returncode, p.stdout.strip() + " " + p.stderr.strip()
+        except Exception:
+            pass
+
+        return -1, "PostgreSQL not reachable via local psql or docker"
+
+    # Preflight connectivity probe
+    probe_ret, probe_out = run_query("SELECT 1;", user="postgres")
+    if probe_ret != 0:
+        print(f"  [WARN] Live PostgreSQL 16 instance not reachable ({probe_out.strip()}). Skipping live penetration phase.")
+        return []
 
     # 1. Check NOBYPASSRLS on app_runtime
     ret, out = run_query("SELECT rolbypassrls FROM pg_roles WHERE rolname = 'app_runtime';", user="postgres")

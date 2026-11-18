@@ -1,9 +1,18 @@
 #!/bin/sh
 set -e
 
+HOST_FLAG=""
+if [ -n "$PGHOST" ]; then
+    HOST_FLAG="-h $PGHOST"
+fi
+PORT_FLAG=""
+if [ -n "$PGPORT" ]; then
+    PORT_FLAG="-p $PGPORT"
+fi
+
 # Initialize distinct roles for migrations vs application runtime
 # Enforces Step 2.4 & Step 4.1: NOBYPASSRLS for app_runtime
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+psql -v ON_ERROR_STOP=1 $HOST_FLAG $PORT_FLAG --username "${POSTGRES_USER:-postgres}" --dbname "${POSTGRES_DB:-surveillance_dev}" <<-EOSQL
     -- 1. Create migration role (owns DDL schemas and tables)
     DO \$\$
     BEGIN
