@@ -52,6 +52,69 @@ func (r *IncidentRepository) Save(ctx context.Context, incident *domain.SafetyIn
 	})
 }
 
+// SaveWithOutbox atomically persists a safety incident and enqueues its outbox record in one tenant transaction.
+// Returns (isNew=true, nil) if inserted, or (isNew=false, nil) if duplicate event_id was detected.
+func (r *IncidentRepository) SaveWithOutbox(
+	ctx context.Context,
+	incident *domain.SafetyIncident,
+	payload []byte,
+	isFirePriority bool,
+) (bool, error) {
+	var isNew bool
+	err := r.db.WithTenantTx(ctx, incident.SiteID, func(tx *sql.Tx) error {
+		bboxesJSON, err := json.Marshal(incident.BBoxes)
+		if err != nil {
+			return fmt.Errorf("failed to marshal bboxes: %w", err)
+		}
+
+		queryIncident := `
+			INSERT INTO events (
+				id, site_id, camera_id, zone_id, event_type, severity,
+				status, occurred_at_utc, model_id, model_version,
+				confidence, bboxes, snapshot_rel_path, created_at_utc
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+			ON CONFLICT (site_id, id) DO NOTHING
+		`
+
+		res, err := tx.ExecContext(
+			ctx, queryIncident,
+			incident.ID, incident.SiteID, incident.CameraID, incident.ZoneID,
+			string(incident.EventType), string(incident.Severity), string(incident.Status),
+			incident.OccurredAtUTC, incident.ModelID, incident.ModelVersion,
+			incident.Confidence, bboxesJSON, incident.SnapshotRelPath, incident.CreatedAtUTC,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to insert incident: %w", err)
+		}
+
+		rowsAff, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rowsAff == 0 {
+			isNew = false
+			return nil
+		}
+		isNew = true
+
+		queryOutbox := `
+			INSERT INTO outbox (
+				event_id, site_id, payload, is_fire_priority, status, created_at_utc
+			) VALUES ($1, $2, $3, $4, 'PENDING', $5)
+		`
+		if _, err := tx.ExecContext(ctx, queryOutbox, incident.ID, incident.SiteID, payload, isFirePriority, time.Now().UTC()); err != nil {
+			return fmt.Errorf("failed to enqueue outbox row in atomic tx: %w", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return false, err
+	}
+	return isNew, nil
+}
+
 // GetByID retrieves a single incident by ID within a site boundary
 func (r *IncidentRepository) GetByID(ctx context.Context, siteID, id string) (*domain.SafetyIncident, error) {
 	var incident domain.SafetyIncident

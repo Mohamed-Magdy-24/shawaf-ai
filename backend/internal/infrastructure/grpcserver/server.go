@@ -18,9 +18,10 @@ import (
 // Server implements pb.EdgeIngestionServiceServer
 type Server struct {
 	pb.UnimplementedEdgeIngestionServiceServer
-	eventService  *application.EventService
-	cameraService *application.CameraService
-	sharedSecret  string
+	eventService    *application.EventService
+	cameraService   *application.CameraService
+	sharedSecret    string
+	onEventIngested func()
 }
 
 // NewServer initializes gRPC ingestion server
@@ -28,11 +29,17 @@ func NewServer(
 	eventService *application.EventService,
 	cameraService *application.CameraService,
 	sharedSecret string,
+	onEventIngested ...func(),
 ) *Server {
+	var onIngest func()
+	if len(onEventIngested) > 0 {
+		onIngest = onEventIngested[0]
+	}
 	return &Server{
-		eventService:  eventService,
-		cameraService: cameraService,
-		sharedSecret:  sharedSecret,
+		eventService:    eventService,
+		cameraService:   cameraService,
+		sharedSecret:    sharedSecret,
+		onEventIngested: onIngest,
 	}
 }
 
@@ -76,7 +83,7 @@ func (s *Server) SubmitEvent(ctx context.Context, req *pb.SubmitEventRequest) (*
 		severity = domain.SeverityWarning
 	}
 
-	_, err := s.eventService.HandleIncomingDetection(
+	_, isDuplicate, err := s.eventService.HandleIncomingDetection(
 		ctx,
 		req.GetEventId(),
 		req.GetSiteId(),
@@ -96,8 +103,22 @@ func (s *Server) SubmitEvent(ctx context.Context, req *pb.SubmitEventRequest) (*
 		return nil, status.Errorf(codes.Internal, "failed to persist incident: %v", err)
 	}
 
+	if isDuplicate {
+		log.Printf("[WARN] Duplicate event %s ignored for site %s / camera %s",
+			req.GetEventId(), req.GetSiteId(), req.GetCameraId())
+		return &pb.SubmitEventResponse{
+			Accepted:      true,
+			Duplicate:     true,
+			StatusMessage: "Duplicate event detected: already ingested and queued",
+		}, nil
+	}
+
 	log.Printf("[INFO] Ingested safety event %s [%s] for site %s / camera %s",
 		req.GetEventId(), req.GetSeverity(), req.GetSiteId(), req.GetCameraId())
+
+	if s.onEventIngested != nil {
+		s.onEventIngested()
+	}
 
 	return &pb.SubmitEventResponse{
 		Accepted:      true,

@@ -12,6 +12,7 @@ type mockIncidentRepo struct {
 	saved    map[string]*domain.SafetyIncident
 	active   []*domain.SafetyIncident
 	updateFn func(inc *domain.SafetyIncident) error
+	outbox   *mockOutboxRepo
 }
 
 func (m *mockIncidentRepo) Save(ctx context.Context, incident *domain.SafetyIncident) error {
@@ -20,6 +21,20 @@ func (m *mockIncidentRepo) Save(ctx context.Context, incident *domain.SafetyInci
 	}
 	m.saved[incident.ID] = incident
 	return nil
+}
+
+func (m *mockIncidentRepo) SaveWithOutbox(ctx context.Context, incident *domain.SafetyIncident, payload []byte, isFirePriority bool) (bool, error) {
+	if m.saved == nil {
+		m.saved = make(map[string]*domain.SafetyIncident)
+	}
+	if _, exists := m.saved[incident.ID]; exists {
+		return false, nil // Duplicate detected
+	}
+	m.saved[incident.ID] = incident
+	if m.outbox != nil {
+		_ = m.outbox.Enqueue(ctx, incident.SiteID, incident.ID, payload, isFirePriority)
+	}
+	return true, nil
 }
 
 func (m *mockIncidentRepo) GetByID(ctx context.Context, siteID, id string) (*domain.SafetyIncident, error) {
@@ -87,15 +102,15 @@ func (m *mockCameraRepo) UpdateTelemetry(ctx context.Context, siteID, cameraID s
 
 func TestEventService_HandleIncomingDetection_OutboxRouting(t *testing.T) {
 	ctx := context.Background()
-	incidentRepo := &mockIncidentRepo{}
 	outboxRepo := &mockOutboxRepo{}
+	incidentRepo := &mockIncidentRepo{outbox: outboxRepo}
 	cameraRepo := &mockCameraRepo{}
 
 	svc := NewEventService(incidentRepo, outboxRepo, cameraRepo)
 
 	// 1. Ingest normal warning event
 	now := time.Now().UTC()
-	inc, err := svc.HandleIncomingDetection(
+	inc, isDup, err := svc.HandleIncomingDetection(
 		ctx,
 		"evt-100", "site_bnf", "camera_01", "zone_gate",
 		"restricted_zone.entry.detected",
@@ -109,6 +124,9 @@ func TestEventService_HandleIncomingDetection_OutboxRouting(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	if isDup {
+		t.Fatalf("expected isDup=false on fresh event")
+	}
 
 	if inc.ID != "evt-100" || inc.Status != domain.StatusNew {
 		t.Fatalf("incident not created properly: %+v", inc)
@@ -121,8 +139,30 @@ func TestEventService_HandleIncomingDetection_OutboxRouting(t *testing.T) {
 		t.Fatalf("expected isFire=false for warning event")
 	}
 
-	// 2. Ingest CRITICAL_FIRE event -> MUST set isFirePriority = true for fast-path routing
-	fireInc, err := svc.HandleIncomingDetection(
+	// 2. Ingest duplicate event -> MUST NOT enqueue a duplicate outbox message
+	_, isDup2, err := svc.HandleIncomingDetection(
+		ctx,
+		"evt-100", "site_bnf", "camera_01", "zone_gate",
+		"restricted_zone.entry.detected",
+		domain.SeverityWarning,
+		now,
+		"yolox", "1.0",
+		0.92,
+		nil,
+		"site_bnf/2026/11/18/evt-100.jpg",
+	)
+	if err != nil {
+		t.Fatalf("unexpected error on duplicate event: %v", err)
+	}
+	if !isDup2 {
+		t.Fatalf("expected isDup=true on duplicate event")
+	}
+	if len(outboxRepo.enqueued) != 1 {
+		t.Fatalf("duplicate event must not enqueue duplicate outbox message! got %d", len(outboxRepo.enqueued))
+	}
+
+	// 3. Ingest CRITICAL_FIRE event -> MUST set isFirePriority = true for fast-path routing
+	fireInc, isDup3, err := svc.HandleIncomingDetection(
 		ctx,
 		"evt-fire-1", "site_bnf", "camera_02", "zone_warehouse",
 		"fire.smoke.detected",
@@ -133,6 +173,12 @@ func TestEventService_HandleIncomingDetection_OutboxRouting(t *testing.T) {
 		nil,
 		"site_bnf/2026/11/18/evt-fire-1.jpg",
 	)
+	if err != nil {
+		t.Fatalf("unexpected error on fire event: %v", err)
+	}
+	if isDup3 {
+		t.Fatalf("expected isDup=false for fire event")
+	}
 	if err != nil {
 		t.Fatalf("unexpected error on fire event: %v", err)
 	}

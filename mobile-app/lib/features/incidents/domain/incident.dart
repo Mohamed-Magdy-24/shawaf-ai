@@ -142,8 +142,9 @@ class SafetyIncident {
             .toList() ??
         [];
 
+    final id = (json['id'] ?? json['event_id']) as String;
     return SafetyIncident(
-      id: json['id'] as String,
+      id: id,
       siteId: json['site_id'] as String,
       cameraId: json['camera_id'] as String,
       cameraName: json['camera_name'] as String? ?? json['camera_id'] as String,

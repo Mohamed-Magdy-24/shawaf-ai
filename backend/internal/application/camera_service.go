@@ -68,7 +68,7 @@ func (s *CameraService) RecordWorkerHeartbeat(
 		// NFR-OBS-002: Coverage Lost check
 		if !stream.Online {
 			eventID := fmt.Sprintf("cov_lost_%s_%s_%d", siteID, stream.CameraID, now.Unix()/60)
-			_, _ = s.events.HandleIncomingDetection(
+			_, _, _ = s.events.HandleIncomingDetection(
 				ctx,
 				eventID,
 				siteID,

@@ -3,11 +3,11 @@
   "test_type": "smoke",
   "duration_seconds": 5.0,
   "target_pids": [
-    9944
+    10308
   ],
-  "initial_rss_mb": 15.836,
-  "peak_rss_mb": 15.863,
-  "final_rss_mb": 15.863,
+  "initial_rss_mb": 15.887,
+  "peak_rss_mb": 15.914,
+  "final_rss_mb": 15.914,
   "growth_ratio": 0.0017,
   "growth_percent": 0.17,
   "threshold_max_growth_percent": 10.0,

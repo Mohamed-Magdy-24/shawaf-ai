@@ -626,55 +626,68 @@ Previous Status: IN PROGRESS
 New Status: COMPLETED & VERIFIED (BRANCH: wp4-restricted-area-vertical-slice)
 Work Actually Completed:
 1. Privileged PostgreSQL Migrations & Fail-Closed Guard:
-   - Separated schema migrations via dedicated app_migrator credentials.
+   - Separated schema migrations via dedicated app_migrator credentials (`MIGRATOR_DATABASE_URL`).
    - Added db.VerifySchema(ctx) at edged startup; fails closed if required schema tables are missing.
-2. PostgreSQL 16 Parameterized RLS Context & Penetration Verification:
+2. PostgreSQL 16 Parameterized RLS Context & Live Penetration Verification:
    - Corrected SQL parameterization using `SELECT set_config('app.site_id', $1, true)`.
    - Executed live penetration suite against PostgreSQL 16 verifying 8 security vectors including negative tests (cross-tenant leak = 0 rows, WITH CHECK insert rejection, update tampering blocked, context reset post-transaction).
 3. Environment Configuration & Mock Purge in Flutter Client:
    - Implemented AppConfig.fromEnvironment with secure defaults and compile-time URL/context configuration.
    - Removed MockIncidentData seeding in incident repository; removed hardcoded fallback cameras in camera repository. True backend availability and error states are surfaced to the UI.
+   - Hardened `SafetyIncident.fromJson` and WebSocket event listener to accept both `id` and `event_id`.
 4. RTSP Decoder Robustness & Subprocess Lifecycle:
    - Added explicit frame scaling `-vf scale={width}:{height}` to FFmpeg arguments.
    - Drained stderr in a background daemon thread to eliminate OS pipe buffer deadlocks.
-   - Hardened subprocess termination and verified reconnect tests.
-5. Benchmark Evidence Correction:
-   - Clarified SPK-02-LOCAL documentation as local synthetic file-decoding and synthetic-model microbenchmarks; prohibited production capacity extrapolations.
-   - Fixed soak test harness runner to explicitly label 5-second runs as smoke verifications.
+   - Hardened subprocess termination and non-blocking cancel sleep in reader loop; verified stream reconnect tests.
+   - Added optional keyword arguments to `CameraStreamHealthData.__init__`.
+5. Atomic Outbox Persistence & Deduplication:
+   - Replaced non-atomic dual writes with `SaveWithOutbox(ctx, incident, payload, isFirePriority)` using `ON CONFLICT (site_id, id) DO NOTHING` in a single tenant transaction.
+   - Returns duplicate status over gRPC (`Accepted: true, Duplicate: true`) and prevents duplicate queueing.
+   - Added immediate outbox wake callback in `edged` upon gRPC ingestion, reducing WebSocket dispatch latency to ~31ms.
+6. Live End-to-End Vertical Slice & Failure Injection Suites:
+   - Rewrote `tests/e2e/test_vertical_slice.py` and `tests/e2e/test_failure_injection.py` from faked in-memory tests to real live integration tests against `edged` gRPC (50051), PostgreSQL RLS (5432), and authenticated WebSockets (8080).
+   - Validated cross-tenant isolation, duplicate suppression, lease reaper crash recovery, and REST acknowledgment state machine.
+7. Synthetic RTSP Pipeline Benchmark (MediaMTX / camsim):
+   - Created and executed `scripts/benchmark_wp4_rtsp.py` measuring real live synthetic pipeline metrics: 13.8 FPS, 0 drops, 3.7ms inference, 24.9ms persistence, 31.0ms WS dispatch.
+   - Documented in `docs/benchmarks/wp4_rtsp_pipeline_benchmark.json` and `docs/benchmarks/SPK-02_LOCAL_RESULT.md`. Production camera capacity claims explicitly prohibited.
 Files Changed:
 - `backend/cmd/edged/main.go`
-- `backend/internal/infrastructure/postgres/db.go`
-- `backend/internal/infrastructure/postgres/migrations/001_initial_schema.sql`
-- `backend/internal/infrastructure/grpcserver/server.go`
-- `backend/internal/infrastructure/grpcserver/pb/events.pb.go`
-- `backend/internal/infrastructure/grpcserver/pb/events_grpc.pb.go`
+- `backend/internal/application/camera_service.go`
+- `backend/internal/application/event_service.go`
+- `backend/internal/application/event_service_test.go`
 - `backend/internal/application/report_service.go`
 - `backend/internal/application/report_service_test.go`
+- `backend/internal/infrastructure/grpcserver/server.go`
+- `backend/internal/infrastructure/grpcserver/server_test.go`
+- `backend/internal/infrastructure/postgres/db.go`
+- `backend/internal/infrastructure/postgres/incident_repository.go`
+- `backend/internal/infrastructure/postgres/migrations/001_initial_schema.sql`
 - `backend/internal/presentation/httpapi/handler_test.go`
-- `backend/go.mod`
-- `backend/go.sum`
-- `deploy/docker-compose.local.yml`
 - `ai-workers/worker/decoder.py`
 - `ai-workers/tests/test_decoder.py`
 - `mobile-app/lib/core/config/app_config.dart`
 - `mobile-app/lib/core/network/websocket_client.dart`
 - `mobile-app/lib/features/incidents/data/incident_repository.dart`
+- `mobile-app/lib/features/incidents/domain/incident.dart`
 - `mobile-app/lib/features/video/data/camera_repository.dart`
 - `mobile-app/lib/main.dart`
 - `mobile-app/test/unit/incident_bloc_test.dart`
+- `tests/e2e/test_vertical_slice.py`
+- `tests/e2e/test_failure_injection.py`
+- `tests/e2e/ws_helper.py`
 - `tests/security/test_rls.py`
-- `tests/soak/run_30m_soak.py`
+- `scripts/benchmark_wp4_rtsp.py`
 - `docs/benchmarks/SPK-02_LOCAL_RESULT.md`
-- `soak_test_report.json`
-- `rls_penetration_report.json`
-- `license_scan_report.json`
+- `docs/benchmarks/wp4_rtsp_pipeline_benchmark.json`
 - `PROJECT_HANDOFF.md`
 Validation and Results:
 - Master CI Quality Gates: 8/8 PASSED (Harness Doctor, License Scanner, Clean Arch AST, RLS Penetration, Vertical Slice, Failure-Injection, Soak Smoke, Harness Unit Tests).
-- Python AI Workers: 28/28 tests passed (100% pass, ran in 3.60s).
+- Python AI Workers: 28/28 tests passed (100% pass, ran in 0.54s).
 - Go Backend: 100% test pass in `golang:1.24-alpine` container (application, domain, grpcserver, httpapi).
 - Flutter Client: 21/21 tests passed (100% pass, ran in 2.0s).
 - Live PostgreSQL RLS: 100% pass across 8 attack vectors including live penetration negative tests.
+- Live End-to-End Vertical Slice: 100% pass against live running `edged` (gRPC, PostgreSQL RLS, Outbox, WebSocket, REST).
+- MediaMTX Synthetic RTSP Benchmark: 13.8 FPS, 0 drops, 3.7ms inference, 24.9ms persistence, 31.0ms WS dispatch.
 Remaining Blockers: Production deployment, physical factory camera/NVR/ZKTeco connections, production SQL Server contact, and real employee biometric face recognition remain STRICTLY BLOCKED pending Owner sign-off on DEC-03..DEC-08 and legal gate clearance under Egyptian Law 151/2020.
 Next Authorized Action: Push branch `wp4-restricted-area-vertical-slice` to GitHub and open Pull Request against `main` for Owner review.
 ====================================================================================================

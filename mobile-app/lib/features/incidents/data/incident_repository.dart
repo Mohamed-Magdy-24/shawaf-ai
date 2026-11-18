@@ -51,7 +51,8 @@ class IncidentRepositoryImpl implements IncidentRepository {
     // Zero mock data seeding in vertical slice - real events from backend only
     if (webSocketClient != null) {
       _wsSubscription = webSocketClient!.messages.listen((json) {
-        if (json['event_type'] != null && json['id'] != null) {
+        final id = json['id'] ?? json['event_id'];
+        if (json['event_type'] != null && id != null) {
           try {
             final incident = SafetyIncident.fromJson(json);
             _insertOrUpdate(incident);

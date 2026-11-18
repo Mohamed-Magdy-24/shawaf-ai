@@ -43,9 +43,9 @@ func main() {
 	sharedSecret := getEnv("SHARED_SECRET_TOKEN", "dev_shared_secret_token_change_in_prod")
 	snapshotDir := getEnv("SNAPSHOT_BASE_DIR", "/var/lib/surveillance/snapshots")
 
-	pollIntervalMs, _ := strconv.Atoi(getEnv("OUTBOX_POLL_INTERVAL_MS", "500"))
+	pollIntervalMs, _ := strconv.Atoi(getEnv("OUTBOX_POLL_INTERVAL_MS", "100"))
 	if pollIntervalMs <= 0 {
-		pollIntervalMs = 500
+		pollIntervalMs = 100
 	}
 	reaperIntervalSec, _ := strconv.Atoi(getEnv("LEASE_REAPER_INTERVAL_SEC", "10"))
 	if reaperIntervalSec <= 0 {
@@ -190,7 +190,7 @@ func main() {
 		log.Fatalf("[FATAL] Failed to listen on gRPC addr %s: %v", grpcAddr, err)
 	}
 
-	grpcServerImpl := grpcserver.NewServer(eventService, cameraService, sharedSecret)
+	grpcServerImpl := grpcserver.NewServer(eventService, cameraService, sharedSecret, triggerImmediateDispatch)
 	grpcSrv := grpc.NewServer()
 	grpcserver.Register(grpcSrv, grpcServerImpl)
 

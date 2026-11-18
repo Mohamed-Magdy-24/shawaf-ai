@@ -12,12 +12,19 @@ from worker.config import scrub_credentials, validate_rtsp_url
 logger = logging.getLogger(__name__)
 
 class CameraStreamHealthData:
-    def __init__(self, camera_id: str):
+    def __init__(
+        self,
+        camera_id: str,
+        online: bool = False,
+        fps_decoded: float = 0.0,
+        dropped_frames: int = 0,
+        last_frame_utc_ms: int = 0,
+    ):
         self.camera_id = camera_id
-        self.online = False
-        self.fps_decoded = 0.0
-        self.dropped_frames = 0
-        self.last_frame_utc_ms = 0
+        self.online = online
+        self.fps_decoded = fps_decoded
+        self.dropped_frames = dropped_frames
+        self.last_frame_utc_ms = last_frame_utc_ms
 
 class RTSPStreamDecoder:
     """
@@ -111,6 +118,11 @@ class RTSPStreamDecoder:
 
         return proc
 
+    def _sleep_with_cancel(self, duration: float):
+        deadline = time.monotonic() + duration
+        while self._running and time.monotonic() < deadline:
+            time.sleep(min(0.05, max(0.005, deadline - time.monotonic())))
+
     def _reader_loop(self):
         reconnect_delay = 1.0
         while self._running:
@@ -156,7 +168,7 @@ class RTSPStreamDecoder:
                 logger.error("FFmpeg binary '%s' not found on system path.", self.ffmpeg_bin)
                 with self._lock:
                     self.health.online = False
-                time.sleep(5.0)
+                self._sleep_with_cancel(2.0)
             except Exception as e:
                 logger.error("Error in decoder loop for %s: %s", self.camera_id, scrub_credentials(str(e)))
                 with self._lock:
@@ -166,7 +178,7 @@ class RTSPStreamDecoder:
 
             if self._running:
                 logger.info("Attempting reconnection for camera %s in %.1fs...", self.camera_id, reconnect_delay)
-                time.sleep(reconnect_delay)
+                self._sleep_with_cancel(reconnect_delay)
                 reconnect_delay = min(reconnect_delay * 2, 30.0)
 
     def get_latest_frame(self, timeout: float = 0.5) -> Optional[Tuple[np.ndarray, int]]:

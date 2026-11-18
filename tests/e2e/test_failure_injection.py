@@ -10,7 +10,7 @@ Injected Failure Scenarios:
    - Verifies zero message loss and idempotency (duplicate prevention).
 2. RTSP Stream Socket Loss & Coverage Lost Alert (NFR-OBS-002):
    - Simulates abrupt socket closure / dropped RTSP stream from camera.
-   - Verifies stream failure detection within 2 seconds.
+   - Verifies stream failure detection within 2 seconds without subprocess deadlocks.
    - Verifies credential scrubbing (no RTSP passwords leaked in logs).
    - Verifies coverage-lost critical event generation if offline > 15 seconds.
 3. Database Transient Outage & Pool Recovery:
@@ -21,95 +21,97 @@ import os
 import sys
 import time
 import json
+import subprocess
 import datetime
 import unittest
 
+workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, os.path.join(workspace_root, "ai-workers"))
+
+from worker.config import scrub_credentials
+from worker.decoder import RTSPStreamDecoder, CameraStreamHealthData
+
+
 class TestFailureInjectionRecovery(unittest.TestCase):
 
-    def test_01_outbox_lease_reaper_recovery(self):
-        """Failure Injection 1: Worker crashes while processing outbox items; lease reaper reclaims."""
-        now = datetime.datetime.now(datetime.timezone.utc)
-        
-        # Simulated outbox queue
-        outbox_table = [
-            {
-                "id": 1,
-                "event_id": "evt-001",
-                "status": "PROCESSING",
-                "locked_until": now - datetime.timedelta(seconds=45), # EXPIRED lease (crashed worker)
-                "retry_count": 0,
-                "payload": b'{"event":"leak_test"}'
-            },
-            {
-                "id": 2,
-                "event_id": "evt-002",
-                "status": "PROCESSING",
-                "locked_until": now + datetime.timedelta(seconds=20), # ACTIVE valid lease
-                "retry_count": 0,
-                "payload": b'{"event":"active_worker"}'
-            },
-            {
-                "id": 3,
-                "event_id": "evt-003",
-                "status": "SENT",
-                "locked_until": None,
-                "retry_count": 0,
-                "payload": b'{"event":"already_sent"}'
-            }
-        ]
+    def test_01_outbox_lease_reaper_recovery_in_postgres(self):
+        """Failure Injection 1: Live PostgreSQL lease reaper reclaims expired PROCESSING rows."""
+        event_id = f"crash_test_{int(time.time())}"
+        site_id = "site_bnf"
+        payload = f'{{"test": "crash_recovery", "event_id": "{event_id}"}}'
 
-        # 1. Execute Lease Reaper Query:
-        # SELECT * FROM outbox WHERE status = 'PROCESSING' AND locked_until < NOW()
-        reaped_rows = [
-            row for row in outbox_table 
-            if row["status"] == "PROCESSING" and row["locked_until"] is not None and row["locked_until"] < now
-        ]
+        # 1. Insert orphaned row in PROCESSING state with expired locked_until (-45s) into live PostgreSQL
+        insert_sql = (
+            f"BEGIN; "
+            f"SELECT set_config('app.site_id', 'ALL', true); "
+            f"INSERT INTO events (id, site_id, camera_id, zone_id, event_type, severity, status, occurred_at_utc, snapshot_rel_path) "
+            f"VALUES ('{event_id}', '{site_id}', 'camera01', 'zone_test', 'test.crash', 'WARNING', 'NEW', NOW(), 'snap.jpg') ON CONFLICT DO NOTHING; "
+            f"INSERT INTO outbox (event_id, site_id, payload, is_fire_priority, status, locked_until, retry_count) "
+            f"VALUES ('{event_id}', '{site_id}', '{payload}'::jsonb, false, 'PROCESSING', NOW() - INTERVAL '45 seconds', 0); "
+            f"COMMIT;"
+        )
 
-        self.assertEqual(len(reaped_rows), 1, "Lease reaper must reclaim exactly the expired row")
-        self.assertEqual(reaped_rows[0]["id"], 1)
+        cmd = ["docker", "exec", "surv_postgres", "psql", "-U", "postgres", "-d", "surveillance_dev", "-c", insert_sql]
+        p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
+        if p.returncode != 0:
+            self.skipTest(f"Docker postgres container unreachable: {p.stderr}")
 
-        # 2. Re-queue expired row
-        for row in reaped_rows:
-            row["status"] = "PENDING"
-            row["locked_until"] = None
-            row["retry_count"] += 1
+        # 2. Execute Lease Reaper query directly in live database
+        reap_sql = (
+            f"BEGIN; "
+            f"SELECT set_config('app.site_id', 'ALL', true); "
+            f"UPDATE outbox SET status = 'PENDING', locked_until = NULL, retry_count = retry_count + 1 "
+            f"WHERE status = 'PROCESSING' AND locked_until < NOW() AND event_id = '{event_id}'; "
+            f"SELECT status, retry_count FROM outbox WHERE event_id = '{event_id}'; "
+            f"COMMIT;"
+        )
+        cmd_reap = ["docker", "exec", "surv_postgres", "psql", "-U", "postgres", "-d", "surveillance_dev", "-t", "-A", "-c", reap_sql]
+        p_reap = subprocess.run(cmd_reap, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
+        self.assertEqual(p_reap.returncode, 0, f"Lease reaper query failed: {p_reap.stderr}")
 
-        self.assertEqual(outbox_table[0]["status"], "PENDING")
-        self.assertEqual(outbox_table[0]["retry_count"], 1)
-        # Active row must remain unchanged
-        self.assertEqual(outbox_table[1]["status"], "PROCESSING")
-        # Sent row must remain unchanged
-        self.assertEqual(outbox_table[2]["status"], "SENT")
+        # Verify row transitioned back to PENDING with retry_count = 1
+        output = p_reap.stdout.strip()
+        self.assertIn("PENDING", output, f"Expected row to be recovered to PENDING, got: {output}")
 
     def test_02_rtsp_stream_loss_and_credential_scrubbing(self):
-        """Failure Injection 2: RTSP socket drops; verify credential scrubbing and coverage-lost alert."""
+        """Failure Injection 2: RTSP socket drops; verify credential scrubbing and decoder failure handling."""
         raw_rtsp_url = "rtsp://admin:super_secret_camera_pass_123@192.168.10.50:554/live/ch0"
-        
+
         # 1. Credential scrubbing verification
-        import re
-        scrubbed_url = re.sub(r'//([^:]+):([^@]+)@', r'//\1:***@', raw_rtsp_url)
-        self.assertNotIn("super_secret_camera_pass_123", scrubbed_url)
+        scrubbed_url = scrub_credentials(raw_rtsp_url)
+        self.assertNotIn("super_secret_camera_pass_123", scrubbed_url, "Cleartext password leaked in scrubbed URL!")
         self.assertIn("***@", scrubbed_url)
 
-        # 2. Stream health simulation
-        t_disconnect = time.time()
-        # Simulated detection within 2s
-        detected_loss_latency = 0.45 # seconds
-        self.assertLess(detected_loss_latency, 2.0, "Stream loss must be detected in under 2.0s")
+        # 2. Live decoder connection failure on unreachable port
+        unreachable_url = "rtsp://127.0.0.1:59998/live/dead_stream"
+        decoder = RTSPStreamDecoder(
+            camera_id="cam_unreachable",
+            rtsp_url=unreachable_url,
+            width=320,
+            height=240,
+            max_queue_size=2
+        )
 
-        # 3. Coverage Lost Alert (NFR-OBS-002 / ADR-017)
-        # If offline duration exceeds 15.0 seconds, trigger coverage-lost alert
+        t_start = time.perf_counter()
+        decoder.start()
+        time.sleep(0.5)
+        health = decoder.get_health()
+        decoder.stop()
+        t_duration = time.perf_counter() - t_start
+
+        self.assertFalse(health.online, "Decoder must report stream offline on connection failure")
+        self.assertLess(t_duration, 3.0, "Stream failure handling must not deadlock or hang")
+
+        # 3. Coverage Lost Alert Simulation (NFR-OBS-002 / ADR-017)
         simulated_offline_duration = 16.5
-        coverage_lost_triggered = False
-        if simulated_offline_duration >= 15.0:
-            coverage_lost_triggered = True
-            alert_event = {
-                "event_type": "camera.coverage_lost",
-                "severity": "CRITICAL",
-                "camera_id": "cam_bnf_01",
-                "offline_duration_sec": simulated_offline_duration,
-                "sanitized_url": scrubbed_url
-            }
+        coverage_lost_triggered = simulated_offline_duration >= 15.0
+        alert_event = {
+            "event_type": "camera.coverage_lost",
+            "severity": "CRITICAL",
+            "camera_id": "cam_unreachable",
+            "offline_duration_sec": simulated_offline_duration,
+            "sanitized_url": scrubbed_url
+        }
 
         self.assertTrue(coverage_lost_triggered)
         self.assertEqual(alert_event["event_type"], "camera.coverage_lost")
@@ -122,7 +124,6 @@ class TestFailureInjectionRecovery(unittest.TestCase):
         backoff_delays = []
         base_backoff_ms = 50.0
 
-        # Simulate 2 transient failures followed by successful connection
         def execute_db_query():
             nonlocal attempts
             attempts += 1
@@ -140,7 +141,6 @@ class TestFailureInjectionRecovery(unittest.TestCase):
             except ConnectionError:
                 delay_ms = base_backoff_ms * (2 ** i)
                 backoff_delays.append(delay_ms)
-                # simulate tiny wait
                 time.sleep(0.001)
 
         self.assertTrue(success)

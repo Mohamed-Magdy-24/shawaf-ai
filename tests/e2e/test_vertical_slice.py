@@ -8,9 +8,11 @@ Verifies the complete pipeline flow:
 2. Rule engine evaluation (footpoint bottom-center inside polygon).
 3. Snapshot relative path generation according to strict format:
    "<site_id>/<yyyy>/<mm>/<dd>/<event_id>.jpg" (proto/surveillance/v1/events.proto).
-4. Transactional Outbox serialization and queueing (SKIP LOCKED semantics).
-5. Fast-path alert notification dispatch (< 500ms target latency).
-6. Minimal Incident State Machine transitions:
+4. Real gRPC Ingestion & Atomic Transactional Outbox persistence with RLS.
+5. Authenticated WebSocket event delivery (< 500ms target latency).
+6. Cross-Tenant RLS isolation (site_bnf events completely invisible to site_rnf).
+7. Duplicate event delivery suppression (duplicate SubmitEvent is detected and ignored).
+8. Real Minimal Incident State Machine transitions via HTTP REST API:
    NEW -> ACKNOWLEDGED -> RESOLVED / DISMISSED (FR-ALT-008).
 """
 import os
@@ -19,16 +21,19 @@ import time
 import json
 import uuid
 import datetime
+import urllib.request
+import urllib.error
 import unittest
 
 # Add workspace roots to path
 workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(workspace_root, "ai-workers"))
+sys.path.insert(0, os.path.join(workspace_root, "ai-workers", "worker", "pb"))
+sys.path.insert(0, os.path.join(workspace_root, "tests", "e2e"))
 
 try:
     from worker.rules import point_in_polygon, check_bbox_intrusion
 except (ImportError, ModuleNotFoundError):
-    # Pure-python ray casting fallback when OpenCV/worker dependencies are not present on host
     def point_in_polygon(point, polygon):
         x, y = point
         n = len(polygon)
@@ -51,14 +56,20 @@ except (ImportError, ModuleNotFoundError):
         footpoint = ((x1 + x2) / 2.0, y2)
         return point_in_polygon(footpoint, polygon)
 
+from ws_helper import SimpleWebSocketClient
+from worker.grpc_client import EdgeIngestionClient
+from surveillance.v1 import events_pb2
+
+
 class TestEndToEndVerticalSlice(unittest.TestCase):
     def setUp(self):
-        self.site_id = "BNF"
-        self.camera_id = "cam_bnf_perimeter_01"
+        self.site_id = "site_bnf"
+        self.camera_id = "camera01"
         self.zone_id = "zone_restricted_north"
-        # Restricted polygon coordinates
         self.polygon = [(100.0, 100.0), (400.0, 100.0), (400.0, 400.0), (100.0, 400.0)]
-        self.t0 = time.time()
+        self.grpc_target = os.getenv("EDGED_GRPC_TARGET", "127.0.0.1:50051")
+        self.http_base = os.getenv("EDGED_HTTP_URL", "http://127.0.0.1:8080")
+        self.shared_secret = os.getenv("SHARED_SECRET_TOKEN", "dev_shared_secret_token_change_in_prod")
 
     def test_01_intrusion_detection_and_rule_evaluation(self):
         """Step 1: Synthetic bounding box detection and polygon footpoint intrusion."""
@@ -67,6 +78,10 @@ class TestEndToEndVerticalSlice(unittest.TestCase):
         bbox = (200.0, 150.0, 260.0, 320.0)
         is_intrusion = check_bbox_intrusion(bbox, self.polygon)
         self.assertTrue(is_intrusion, "Expected person bounding box footpoint to trigger polygon intrusion")
+
+        # Negative test: person outside the polygon
+        outside_bbox = (500.0, 150.0, 560.0, 320.0)
+        self.assertFalse(check_bbox_intrusion(outside_bbox, self.polygon), "Person outside polygon must not trigger intrusion")
 
     def test_02_snapshot_path_compliance(self):
         """Step 2: Strict format compliance for snapshot relative path."""
@@ -84,95 +99,169 @@ class TestEndToEndVerticalSlice(unittest.TestCase):
         self.assertEqual(parts[3], now.strftime("%d"))
         self.assertTrue(parts[4].endswith(".jpg"))
 
-    def test_03_transactional_outbox_queue_and_latency(self):
-        """Step 3: Atomic event persistence, outbox row creation, and simulated dispatch."""
-        start_time = time.perf_counter()
+    def test_03_live_e2e_pipeline_grpc_outbox_websocket_and_isolation(self):
+        """Step 3: Live End-to-End slice: gRPC Ingestion -> DB Persist -> Outbox -> Authenticated WebSocket (<500ms)."""
+        # 1. Obtain single-use WebSocket ticket
+        ticket_url = f"{self.http_base}/api/v1/sites/{self.site_id}/ws-ticket"
+        req = urllib.request.Request(
+            ticket_url,
+            data=json.dumps({"user_id": "operator_slice_test"}).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=5.0) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                ticket = data["ticket"]
+        except Exception as e:
+            self.skipTest(f"Live edged HTTP API unreachable on {self.http_base}: {e}")
+
+        # 2. Connect Authenticated WebSocket
+        ws_client = SimpleWebSocketClient("127.0.0.1", 8080, f"/api/v1/sites/{self.site_id}/ws-events?ticket={ticket}")
+
+        # 3. Submit restricted area event via live gRPC
         event_id = str(uuid.uuid4())
         occurred_ms = int(time.time() * 1000)
+        grpc_client = EdgeIngestionClient(self.grpc_target, self.shared_secret)
 
-        # 1. Domain Event Record
-        event_record = {
-            "id": event_id,
-            "site_id": self.site_id,
-            "camera_id": self.camera_id,
-            "zone_id": self.zone_id,
-            "event_type": "restricted_zone.entry.detected",
-            "severity": "CRITICAL",
-            "status": "NEW",
-            "occurred_at_utc_ms": occurred_ms,
-            "confidence": 0.94,
-            "snapshot_rel_path": f"{self.site_id}/2026/11/18/{event_id}.jpg"
-        }
+        submit_req = events_pb2.SubmitEventRequest(
+            event_id=event_id,
+            site_id=self.site_id,
+            camera_id=self.camera_id,
+            zone_id=self.zone_id,
+            event_type="restricted_zone.entry.detected",
+            severity="CRITICAL",
+            occurred_at_utc_ms=occurred_ms,
+            model_id="yolox-nano",
+            model_version="1.0.0",
+            confidence=0.96,
+            bboxes=[events_pb2.BoundingBox(x1=200.0, y1=150.0, x2=260.0, y2=320.0, label="person", confidence=0.96)],
+            snapshot_rel_path=f"{self.site_id}/2026/11/18/{event_id}.jpg"
+        )
 
-        # 2. Outbox Row Record
-        payload = json.dumps(event_record).encode("utf-8")
-        outbox_row = {
-            "id": 1001,
-            "site_id": self.site_id,
-            "event_id": event_id,
-            "payload": payload,
-            "is_fire_priority": False,
-            "status": "PENDING",
-            "locked_until": None,
-            "retry_count": 0
-        }
+        t_start = time.perf_counter()
+        resp = grpc_client.submit_event(submit_req, timeout=5.0)
+        self.assertTrue(resp.accepted, f"SubmitEvent was not accepted: {resp.status_message}")
+        self.assertFalse(resp.duplicate, "First submission must not be marked duplicate")
 
-        # 3. Simulate Outbox Claim via SKIP LOCKED
-        claim_time = datetime.datetime.now(datetime.timezone.utc)
-        locked_until = claim_time + datetime.timedelta(seconds=30)
-        outbox_row["status"] = "PROCESSING"
-        outbox_row["locked_until"] = locked_until
+        # 4. Receive dispatched event on Authenticated WebSocket within < 500ms
+        ws_msg = ws_client.recv_json(timeout=3.0)
+        elapsed_ms = (time.perf_counter() - t_start) * 1000.0
+        ws_client.close()
 
-        # 4. Simulate WebSocket notification delivery
-        delivered_message = json.loads(outbox_row["payload"].decode("utf-8"))
-        outbox_row["status"] = "SENT"
-        end_time = time.perf_counter()
-
-        elapsed_ms = (end_time - start_time) * 1000.0
-
-        self.assertEqual(delivered_message["id"], event_id)
-        self.assertEqual(outbox_row["status"], "SENT")
+        self.assertIsNotNone(ws_msg, "WebSocket did not receive incident event from Outbox dispatcher!")
+        received_id = ws_msg.get("id") or ws_msg.get("event_id")
+        self.assertEqual(received_id, event_id, f"Expected event ID {event_id}, received {received_id}")
+        self.assertEqual(ws_msg.get("site_id"), self.site_id)
+        self.assertEqual(ws_msg.get("camera_id"), self.camera_id)
         self.assertLess(elapsed_ms, 500.0, f"End-to-end dispatch latency {elapsed_ms:.2f}ms exceeds 500ms target")
 
+        # 5. Verify Cross-Tenant Isolation: site_rnf CANNOT see this incident
+        rnf_incidents_url = f"{self.http_base}/api/v1/sites/site_rnf/incidents"
+        try:
+            with urllib.request.urlopen(rnf_incidents_url, timeout=5.0) as resp:
+                rnf_data = json.loads(resp.read().decode("utf-8"))
+                if rnf_data:
+                    for inc in rnf_data:
+                        self.assertNotEqual(inc.get("id"), event_id, "CRITICAL: Cross-tenant data leak! site_rnf saw site_bnf incident")
+        except urllib.error.HTTPError as e:
+            pass
+
+        # 6. Verify Duplicate Suppression: Re-submitting same event_id is rejected/duplicate
+        dup_resp = grpc_client.submit_event(submit_req, timeout=5.0)
+        self.assertTrue(dup_resp.duplicate, "Duplicate submission must return duplicate=True")
+
     def test_04_incident_state_machine_transitions(self):
-        """Step 4: FR-ALT-008 Minimal state machine: NEW -> ACK -> RESOLVED / DISMISSED."""
-        # Initial State: NEW
-        incident = {
-            "id": str(uuid.uuid4()),
-            "status": "NEW",
-            "acknowledged_by": None,
-            "resolved_by": None,
-            "dismissal_reason": None
-        }
-        self.assertEqual(incident["status"], "NEW")
+        """Step 4: FR-ALT-008 Live state machine: NEW -> ACK -> RESOLVED / DISMISSED via REST API."""
+        # 1. Ingest fresh incident
+        event_id = str(uuid.uuid4())
+        occurred_ms = int(time.time() * 1000)
+        grpc_client = EdgeIngestionClient(self.grpc_target, self.shared_secret)
 
-        # Action: Acknowledge
-        operator_id = "op_control_room_01"
-        self.assertEqual(incident["status"], "NEW", "Must be NEW to acknowledge")
-        incident["status"] = "ACKNOWLEDGED"
-        incident["acknowledged_by"] = operator_id
-        self.assertEqual(incident["status"], "ACKNOWLEDGED")
-        self.assertEqual(incident["acknowledged_by"], operator_id)
+        submit_req = events_pb2.SubmitEventRequest(
+            event_id=event_id,
+            site_id=self.site_id,
+            camera_id=self.camera_id,
+            zone_id=self.zone_id,
+            event_type="restricted_zone.entry.detected",
+            severity="CRITICAL",
+            occurred_at_utc_ms=occurred_ms,
+            model_id="yolox-nano",
+            model_version="1.0.0",
+            confidence=0.91,
+            bboxes=[events_pb2.BoundingBox(x1=100.0, y1=100.0, x2=200.0, y2=200.0, label="person", confidence=0.91)],
+            snapshot_rel_path=f"{self.site_id}/2026/11/18/{event_id}.jpg"
+        )
+        try:
+            resp = grpc_client.submit_event(submit_req)
+            self.assertTrue(resp.accepted)
+        except Exception as e:
+            self.skipTest(f"Live edged gRPC unreachable on {self.grpc_target}: {e}")
 
-        # Action: Resolve
-        incident["status"] = "RESOLVED"
-        incident["resolved_by"] = operator_id
-        self.assertEqual(incident["status"], "RESOLVED")
+        # 2. Action: Acknowledge (NEW -> ACKNOWLEDGED)
+        ack_url = f"{self.http_base}/api/v1/sites/{self.site_id}/incidents/{event_id}/acknowledge"
+        ack_req = urllib.request.Request(
+            ack_url,
+            data=json.dumps({"operator_id": "op_test_control_01"}).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(ack_req, timeout=5.0) as resp:
+            ack_data = json.loads(resp.read().decode("utf-8"))
+            self.assertEqual(ack_data["status"], "ACKNOWLEDGED")
+            self.assertEqual(ack_data["acknowledged_by"], "op_test_control_01")
 
-        # Negative Test: Dismiss without reason must be rejected
-        dismiss_incident = {"id": str(uuid.uuid4()), "status": "NEW", "dismissal_reason": ""}
-        reason = ""
-        self.assertEqual(reason.strip(), "", "Empty dismissal reason must be detected")
-        with self.assertRaises(ValueError):
-            if not reason.strip():
-                raise ValueError("Dismissal reason is mandatory when dismissing an incident")
+        # 3. Action: Resolve (ACKNOWLEDGED -> RESOLVED)
+        res_url = f"{self.http_base}/api/v1/sites/{self.site_id}/incidents/{event_id}/resolve"
+        res_req = urllib.request.Request(
+            res_url,
+            data=json.dumps({"operator_id": "op_test_control_01"}).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(res_req, timeout=5.0) as resp:
+            res_data = json.loads(resp.read().decode("utf-8"))
+            self.assertEqual(res_data["status"], "RESOLVED")
+            self.assertEqual(res_data["resolved_by"], "op_test_control_01")
 
-        # Positive Test: Dismiss with reason
-        valid_reason = "False positive: authorized maintenance technician in hi-vis uniform"
-        dismiss_incident["status"] = "DISMISSED"
-        dismiss_incident["dismissal_reason"] = valid_reason
-        self.assertEqual(dismiss_incident["status"], "DISMISSED")
-        self.assertEqual(dismiss_incident["dismissal_reason"], valid_reason)
+        # 4. Negative Test: Dismiss without reason must be rejected with HTTP 400
+        dis_event_id = str(uuid.uuid4())
+        submit_req2 = events_pb2.SubmitEventRequest(
+            event_id=dis_event_id,
+            site_id=self.site_id,
+            camera_id=self.camera_id,
+            zone_id=self.zone_id,
+            event_type="restricted_zone.entry.detected",
+            severity="CRITICAL",
+            occurred_at_utc_ms=occurred_ms,
+            model_id="yolox-nano",
+            model_version="1.0.0",
+            confidence=0.88,
+            bboxes=[],
+            snapshot_rel_path=f"{self.site_id}/2026/11/18/{dis_event_id}.jpg"
+        )
+        grpc_client.submit_event(submit_req2)
+
+        dis_url = f"{self.http_base}/api/v1/sites/{self.site_id}/incidents/{dis_event_id}/dismiss"
+        bad_dis_req = urllib.request.Request(
+            dis_url,
+            data=json.dumps({"operator_id": "op_test_control_01", "reason": ""}).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            urllib.request.urlopen(bad_dis_req, timeout=5.0)
+        self.assertEqual(ctx.exception.code, 400, "Empty dismissal reason must return HTTP 400 Bad Request")
+
+        # 5. Positive Test: Dismiss with valid reason succeeds
+        good_dis_req = urllib.request.Request(
+            dis_url,
+            data=json.dumps({
+                "operator_id": "op_test_control_01",
+                "reason": "Authorized maintenance technician conducting routine inspection"
+            }).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(good_dis_req, timeout=5.0) as resp:
+            dis_data = json.loads(resp.read().decode("utf-8"))
+            self.assertEqual(dis_data["status"], "DISMISSED")
+            self.assertIn("Authorized maintenance", dis_data["dismissal_reason"])
 
 
 if __name__ == "__main__":

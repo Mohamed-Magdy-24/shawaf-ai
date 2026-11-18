@@ -12,6 +12,7 @@ import (
 // IncidentRepository defines the persistence port for incidents
 type IncidentRepository interface {
 	Save(ctx context.Context, incident *domain.SafetyIncident) error
+	SaveWithOutbox(ctx context.Context, incident *domain.SafetyIncident, payload []byte, isFirePriority bool) (bool, error)
 	GetByID(ctx context.Context, siteID, id string) (*domain.SafetyIncident, error)
 	ListActive(ctx context.Context, siteID string) ([]*domain.SafetyIncident, error)
 	Update(ctx context.Context, incident *domain.SafetyIncident) error
@@ -53,7 +54,8 @@ func NewEventService(repo IncidentRepository, outbox OutboxRepository, cameraRep
 	}
 }
 
-// HandleIncomingDetection ingests, creates, and queues a safety event
+// HandleIncomingDetection ingests, creates, and atomically queues a safety event
+// Returns (*domain.SafetyIncident, isDuplicate, error)
 func (s *EventService) HandleIncomingDetection(
 	ctx context.Context,
 	id, siteID, cameraID, zoneID, eventType string,
@@ -63,43 +65,45 @@ func (s *EventService) HandleIncomingDetection(
 	confidence float32,
 	bboxes []domain.BoundingBox,
 	snapshotPath string,
-) (*domain.SafetyIncident, error) {
+) (*domain.SafetyIncident, bool, error) {
 	incident, err := domain.NewSafetyIncident(
 		id, siteID, cameraID, zoneID, eventType,
 		severity, occurredAt, modelID, modelVersion,
 		confidence, bboxes, snapshotPath,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("domain validation failed: %w", err)
-	}
-
-	if err := s.repo.Save(ctx, incident); err != nil {
-		return nil, fmt.Errorf("failed to persist incident: %w", err)
+		return nil, false, fmt.Errorf("domain validation failed: %w", err)
 	}
 
 	isFirePriority := severity == domain.SeverityCriticalFire
 	payloadData := map[string]interface{}{
+		"id":                incident.ID,
 		"event_id":          incident.ID,
 		"site_id":           incident.SiteID,
 		"camera_id":         incident.CameraID,
+		"camera_name":       incident.CameraID,
 		"zone_id":           incident.ZoneID,
 		"event_type":        incident.EventType,
 		"severity":          incident.Severity,
 		"status":            incident.Status,
 		"occurred_at_utc":   incident.OccurredAtUTC.Format(time.RFC3339),
 		"confidence":        incident.Confidence,
+		"bboxes":            incident.BBoxes,
 		"snapshot_rel_path": incident.SnapshotRelPath,
 	}
 	payloadBytes, err := json.Marshal(payloadData)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal outbox payload: %w", err)
+		return nil, false, fmt.Errorf("failed to marshal outbox payload: %w", err)
 	}
 
-	if err := s.outbox.Enqueue(ctx, incident.SiteID, incident.ID, payloadBytes, isFirePriority); err != nil {
-		return nil, fmt.Errorf("failed to enqueue to outbox: %w", err)
+	// Atomically persist safety incident and outbox row in a single database transaction
+	isNew, err := s.repo.SaveWithOutbox(ctx, incident, payloadBytes, isFirePriority)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to atomically persist incident and outbox: %w", err)
 	}
 
-	return incident, nil
+	isDuplicate := !isNew
+	return incident, isDuplicate, nil
 }
 
 // GetIncident retrieves a specific incident enforcing site tenant boundary

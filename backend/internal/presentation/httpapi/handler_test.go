@@ -29,6 +29,13 @@ func (d *dummyIncidentRepo) Save(ctx context.Context, inc *domain.SafetyIncident
 	d.incidents[inc.ID] = inc
 	return nil
 }
+func (d *dummyIncidentRepo) SaveWithOutbox(ctx context.Context, inc *domain.SafetyIncident, payload []byte, isFirePriority bool) (bool, error) {
+	if _, exists := d.incidents[inc.ID]; exists {
+		return false, nil // duplicate
+	}
+	d.incidents[inc.ID] = inc
+	return true, nil
+}
 func (d *dummyIncidentRepo) GetByID(ctx context.Context, siteID, id string) (*domain.SafetyIncident, error) {
 	if inc, ok := d.incidents[id]; ok && inc.SiteID == siteID {
 		return inc, nil

@@ -21,6 +21,13 @@ func (m *mockIncRepo) Save(ctx context.Context, inc *domain.SafetyIncident) erro
 	m.saved = inc
 	return nil
 }
+func (m *mockIncRepo) SaveWithOutbox(ctx context.Context, inc *domain.SafetyIncident, payload []byte, isFirePriority bool) (bool, error) {
+	if m.saved != nil && m.saved.ID == inc.ID {
+		return false, nil // duplicate
+	}
+	m.saved = inc
+	return true, nil
+}
 func (m *mockIncRepo) GetByID(ctx context.Context, siteID, id string) (*domain.SafetyIncident, error) {
 	return nil, nil
 }
