@@ -14,10 +14,10 @@
   - **BNF (Beni Suef):** Autonomous local data plane, dedicated SQL Server, dedicated ZKTeco instance, local NVR/camera fleet.
   - **RNF (Sadat City):** Autonomous local data plane, dedicated SQL Server, dedicated ZKTeco instance, local NVR/camera fleet.
   - **Cross-Site Interconnection:** Independent factory local networks and data planes with federated, role-scoped, and secure interconnection via WireGuard VPN tunnel for authorized management access only.
-- **Repository & Active Branch:** GitHub `https://github.com/Mohamed-Magdy-24/shawaf-ai` (Branch: `feature/wp2-production-rebuild`).
+- **Repository & Active Branch:** GitHub `https://github.com/Mohamed-Magdy-24/shawaf-ai` (Branch: `main`).
 - **Canonical Package & Version:** `1.2.0-wp2-wp3-verified` (Pack Root: `Industrial_AI_Surveillance_Project_Pack`).
-- **Last Verified Commit SHA:** `d097c92` (feat(core): deliver verified WP-2 production foundation & CI quality harness).
-- **Push Verification:** Verified live on GitHub remote `origin/feature/wp2-production-rebuild`.
+- **Last Verified Commit SHA:** `f540f51` (feat(benchmark,reporting): complete SPK-02-LOCAL video benchmark & DEC-07 reporting cutoffs).
+- **Push Verification:** Verified live on GitHub remote `origin/main` (single canonical production branch; all legacy, feature and audit branches consolidated and pruned).
 - **Last Status Update Date:** 2026-11-18.
 
 ---

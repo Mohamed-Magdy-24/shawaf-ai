@@ -78,9 +78,13 @@ def verify_boundaries(root_dir=None, json_output=False):
         for imp in imported_pkgs:
             for forbidden in forbidden_list:
                 if forbidden in imp:
+                    try:
+                        rel_file = os.path.relpath(file_path, start=root_dir)
+                    except ValueError:
+                        rel_file = file_path
                     violations.append({
                         "layer": pkg_name,
-                        "file": os.path.relpath(file_path),
+                        "file": rel_file,
                         "imported": imp,
                         "forbidden_pattern": forbidden
                     })
