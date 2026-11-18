@@ -1,0 +1,102 @@
+{
+  "timestamp_utc": "2026-11-18 17:08:35Z",
+  "host_hardware": {
+    "cpu_count_physical": 6,
+    "cpu_count_logical": 12,
+    "ram_total_gb": 15.69,
+    "ram_available_gb": 4.21
+  },
+  "decoding_benchmark": [
+    {
+      "num_streams": 1,
+      "elapsed_seconds": 0.101,
+      "total_frames_decoded": 150,
+      "dropped_frames": 0,
+      "aggregate_fps": 1484.78,
+      "per_stream_fps": 1484.78,
+      "avg_cpu_percent": 43.0,
+      "mem_start_mb": 48.77,
+      "mem_end_mb": 53.17,
+      "mem_delta_mb": 4.4
+    },
+    {
+      "num_streams": 4,
+      "elapsed_seconds": 0.203,
+      "total_frames_decoded": 600,
+      "dropped_frames": 0,
+      "aggregate_fps": 2958.87,
+      "per_stream_fps": 739.72,
+      "avg_cpu_percent": 351.9,
+      "mem_start_mb": 53.23,
+      "mem_end_mb": 55.89,
+      "mem_delta_mb": 2.66
+    },
+    {
+      "num_streams": 8,
+      "elapsed_seconds": 0.412,
+      "total_frames_decoded": 1200,
+      "dropped_frames": 0,
+      "aggregate_fps": 2912.79,
+      "per_stream_fps": 364.1,
+      "avg_cpu_percent": 772.1,
+      "mem_start_mb": 55.89,
+      "mem_end_mb": 57.45,
+      "mem_delta_mb": 1.56
+    }
+  ],
+  "inference_benchmark": {
+    "available_providers": [
+      "AzureExecutionProvider",
+      "CPUExecutionProvider"
+    ],
+    "selected_provider": "CPUExecutionProvider",
+    "cuda_available": false,
+    "thread_configs": [
+      {
+        "intra_op_threads": 1,
+        "iterations": 100,
+        "mean_ms": 0.01,
+        "std_ms": 0.0,
+        "p50_ms": 0.01,
+        "p90_ms": 0.01,
+        "p95_ms": 0.01,
+        "p99_ms": 0.02,
+        "min_ms": 0.01,
+        "max_ms": 0.03,
+        "throughput_inf_per_sec": 84983.4
+      },
+      {
+        "intra_op_threads": 2,
+        "iterations": 100,
+        "mean_ms": 0.05,
+        "std_ms": 0.01,
+        "p50_ms": 0.04,
+        "p90_ms": 0.05,
+        "p95_ms": 0.05,
+        "p99_ms": 0.06,
+        "min_ms": 0.04,
+        "max_ms": 0.16,
+        "throughput_inf_per_sec": 21464.3
+      },
+      {
+        "intra_op_threads": 4,
+        "iterations": 100,
+        "mean_ms": 0.05,
+        "std_ms": 0.01,
+        "p50_ms": 0.04,
+        "p90_ms": 0.05,
+        "p95_ms": 0.06,
+        "p99_ms": 0.07,
+        "min_ms": 0.04,
+        "max_ms": 0.11,
+        "throughput_inf_per_sec": 21346.1
+      }
+    ]
+  },
+  "compliance": {
+    "adr_012_zero_raw_frames_over_network": true,
+    "adr_016_onnxruntime_cpu_baseline": true,
+    "spk_02_local_authorization_confirmed": true,
+    "synthetic_media_only": true
+  }
+}
