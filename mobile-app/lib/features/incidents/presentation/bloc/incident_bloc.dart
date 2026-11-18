@@ -9,12 +9,16 @@ import 'incident_state.dart';
 class IncidentBloc extends Bloc<IncidentEvent, IncidentState> {
   final IncidentRepository repository;
   final String activeSiteId;
+  late String _currentSiteId;
   StreamSubscription<SafetyIncident>? _liveStreamSub;
+
+  String get currentSiteId => _currentSiteId;
 
   IncidentBloc({
     required this.repository,
-    this.activeSiteId = 'BNF',
+    this.activeSiteId = 'site_bnf',
   }) : super(const IncidentState()) {
+    _currentSiteId = activeSiteId;
     on<LoadIncidents>(_onLoadIncidents);
     on<LiveIncidentReceived>(_onLiveIncidentReceived);
     on<AcknowledgeIncidentEvent>(_onAcknowledgeIncident);
@@ -31,6 +35,7 @@ class IncidentBloc extends Bloc<IncidentEvent, IncidentState> {
     LoadIncidents event,
     Emitter<IncidentState> emit,
   ) async {
+    _currentSiteId = event.siteId;
     emit(state.copyWith(
       uiState: const UILoading('Retrieving factory incident feed...'),
       severityFilter: event.severityFilter,
@@ -90,7 +95,7 @@ class IncidentBloc extends Bloc<IncidentEvent, IncidentState> {
   ) async {
     try {
       final updated = await repository.acknowledgeIncident(
-        siteId: activeSiteId,
+        siteId: _currentSiteId,
         incidentId: event.incidentId,
         operatorId: event.operatorId,
       );
@@ -113,7 +118,7 @@ class IncidentBloc extends Bloc<IncidentEvent, IncidentState> {
   ) async {
     try {
       final updated = await repository.resolveIncident(
-        siteId: activeSiteId,
+        siteId: _currentSiteId,
         incidentId: event.incidentId,
         operatorId: event.operatorId,
       );
@@ -136,7 +141,7 @@ class IncidentBloc extends Bloc<IncidentEvent, IncidentState> {
   ) async {
     try {
       final updated = await repository.dismissIncident(
-        siteId: activeSiteId,
+        siteId: _currentSiteId,
         incidentId: event.incidentId,
         operatorId: event.operatorId,
         reason: event.reason,
@@ -159,7 +164,7 @@ class IncidentBloc extends Bloc<IncidentEvent, IncidentState> {
     Emitter<IncidentState> emit,
   ) async {
     add(LoadIncidents(
-      siteId: activeSiteId,
+      siteId: _currentSiteId,
       severityFilter: event.severityFilter,
       statusFilter: event.statusFilter,
     ));

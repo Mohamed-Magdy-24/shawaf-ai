@@ -52,8 +52,8 @@ class CommandOverviewScreen extends StatelessWidget {
             ),
             child: Row(
               children: [
-                _buildSiteTab('BNF (Beni Suef)', activeSiteId == 'BNF', () => onSiteChanged('BNF')),
-                _buildSiteTab('RNF (Sadat)', activeSiteId == 'RNF', () => onSiteChanged('RNF')),
+                _buildSiteTab('BNF (Beni Suef)', activeSiteId == 'site_bnf' || activeSiteId == 'BNF', () => onSiteChanged('site_bnf')),
+                _buildSiteTab('RNF (Sadat City)', activeSiteId == 'site_rnf' || activeSiteId == 'RNF', () => onSiteChanged('site_rnf')),
               ],
             ),
           ),
@@ -96,16 +96,24 @@ class CommandOverviewScreen extends StatelessWidget {
                             _buildKpiCard(
                               title: 'ACTIVE CAMERAS',
                               value: '$onlineCameras / $totalCameras',
-                              subtext: '98.1% Fleet Uptime',
-                              statusColor: AppColors.statusNormal,
+                              subtext: totalCameras > 0
+                                  ? '${((onlineCameras / totalCameras) * 100).toStringAsFixed(1)}% Fleet Online ($activeSiteId)'
+                                  : 'No Cameras Configured',
+                              statusColor: onlineCameras > 0
+                                  ? AppColors.statusNormal
+                                  : AppColors.statusWarning,
                               icon: Icons.videocam,
                               width: cardWidth,
                             ),
                             _buildKpiCard(
                               title: 'AI INFERENCE',
-                              value: '24.8 FPS',
-                              subtext: 'Avg Latency 38ms (CUDA/CPU)',
-                              statusColor: AppColors.statusInfo,
+                              value: onlineCameras > 0 ? 'ACTIVE' : 'STANDBY',
+                              subtext: onlineCameras > 0
+                                  ? 'ONNX YOLOv8x Runtime'
+                                  : 'NO FEED (Waiting for frames)',
+                              statusColor: onlineCameras > 0
+                                  ? AppColors.statusInfo
+                                  : AppColors.textSecondary,
                               icon: Icons.memory,
                               width: cardWidth,
                             ),
@@ -115,15 +123,17 @@ class CommandOverviewScreen extends StatelessWidget {
                               subtext: '$criticalIncidents Critical Severity',
                               statusColor: criticalIncidents > 0
                                   ? AppColors.statusCritical
-                                  : AppColors.statusNormal,
+                                  : (unresolvedIncidents > 0
+                                      ? AppColors.statusWarning
+                                      : AppColors.statusNormal),
                               icon: Icons.warning_amber_rounded,
                               width: cardWidth,
                             ),
                             _buildKpiCard(
                               title: 'ATTENDANCE SYNC',
-                              value: '842 CHECKED-IN',
-                              subtext: 'ZKTeco Terminal Stage OK',
-                              statusColor: AppColors.statusNormal,
+                              value: 'STANDBY',
+                              subtext: 'ZKTeco terminal integration offline',
+                              statusColor: AppColors.textSecondary,
                               icon: Icons.badge_outlined,
                               width: cardWidth,
                             ),

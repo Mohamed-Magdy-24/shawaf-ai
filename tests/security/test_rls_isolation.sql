@@ -13,11 +13,16 @@ BEGIN
         CREATE ROLE app_runtime WITH LOGIN PASSWORD 'runtime_secret_dev_pass'
             NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
     END IF;
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'outbox_dispatcher') THEN
+        CREATE ROLE outbox_dispatcher WITH LOGIN PASSWORD 'dispatcher_secret_dev_pass'
+            NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+    END IF;
 END
 $$;
 
 -- 2. Schema Privileges
 GRANT USAGE ON SCHEMA public TO app_runtime;
+GRANT USAGE ON SCHEMA public TO outbox_dispatcher;
 
 -- 3. Core Tables
 CREATE TABLE IF NOT EXISTS sites (
@@ -115,3 +120,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON events TO app_runtime;
 GRANT SELECT, INSERT, UPDATE, DELETE ON outbox TO app_runtime;
 GRANT SELECT ON sites TO app_runtime;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_runtime;
+
+-- 7. Permissions for outbox_dispatcher (least-privilege: outbox queue only)
+GRANT SELECT, UPDATE ON outbox TO outbox_dispatcher;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO outbox_dispatcher;

@@ -1,0 +1,141 @@
+{
+  "suite": "PostgreSQL 16 RLS Penetration Test",
+  "verdict": "PASSED",
+  "ddl_audit": {
+    "all_passed": true,
+    "checks": {
+      "nobypassrls_enforced": true,
+      "cameras_rls_enabled": true,
+      "cameras_rls_forced": true,
+      "events_rls_enabled": true,
+      "events_rls_forced": true,
+      "outbox_rls_enabled": true,
+      "outbox_rls_forced": true,
+      "policy_cameras_site_setting": true,
+      "policy_events_site_setting": true,
+      "policy_outbox_site_setting": true,
+      "policy_with_check_enforced": true,
+      "no_wildcard_all_bypass": true
+    },
+    "failed_checks": []
+  },
+  "penetration_vectors": [
+    {
+      "vector": "1. Fail-Closed Default (No site context)",
+      "passed": true,
+      "details": "Visible cameras with NULL context: 0 (expected 0)"
+    },
+    {
+      "vector": "2. Tenant Read Isolation (BNF sees only BNF)",
+      "passed": true,
+      "details": "Visible BNF cameras: 2/2"
+    },
+    {
+      "vector": "3. Cross-Tenant Read Leak Attempt (BNF user query for RNF)",
+      "passed": true,
+      "details": "Leaked RNF rows: 0 (expected 0)"
+    },
+    {
+      "vector": "4. Cross-Tenant Write Injection (BNF writes RNF event)",
+      "passed": true,
+      "details": "WITH CHECK policy rejected cross-tenant insert"
+    },
+    {
+      "vector": "5. Cross-Site Foreign Key Injection (BNF references RNF camera)",
+      "passed": true,
+      "details": "Target FK camera is outside tenant visibility boundary"
+    },
+    {
+      "vector": "6. Cross-Tenant Update/Delete Tampering",
+      "passed": true,
+      "details": "Foreign rows mutable by tenant: 0 (expected 0)"
+    },
+    {
+      "vector": "7. Isolation Symmetry (RNF context)",
+      "passed": true,
+      "details": "Visible RNF cameras: 2/2"
+    },
+    {
+      "vector": "8. NOBYPASSRLS & Table Force RLS Invariant",
+      "passed": true,
+      "details": "Verified via DDL static AST audit"
+    }
+  ],
+  "live_db_tests": [
+    {
+      "vector": "Live: app_runtime NOBYPASSRLS",
+      "passed": true,
+      "details": "rolbypassrls = f"
+    },
+    {
+      "vector": "Live: Tables FORCE ROW LEVEL SECURITY",
+      "passed": true,
+      "details": "Verified 3 tables with relforcerowsecurity=t"
+    },
+    {
+      "vector": "Live: Fail-Closed Default (No site_id)",
+      "passed": true,
+      "details": "Returned 0 rows (expected 0)"
+    },
+    {
+      "vector": "Live: Tenant Read Isolation (site_bnf sees site_bnf)",
+      "passed": true,
+      "details": "Successfully isolated tenant rows: BEGIN\nsite_bnf\n1\nCOMMIT"
+    },
+    {
+      "vector": "Live: Cross-Tenant Read Leak Attempt (Negative Test)",
+      "passed": true,
+      "details": "Cross-tenant query returned 0 rows: BEGIN\nsite_bnf\n0\nCOMMIT"
+    },
+    {
+      "vector": "Live: Cross-Tenant Write Injection (Negative Test - WITH CHECK)",
+      "passed": true,
+      "details": "WITH CHECK policy rejected cross-tenant write: exit=1, msg=BEGIN\nsite_bnf ERROR:  new row violates row-level security policy for table \"cameras\""
+    },
+    {
+      "vector": "Live: Cross-Tenant Update Tampering (Negative Test)",
+      "passed": true,
+      "details": "Update affected BEGIN\nsite_bnf\nUPDATE 0\nCOMMIT"
+    },
+    {
+      "vector": "Live: Context Cleared Post-Transaction (Negative Test)",
+      "passed": true,
+      "details": "Subsequent query outside transaction returned 0 rows (expected 0)"
+    },
+    {
+      "vector": "Live: Attempted app.site_id = 'ALL' Bypass on Cameras (Negative Test)",
+      "passed": true,
+      "details": "Wildcard 'ALL' query returned 0 rows (expected 0, strictly blocked)"
+    },
+    {
+      "vector": "Live: Attempted app.site_id = 'ALL' Bypass on Events (Negative Test)",
+      "passed": true,
+      "details": "Wildcard 'ALL' query on events returned 0 rows (expected 0, strictly blocked)"
+    },
+    {
+      "vector": "Live: Attempted app.site_id = 'ALL' Bypass on Outbox (Negative Test)",
+      "passed": true,
+      "details": "Wildcard 'ALL' query on outbox returned 0 rows (expected 0, strictly blocked)"
+    },
+    {
+      "vector": "Live: Isolation Symmetry (site_rnf sees site_rnf)",
+      "passed": true,
+      "details": "Successfully isolated tenant rows for site_rnf: BEGIN\nsite_rnf\n1\nCOMMIT"
+    },
+    {
+      "vector": "Live: Worker Boundary - outbox_dispatcher cannot read cameras (Negative Test)",
+      "passed": true,
+      "details": "outbox_dispatcher camera access rejected: exit=1, msg=ERROR:  permission denied for table cameras"
+    },
+    {
+      "vector": "Live: Worker Boundary - outbox_dispatcher cannot read events (Negative Test)",
+      "passed": true,
+      "details": "outbox_dispatcher events access rejected: exit=1, msg=ERROR:  permission denied for table events"
+    },
+    {
+      "vector": "Live: Invalid Tenant Injection Attempt (Negative Test)",
+      "passed": true,
+      "details": "Invalid tenant context returned 0 rows (expected 0)"
+    }
+  ]
+}

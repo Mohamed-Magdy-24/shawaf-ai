@@ -7,11 +7,15 @@ import 'camera_state.dart';
 class CameraBloc extends Bloc<CameraEvent, CameraState> {
   final CameraRepository repository;
   final String activeSiteId;
+  late String _currentSiteId;
+
+  String get currentSiteId => _currentSiteId;
 
   CameraBloc({
     required this.repository,
-    this.activeSiteId = 'BNF',
+    this.activeSiteId = 'site_bnf',
   }) : super(const CameraState()) {
+    _currentSiteId = activeSiteId;
     on<LoadCameras>(_onLoadCameras);
     on<SelectCamera>(_onSelectCamera);
     on<SendPtzCommandEvent>(_onSendPtzCommand);
@@ -23,6 +27,7 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
     LoadCameras event,
     Emitter<CameraState> emit,
   ) async {
+    _currentSiteId = event.siteId;
     emit(state.copyWith(
       uiState: const UILoading('Retrieving camera telemetry fleet...'),
     ));
@@ -67,7 +72,7 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
 
     try {
       await repository.sendPtzCommand(
-        siteId: activeSiteId,
+        siteId: _currentSiteId,
         cameraId: camId,
         pan: event.pan,
         tilt: event.tilt,

@@ -23,11 +23,26 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     END
     \$\$;
 
-    -- 3. Grant schema usage and privileges
+    -- 3. Create dedicated outbox dispatcher role (least privilege: outbox queue dispatch only)
+    DO \$\$
+    BEGIN
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'outbox_dispatcher') THEN
+            CREATE ROLE outbox_dispatcher WITH LOGIN PASSWORD 'dispatcher_secret_dev_pass'
+                NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+        END IF;
+    END
+    \$\$;
+
+    -- 4. Grant schema usage and privileges
     GRANT ALL ON SCHEMA public TO app_migrator;
     GRANT USAGE ON SCHEMA public TO app_runtime;
+    GRANT USAGE ON SCHEMA public TO outbox_dispatcher;
     ALTER DEFAULT PRIVILEGES FOR ROLE app_migrator IN SCHEMA public
         GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_runtime;
     ALTER DEFAULT PRIVILEGES FOR ROLE app_migrator IN SCHEMA public
         GRANT USAGE, SELECT ON SEQUENCES TO app_runtime;
+    ALTER DEFAULT PRIVILEGES FOR ROLE app_migrator IN SCHEMA public
+        GRANT SELECT, UPDATE ON TABLES TO outbox_dispatcher;
+    ALTER DEFAULT PRIVILEGES FOR ROLE app_migrator IN SCHEMA public
+        GRANT USAGE, SELECT ON SEQUENCES TO outbox_dispatcher;
 EOSQL

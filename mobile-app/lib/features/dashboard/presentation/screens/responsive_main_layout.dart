@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
+import '../../../incidents/data/incident_repository.dart';
 import '../../../incidents/presentation/bloc/incident_bloc.dart';
 import '../../../incidents/presentation/bloc/incident_event.dart';
 import '../../../incidents/presentation/screens/incident_feed_screen.dart';
@@ -17,7 +18,7 @@ class ResponsiveMainLayout extends StatefulWidget {
 
   const ResponsiveMainLayout({
     super.key,
-    this.initialSiteId = 'BNF',
+    this.initialSiteId = 'site_bnf',
   });
 
   @override
@@ -36,6 +37,9 @@ class _ResponsiveMainLayoutState extends State<ResponsiveMainLayout> {
   }
 
   void _reloadSiteData() {
+    try {
+      context.read<IncidentRepository>().setSite(_activeSiteId);
+    } catch (_) {}
     context.read<IncidentBloc>().add(LoadIncidents(siteId: _activeSiteId));
     context.read<CameraBloc>().add(LoadCameras(_activeSiteId));
   }

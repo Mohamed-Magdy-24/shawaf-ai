@@ -158,6 +158,7 @@ func main() {
 	go2rtcProxy := go2rtc.NewSDPProxyClient(go2rtcURL)
 
 	// 8. HTTP & WebSocket Server
+	authenticator := httpapi.NewAuthenticator(sharedSecret)
 	httpHandler := httpapi.NewHandler(
 		eventService,
 		cameraService,
@@ -165,6 +166,7 @@ func main() {
 		wsHub,
 		go2rtcProxy,
 		snapshotDir,
+		authenticator,
 	)
 	httpMux := http.NewServeMux()
 	httpHandler.RegisterRoutes(httpMux)

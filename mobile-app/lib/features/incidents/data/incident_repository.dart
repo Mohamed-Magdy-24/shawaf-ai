@@ -3,7 +3,6 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/websocket_client.dart';
 import '../domain/incident.dart';
 import '../domain/incident_state_machine.dart';
-import 'mock_incident_data.dart';
 
 abstract class IncidentRepository {
   Future<List<SafetyIncident>> getIncidents({
@@ -83,18 +82,14 @@ class IncidentRepositoryImpl implements IncidentRepository {
     IncidentSeverity? severityFilter,
     IncidentStatus? statusFilter,
   }) async {
-    try {
-      final response = await apiClient.get('/api/v1/sites/$siteId/incidents');
-      if (response is List) {
-        final incidents = response
-            .map((item) => SafetyIncident.fromJson(item as Map<String, dynamic>))
-            .toList();
-        for (final incident in incidents) {
-          _insertOrUpdate(incident);
-        }
+    final response = await apiClient.get('/api/v1/sites/$siteId/incidents');
+    if (response is List) {
+      final incidents = response
+          .map((item) => SafetyIncident.fromJson(item as Map<String, dynamic>))
+          .toList();
+      for (final incident in incidents) {
+        _insertOrUpdate(incident);
       }
-    } catch (_) {
-      // Fallback to local memory cache for offline resilience / mock dev
     }
 
     return _cache.where((incident) {
@@ -119,14 +114,10 @@ class IncidentRepositoryImpl implements IncidentRepository {
     final target = _cache[index];
     final updated = IncidentStateMachine.acknowledge(target, operatorId: operatorId);
 
-    try {
-      await apiClient.post(
-        '/api/v1/sites/$siteId/incidents/$incidentId/acknowledge',
-        body: {'operator_id': operatorId},
-      );
-    } catch (_) {
-      // Offline fallback: keep local state transition
-    }
+    // Strict backend confirmation: no optimistic fake success if network or backend rejects
+    await apiClient.post(
+      '/api/v1/sites/$siteId/incidents/$incidentId/acknowledge',
+    );
 
     _cache[index] = updated;
     _incidentStreamController.add(updated);
@@ -147,14 +138,10 @@ class IncidentRepositoryImpl implements IncidentRepository {
     final target = _cache[index];
     final updated = IncidentStateMachine.resolve(target, operatorId: operatorId);
 
-    try {
-      await apiClient.post(
-        '/api/v1/sites/$siteId/incidents/$incidentId/resolve',
-        body: {'operator_id': operatorId},
-      );
-    } catch (_) {
-      // Offline fallback: keep local state transition
-    }
+    // Strict backend confirmation: no optimistic fake success if network or backend rejects
+    await apiClient.post(
+      '/api/v1/sites/$siteId/incidents/$incidentId/resolve',
+    );
 
     _cache[index] = updated;
     _incidentStreamController.add(updated);
@@ -180,14 +167,11 @@ class IncidentRepositoryImpl implements IncidentRepository {
       reason: reason,
     );
 
-    try {
-      await apiClient.post(
-        '/api/v1/sites/$siteId/incidents/$incidentId/dismiss',
-        body: {'operator_id': operatorId, 'reason': reason},
-      );
-    } catch (_) {
-      // Offline fallback: keep local state transition
-    }
+    // Strict backend confirmation: no optimistic fake success if network or backend rejects
+    await apiClient.post(
+      '/api/v1/sites/$siteId/incidents/$incidentId/dismiss',
+      body: {'reason': reason},
+    );
 
     _cache[index] = updated;
     _incidentStreamController.add(updated);

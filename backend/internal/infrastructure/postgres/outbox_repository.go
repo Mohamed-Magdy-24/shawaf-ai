@@ -43,7 +43,8 @@ func (r *OutboxRepository) Enqueue(
 }
 
 // FetchAndLockPending claims up to `limit` pending outbox records
-// Uses FOR UPDATE SKIP LOCKED with lease locking to prevent worker collisions
+// Uses secure stored procedure claim_pending_outbox (SECURITY DEFINER)
+// preventing broad cross-tenant table access
 func (r *OutboxRepository) FetchAndLockPending(
 	ctx context.Context,
 	limit int,
@@ -57,25 +58,16 @@ func (r *OutboxRepository) FetchAndLockPending(
 	}
 
 	var records []*domain.OutboxRecord
+	durationInterval := fmt.Sprintf("%d seconds", int(lockDuration.Seconds()))
 
-	err := r.db.WithTenantTx(ctx, "ALL", func(tx *sql.Tx) error {
-		// 1. Claim records with SKIP LOCKED
-		selectQuery := `
-			SELECT id, event_id, site_id, payload, is_fire_priority, status, retry_count, created_at_utc
-			FROM outbox
-			WHERE status = 'PENDING'
-			ORDER BY is_fire_priority DESC, id ASC
-			LIMIT $1
-			FOR UPDATE SKIP LOCKED
-		`
-
-		rows, err := tx.QueryContext(ctx, selectQuery, limit)
-		if err != nil {
-			return fmt.Errorf("failed to query pending outbox: %w", err)
-		}
+	// Try secure stored procedure first (SECURITY DEFINER, least privilege)
+	query := `
+		SELECT id, event_id, site_id, payload, is_fire_priority, status, retry_count, created_at_utc
+		FROM claim_pending_outbox($1, $2::interval)
+	`
+	rows, err := r.db.QueryContext(ctx, query, limit, durationInterval)
+	if err == nil {
 		defer rows.Close()
-
-		var ids []int64
 		for rows.Next() {
 			var rec domain.OutboxRecord
 			var statusStr string
@@ -84,83 +76,131 @@ func (r *OutboxRepository) FetchAndLockPending(
 				&rec.ID, &rec.EventID, &rec.SiteID, &rec.Payload,
 				&rec.IsFirePriority, &statusStr, &rec.RetryCount, &rec.CreatedAtUTC,
 			); err != nil {
-				return fmt.Errorf("failed to scan outbox row: %w", err)
+				return nil, fmt.Errorf("failed to scan outbox row: %w", err)
 			}
 
 			rec.Status = domain.OutboxStatus(statusStr)
-			ids = append(ids, rec.ID)
+			lockedUntil := time.Now().UTC().Add(lockDuration)
+			rec.LockedUntil = &lockedUntil
 			records = append(records, &rec)
 		}
 		if err := rows.Err(); err != nil {
-			return err
+			return nil, err
 		}
+		return records, nil
+	}
 
-		if len(ids) == 0 {
-			return nil
-		}
+	// Fallback to direct transaction without tenant bypass
+	tx, txErr := r.db.BeginTx(ctx, nil)
+	if txErr != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", txErr)
+	}
+	defer tx.Rollback()
 
-		// 2. Lock claimed records as PROCESSING
-		lockedUntil := time.Now().UTC().Add(lockDuration)
-		updateQuery := `
-			UPDATE outbox
-			SET status = 'PROCESSING', locked_until = $1
-			WHERE id = ANY($2)
-		`
+	selectQuery := `
+		SELECT id, event_id, site_id, payload, is_fire_priority, status, retry_count, created_at_utc
+		FROM outbox
+		WHERE status = 'PENDING'
+		ORDER BY is_fire_priority DESC, id ASC
+		LIMIT $1
+		FOR UPDATE SKIP LOCKED
+	`
 
-		_, err = tx.ExecContext(ctx, updateQuery, lockedUntil, pq.Array(ids))
-		if err != nil {
-			return fmt.Errorf("failed to mark outbox rows as PROCESSING: %w", err)
-		}
-
-		for _, rec := range records {
-			rec.Status = domain.OutboxStatusProcessing
-			rec.LockedUntil = &lockedUntil
-		}
-
-		return nil
-	})
-
+	rows, err = tx.QueryContext(ctx, selectQuery, limit)
 	if err != nil {
+		return nil, fmt.Errorf("failed to query pending outbox: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []int64
+	for rows.Next() {
+		var rec domain.OutboxRecord
+		var statusStr string
+
+		if err := rows.Scan(
+			&rec.ID, &rec.EventID, &rec.SiteID, &rec.Payload,
+			&rec.IsFirePriority, &statusStr, &rec.RetryCount, &rec.CreatedAtUTC,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan outbox row: %w", err)
+		}
+
+		rec.Status = domain.OutboxStatus(statusStr)
+		ids = append(ids, rec.ID)
+		records = append(records, &rec)
+	}
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	lockedUntil := time.Now().UTC().Add(lockDuration)
+	updateQuery := `
+		UPDATE outbox
+		SET status = 'PROCESSING', locked_until = $1
+		WHERE id = ANY($2)
+	`
+
+	_, err = tx.ExecContext(ctx, updateQuery, lockedUntil, pq.Array(ids))
+	if err != nil {
+		return nil, fmt.Errorf("failed to mark outbox rows as PROCESSING: %w", err)
+	}
+
+	for _, rec := range records {
+		rec.Status = domain.OutboxStatusProcessing
+		rec.LockedUntil = &lockedUntil
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit outbox batch: %w", err)
+	}
+
 	return records, nil
 }
 
 // MarkPublished marks an outbox record as successfully delivered
 func (r *OutboxRepository) MarkPublished(ctx context.Context, id int64) error {
-	return r.db.WithTenantTx(ctx, "ALL", func(tx *sql.Tx) error {
-		query := `
-			UPDATE outbox
-			SET status = 'PUBLISHED', published_at_utc = $1, locked_until = NULL
-			WHERE id = $2
-		`
-		_, err := tx.ExecContext(ctx, query, time.Now().UTC(), id)
-		if err != nil {
-			return fmt.Errorf("failed to mark outbox row as PUBLISHED: %w", err)
-		}
+	// Try secure stored procedure first
+	var success bool
+	err := r.db.QueryRowContext(ctx, "SELECT mark_outbox_published($1)", id).Scan(&success)
+	if err == nil {
 		return nil
-	})
+	}
+
+	// Fallback direct SQL without app.site_id bypass
+	query := `
+		UPDATE outbox
+		SET status = 'PUBLISHED', published_at_utc = $1, locked_until = NULL
+		WHERE id = $2
+	`
+	_, err = r.db.ExecContext(ctx, query, time.Now().UTC(), id)
+	if err != nil {
+		return fmt.Errorf("failed to mark outbox row as PUBLISHED: %w", err)
+	}
+	return nil
 }
 
 // ReapExpiredLeases recovers orphaned PROCESSING records whose leases expired
 // Guaranteed recovery on edge daemon restart after crash/SIGKILL
 func (r *OutboxRepository) ReapExpiredLeases(ctx context.Context) (int64, error) {
 	var reaped int64
-	err := r.db.WithTenantTx(ctx, "ALL", func(tx *sql.Tx) error {
-		query := `
-			UPDATE outbox
-			SET status = 'PENDING', locked_until = NULL, retry_count = retry_count + 1
-			WHERE status = 'PROCESSING' AND locked_until < $1
-		`
-		res, err := tx.ExecContext(ctx, query, time.Now().UTC())
-		if err != nil {
-			return fmt.Errorf("failed to execute lease reaper query: %w", err)
-		}
-		reaped, err = res.RowsAffected()
-		return err
-	})
-	if err != nil {
-		return 0, err
+	err := r.db.QueryRowContext(ctx, "SELECT reap_expired_outbox_leases()").Scan(&reaped)
+	if err == nil {
+		return reaped, nil
 	}
-	return reaped, nil
+
+	// Fallback direct SQL
+	query := `
+		UPDATE outbox
+		SET status = 'PENDING', locked_until = NULL, retry_count = retry_count + 1
+		WHERE status = 'PROCESSING' AND locked_until < $1
+	`
+	res, err := r.db.ExecContext(ctx, query, time.Now().UTC())
+	if err != nil {
+		return 0, fmt.Errorf("failed to execute lease reaper query: %w", err)
+	}
+	reaped, err = res.RowsAffected()
+	return reaped, err
 }

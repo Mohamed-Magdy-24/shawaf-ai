@@ -181,5 +181,11 @@ void main() {
         ),
       );
     });
+    test('LoadIncidents with new siteId updates currentSiteId dynamically', () async {
+      expect(bloc.currentSiteId, 'BNF');
+      bloc.add(const LoadIncidents(siteId: 'site_rnf'));
+      await Future.delayed(const Duration(milliseconds: 50));
+      expect(bloc.currentSiteId, 'site_rnf');
+    });
   });
 }

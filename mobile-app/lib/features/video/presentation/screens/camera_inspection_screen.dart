@@ -29,26 +29,6 @@ class _CameraInspectionScreenState extends State<CameraInspectionScreen> {
   bool _showDetections = true;
   bool _showHud = true;
 
-  final List<BoundingBox> _mockActiveDetections = const [
-    BoundingBox(
-      x1: 0.28,
-      y1: 0.35,
-      x2: 0.48,
-      y2: 0.75,
-      label: 'PERSON',
-      confidence: 0.934,
-      trackId: 108,
-    ),
-    BoundingBox(
-      x1: 0.33,
-      y1: 0.36,
-      x2: 0.42,
-      y2: 0.48,
-      label: 'HELMET_OK',
-      confidence: 0.912,
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -91,7 +71,7 @@ class _CameraInspectionScreenState extends State<CameraInspectionScreen> {
             // Video Viewport
             WebRtcViewport(
               camera: widget.camera,
-              detections: _mockActiveDetections,
+              detections: const [],
               showBoundingBoxes: _showDetections,
               showTelemetryHud: _showHud,
               onSnapshot: () {

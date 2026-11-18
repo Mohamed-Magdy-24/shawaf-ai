@@ -105,37 +105,116 @@ CREATE INDEX IF NOT EXISTS idx_outbox_reaper ON outbox(status, locked_until);
 ALTER TABLE cameras ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cameras FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS site_isolation_policy ON cameras;
-CREATE POLICY site_isolation_policy ON cameras
+DROP POLICY IF EXISTS camera_tenant_isolation ON cameras;
+CREATE POLICY camera_tenant_isolation ON cameras
     FOR ALL
-    USING (site_id = NULLIF(current_setting('app.site_id', true), '') OR current_setting('app.site_id', true) = 'ALL')
-    WITH CHECK (site_id = NULLIF(current_setting('app.site_id', true), '') OR current_setting('app.site_id', true) = 'ALL');
+    USING (site_id = NULLIF(current_setting('app.site_id', true), ''))
+    WITH CHECK (site_id = NULLIF(current_setting('app.site_id', true), ''));
 
 -- Detection Zones RLS
 ALTER TABLE detection_zones ENABLE ROW LEVEL SECURITY;
 ALTER TABLE detection_zones FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS site_isolation_policy ON detection_zones;
-CREATE POLICY site_isolation_policy ON detection_zones
+DROP POLICY IF EXISTS zone_tenant_isolation ON detection_zones;
+CREATE POLICY zone_tenant_isolation ON detection_zones
     FOR ALL
-    USING (site_id = NULLIF(current_setting('app.site_id', true), '') OR current_setting('app.site_id', true) = 'ALL')
-    WITH CHECK (site_id = NULLIF(current_setting('app.site_id', true), '') OR current_setting('app.site_id', true) = 'ALL');
+    USING (site_id = NULLIF(current_setting('app.site_id', true), ''))
+    WITH CHECK (site_id = NULLIF(current_setting('app.site_id', true), ''));
 
 -- Events RLS
 ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE events FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS site_isolation_policy ON events;
-CREATE POLICY site_isolation_policy ON events
+DROP POLICY IF EXISTS event_tenant_isolation ON events;
+CREATE POLICY event_tenant_isolation ON events
     FOR ALL
-    USING (site_id = NULLIF(current_setting('app.site_id', true), '') OR current_setting('app.site_id', true) = 'ALL')
-    WITH CHECK (site_id = NULLIF(current_setting('app.site_id', true), '') OR current_setting('app.site_id', true) = 'ALL');
+    USING (site_id = NULLIF(current_setting('app.site_id', true), ''))
+    WITH CHECK (site_id = NULLIF(current_setting('app.site_id', true), ''));
 
 -- Outbox RLS
 ALTER TABLE outbox ENABLE ROW LEVEL SECURITY;
 ALTER TABLE outbox FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS site_isolation_policy ON outbox;
-CREATE POLICY site_isolation_policy ON outbox
+DROP POLICY IF EXISTS outbox_tenant_isolation ON outbox;
+CREATE POLICY outbox_tenant_isolation ON outbox
     FOR ALL
-    USING (site_id = NULLIF(current_setting('app.site_id', true), '') OR current_setting('app.site_id', true) = 'ALL')
-    WITH CHECK (site_id = NULLIF(current_setting('app.site_id', true), '') OR current_setting('app.site_id', true) = 'ALL');
+    USING (site_id = NULLIF(current_setting('app.site_id', true), ''))
+    WITH CHECK (site_id = NULLIF(current_setting('app.site_id', true), ''));
+
+-- ============================================================================
+-- SECURE TRANSACTIONAL OUTBOX DISPATCH PROCEDURES (SECURITY DEFINER)
+-- Least-privilege authority: isolates outbox dispatch from tenant table access
+-- ============================================================================
+CREATE OR REPLACE FUNCTION claim_pending_outbox(p_limit int, p_lock_duration interval)
+RETURNS TABLE (
+    id bigint,
+    event_id varchar(64),
+    site_id varchar(64),
+    payload jsonb,
+    is_fire_priority boolean,
+    status varchar(32),
+    retry_count int,
+    created_at_utc timestamptz
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    v_locked_until timestamptz;
+BEGIN
+    v_locked_until := clock_timestamp() + p_lock_duration;
+
+    RETURN QUERY
+    WITH claimed AS (
+        SELECT o.id
+        FROM outbox o
+        WHERE o.status = 'PENDING'
+        ORDER BY o.is_fire_priority DESC, o.id ASC
+        LIMIT p_limit
+        FOR UPDATE SKIP LOCKED
+    ),
+    updated AS (
+        UPDATE outbox o
+        SET status = 'PROCESSING', locked_until = v_locked_until
+        FROM claimed c
+        WHERE o.id = c.id
+        RETURNING o.id, o.event_id, o.site_id, o.payload, o.is_fire_priority, o.status, o.retry_count, o.created_at_utc
+    )
+    SELECT * FROM updated;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION mark_outbox_published(p_id bigint)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    UPDATE outbox
+    SET status = 'PUBLISHED', published_at_utc = clock_timestamp(), locked_until = NULL
+    WHERE id = p_id;
+    RETURN FOUND;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION reap_expired_outbox_leases()
+RETURNS bigint
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    v_count bigint;
+BEGIN
+    UPDATE outbox
+    SET status = 'PENDING', locked_until = NULL, retry_count = retry_count + 1
+    WHERE status = 'PROCESSING' AND locked_until < clock_timestamp();
+    GET DIAGNOSTICS v_count = ROW_COUNT;
+    RETURN v_count;
+END;
+$$;
 
 -- ============================================================================
 -- OUTBOX FIRE NOTIFY TRIGGER (LISTEN outbox_fire)
@@ -170,21 +249,38 @@ INSERT INTO sites (id, name) VALUES
     ('RNF', 'Sadat City Main Factory')
 ON CONFLICT (id) DO NOTHING;
 
--- Seed cameras temporarily bypassing RLS via superuser/migrator session setting
-SELECT set_config('app.site_id', 'ALL', false);
+-- Seed cameras with explicit site scopes (NO "ALL" bypass)
+SELECT set_config('app.site_id', 'site_bnf', false);
 INSERT INTO cameras (id, site_id, name, rtsp_main_url, rtsp_sub_url, zone_id, status)
 VALUES
-    ('camera01', 'site_bnf', 'BNF Gate & Loading Dock', 'rtsp://mediamtx:8554/bnf/camera01', 'rtsp://mediamtx:8554/bnf/camera01', 'zone_gate_01', 'ONLINE'),
+    ('camera01', 'site_bnf', 'BNF Gate & Loading Dock', 'rtsp://mediamtx:8554/bnf/camera01', 'rtsp://mediamtx:8554/bnf/camera01', 'zone_gate_01', 'ONLINE')
+ON CONFLICT (site_id, id) DO NOTHING;
+
+SELECT set_config('app.site_id', 'site_rnf', false);
+INSERT INTO cameras (id, site_id, name, rtsp_main_url, rtsp_sub_url, zone_id, status)
+VALUES
     ('camera01', 'site_rnf', 'RNF Assembly Line North', 'rtsp://mediamtx:8554/rnf/camera01', 'rtsp://mediamtx:8554/rnf/camera01', 'zone_assembly_01', 'ONLINE')
 ON CONFLICT (site_id, id) DO NOTHING;
+
 RESET app.site_id;
 
--- Permissions grant to app_runtime
+-- Permissions grant to app_runtime and outbox_dispatcher
 DO $$
 BEGIN
     IF EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'app_runtime') THEN
         GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_runtime;
         GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_runtime;
+        GRANT EXECUTE ON FUNCTION claim_pending_outbox(int, interval) TO app_runtime;
+        GRANT EXECUTE ON FUNCTION mark_outbox_published(bigint) TO app_runtime;
+        GRANT EXECUTE ON FUNCTION reap_expired_outbox_leases() TO app_runtime;
+    END IF;
+    IF EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'outbox_dispatcher') THEN
+        GRANT USAGE ON SCHEMA public TO outbox_dispatcher;
+        GRANT SELECT, UPDATE ON outbox TO outbox_dispatcher;
+        GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO outbox_dispatcher;
+        GRANT EXECUTE ON FUNCTION claim_pending_outbox(int, interval) TO outbox_dispatcher;
+        GRANT EXECUTE ON FUNCTION mark_outbox_published(bigint) TO outbox_dispatcher;
+        GRANT EXECUTE ON FUNCTION reap_expired_outbox_leases() TO outbox_dispatcher;
     END IF;
 END
 $$;

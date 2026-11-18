@@ -1,0 +1,47 @@
+{
+  "timestamp_utc": "2026-11-18T21:02:48Z",
+  "test_duration_sec": 15.64,
+  "source_pipeline": {
+    "type": "synthetic_rtsp",
+    "server": "MediaMTX/camsim",
+    "stream_url": "rtsp://127.0.0.1:8554/bnf_cam_01",
+    "resolution": "640x360",
+    "bounded_queue_limit": 2
+  },
+  "frame_metrics": {
+    "frames_ingested": 214,
+    "ingestion_fps": 13.68,
+    "frames_dropped": 166,
+    "drop_rate_pct": 77.57,
+    "average_queue_depth": 1.58,
+    "peak_queue_depth": 2
+  },
+  "latency_metrics_ms": {
+    "inference": {
+      "samples": 11,
+      "mean_ms": 13.16,
+      "p50_ms": 14.19,
+      "p95_ms": 21.48,
+      "p99_ms": 22.6
+    },
+    "event_persistence_grpc": {
+      "samples": 11,
+      "mean_ms": 13.38,
+      "min_ms": 2.92,
+      "max_ms": 55.19
+    },
+    "websocket_dispatch": {
+      "samples": 5,
+      "mean_ms": 27.79,
+      "target_ms": "< 500ms (ADR-009)",
+      "passed_target": true
+    }
+  },
+  "resource_metrics": {
+    "avg_cpu_pct": 3.32,
+    "peak_cpu_pct": 43.8,
+    "rss_start_mb": 69.01,
+    "rss_end_mb": 84.66,
+    "rss_delta_mb": 15.65
+  }
+}

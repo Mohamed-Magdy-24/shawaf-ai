@@ -105,7 +105,7 @@ func (d *dummyCameraRepo) UpdateTelemetry(ctx context.Context, siteID, cameraID 
 	return nil
 }
 
-func setupTestServer(t *testing.T, snapDir string) (*http.ServeMux, *dummyIncidentRepo, *application.TicketService, *Handler) {
+func setupTestServer(t *testing.T, snapDir string) (*http.ServeMux, *dummyIncidentRepo, *application.TicketService, *Handler, *Authenticator) {
 	incRepo := newDummyIncidentRepo()
 	outboxRepo := &dummyOutboxRepo{}
 	camRepo := newDummyCameraRepo()
@@ -115,16 +115,17 @@ func setupTestServer(t *testing.T, snapDir string) (*http.ServeMux, *dummyIncide
 	tickets := application.NewTicketService()
 	hub := ws.NewHub()
 	proxy := go2rtc.NewSDPProxyClient("http://127.0.0.1:9999") // dummy target
+	auth := NewAuthenticator("test_secret")
 
-	handler := NewHandler(events, cameras, tickets, hub, proxy, snapDir)
+	handler := NewHandler(events, cameras, tickets, hub, proxy, snapDir, auth)
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)
 
-	return mux, incRepo, tickets, handler
+	return mux, incRepo, tickets, handler, auth
 }
 
 func TestHandler_Healthz(t *testing.T) {
-	mux, _, _, _ := setupTestServer(t, "")
+	mux, _, _, _, _ := setupTestServer(t, "")
 
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	rec := httptest.NewRecorder()
@@ -143,16 +144,85 @@ func TestHandler_Healthz(t *testing.T) {
 	}
 }
 
-func TestHandler_IssueWSTicket(t *testing.T) {
-	mux, _, tickets, _ := setupTestServer(t, "")
+func TestHandler_Authentication_And_Authorization_Boundaries(t *testing.T) {
+	mux, _, _, _, auth := setupTestServer(t, "")
 
-	reqBody := []byte(`{"user_id":"operator_patrol"}`)
+	// 1. Unauthenticated request -> 401 Unauthorized
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/sites/site_bnf/cameras", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for unauthenticated request, got %d", rec.Code)
+	}
+
+	// 2. Invalid token -> 401 Unauthorized
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/sites/site_bnf/cameras", nil)
+	req.Header.Set("Authorization", "Bearer invalid_garbage_token")
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for invalid token, got %d", rec.Code)
+	}
+
+	// 3. Expired token -> 401 Unauthorized
+	expiredToken, _ := auth.GenerateSignedToken(&Principal{
+		UserID:       "op_expired",
+		Role:         "operator",
+		AllowedSites: []string{"site_bnf"},
+		ExpiresAt:    time.Now().UTC().Add(-1 * time.Hour),
+	})
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/sites/site_bnf/cameras", nil)
+	req.Header.Set("Authorization", "Bearer "+expiredToken)
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for expired token, got %d", rec.Code)
+	}
+
+	// 4. Cross-tenant attempt: site_bnf user trying site_rnf -> 403 Forbidden
+	bnfToken, _ := auth.GenerateSignedToken(&Principal{
+		UserID:       "op_bnf",
+		Role:         "operator",
+		AllowedSites: []string{"site_bnf"},
+		ExpiresAt:    time.Now().UTC().Add(1 * time.Hour),
+	})
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/sites/site_rnf/cameras", nil)
+	req.Header.Set("Authorization", "Bearer "+bnfToken)
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 for cross-tenant access, got %d", rec.Code)
+	}
+
+	// 5. Authorized site_bnf request -> 200 OK
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/sites/site_bnf/cameras", nil)
+	req.Header.Set("Authorization", "Bearer "+bnfToken)
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 for authorized tenant request, got %d", rec.Code)
+	}
+}
+
+func TestHandler_IssueWSTicket(t *testing.T) {
+	mux, _, tickets, _, auth := setupTestServer(t, "")
+
+	bnfToken, _ := auth.GenerateSignedToken(&Principal{
+		UserID:       "operator_patrol",
+		Role:         "operator",
+		AllowedSites: []string{"site_bnf"},
+		ExpiresAt:    time.Now().UTC().Add(1 * time.Hour),
+	})
+
+	// Client sends spoofed user_id in body -> server must IGNORE it and use operator_patrol from token!
+	reqBody := []byte(`{"user_id":"spoofed_hacker_id"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sites/site_bnf/ws-ticket", bytes.NewReader(reqBody))
+	req.Header.Set("Authorization", "Bearer "+bnfToken)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", rec.Code)
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
 	}
 
 	var resp issueTicketResponse
@@ -164,18 +234,25 @@ func TestHandler_IssueWSTicket(t *testing.T) {
 		t.Fatalf("unexpected ticket response: %+v", resp)
 	}
 
-	// Verify ticket is redeemable once via TicketService
+	// Verify ticket is strictly bound to the authenticated principal operator_patrol
 	userID, err := tickets.ConsumeTicket(resp.Ticket, "site_bnf")
 	if err != nil {
 		t.Fatalf("expected ticket to be valid, got %v", err)
 	}
 	if userID != "operator_patrol" {
-		t.Fatalf("expected operator_patrol, got %s", userID)
+		t.Fatalf("expected principal operator_patrol (spoofed body ignored), got %s", userID)
 	}
 }
 
 func TestHandler_IncidentLifecycle(t *testing.T) {
-	mux, incRepo, _, _ := setupTestServer(t, "")
+	mux, incRepo, _, _, auth := setupTestServer(t, "")
+
+	bnfToken, _ := auth.GenerateSignedToken(&Principal{
+		UserID:       "op_floor_1",
+		Role:         "operator",
+		AllowedSites: []string{"site_bnf"},
+		ExpiresAt:    time.Now().UTC().Add(1 * time.Hour),
+	})
 
 	// Seed incident
 	now := time.Now().UTC()
@@ -183,8 +260,9 @@ func TestHandler_IncidentLifecycle(t *testing.T) {
 	_ = incRepo.Save(context.Background(), inc)
 
 	// 1. Acknowledge
-	ackBody := []byte(`{"operator_id":"op_floor_1"}`)
+	ackBody := []byte(`{}`)
 	ackReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/site_bnf/incidents/evt-lifecycle-1/acknowledge", bytes.NewReader(ackBody))
+	ackReq.Header.Set("Authorization", "Bearer "+bnfToken)
 	ackRec := httptest.NewRecorder()
 	mux.ServeHTTP(ackRec, ackReq)
 
@@ -193,7 +271,8 @@ func TestHandler_IncidentLifecycle(t *testing.T) {
 	}
 
 	// 2. Dismiss with missing reason -> MUST FAIL with 400
-	disReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/site_bnf/incidents/evt-lifecycle-1/dismiss", bytes.NewReader([]byte(`{"operator_id":"op_floor_1"}`)))
+	disReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/site_bnf/incidents/evt-lifecycle-1/dismiss", bytes.NewReader([]byte(`{}`)))
+	disReq.Header.Set("Authorization", "Bearer "+bnfToken)
 	disRec := httptest.NewRecorder()
 	mux.ServeHTTP(disRec, disReq)
 
@@ -202,8 +281,9 @@ func TestHandler_IncidentLifecycle(t *testing.T) {
 	}
 
 	// 3. Resolve
-	resBody := []byte(`{"operator_id":"op_floor_1"}`)
+	resBody := []byte(`{}`)
 	resReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/site_bnf/incidents/evt-lifecycle-1/resolve", bytes.NewReader(resBody))
+	resReq.Header.Set("Authorization", "Bearer "+bnfToken)
 	resRec := httptest.NewRecorder()
 	mux.ServeHTTP(resRec, resReq)
 
@@ -219,7 +299,7 @@ func TestHandler_SnapshotTraversalProtection(t *testing.T) {
 	_ = os.MkdirAll(filepath.Dir(safeFile), 0755)
 	_ = os.WriteFile(safeFile, []byte("fake_jpeg_data"), 0644)
 
-	mux, _, _, handler := setupTestServer(t, tmpDir)
+	mux, _, _, handler, _ := setupTestServer(t, tmpDir)
 
 	// Safe request -> 200
 	req := httptest.NewRequest(http.MethodGet, "/snapshots/site_bnf/test.jpg", nil)

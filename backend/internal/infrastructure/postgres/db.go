@@ -69,6 +69,10 @@ func (db *DB) VerifySchema(ctx context.Context) error {
 // WithTenantTx executes a database operation inside a transaction scoped to a tenant
 // Enforces SELECT set_config('app.site_id', $1, true) per the postgres-rls skill to prevent connection-pool leakage
 func (db *DB) WithTenantTx(ctx context.Context, siteID string, fn func(tx *sql.Tx) error) error {
+	if siteID == "ALL" || siteID == "*" {
+		return fmt.Errorf("invalid tenant context %q: wildcard tenant contexts are strictly prohibited", siteID)
+	}
+
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)

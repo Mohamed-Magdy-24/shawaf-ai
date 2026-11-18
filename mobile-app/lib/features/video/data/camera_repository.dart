@@ -58,14 +58,16 @@ class CameraRepositoryImpl implements CameraRepository {
     required String siteId,
     required String cameraId,
   }) async {
-    try {
-      final response = await apiClient.post(
-        '/api/v1/sites/$siteId/cameras/$cameraId/webrtc-ticket',
-      );
-      if (response is Map && response['ticket'] != null) {
-        return response['ticket'] as String;
-      }
-    } catch (_) {}
-    return 'mock_ticket_${DateTime.now().millisecondsSinceEpoch}';
+    final response = await apiClient.post(
+      '/api/v1/sites/$siteId/cameras/$cameraId/webrtc-ticket',
+    );
+    if (response is Map && response['ticket'] != null) {
+      return response['ticket'] as String;
+    }
+    throw ApiException(
+      statusCode: 502,
+      message: 'Failed to obtain live WebRTC streaming ticket for camera $cameraId',
+      errorCode: 'WEBRTC_TICKET_UNAVAILABLE',
+    );
   }
 }

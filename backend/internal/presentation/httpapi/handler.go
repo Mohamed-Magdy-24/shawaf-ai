@@ -24,6 +24,7 @@ type Handler struct {
 	wsHub         *ws.Hub
 	sdpProxy      *go2rtc.SDPProxyClient
 	snapshotDir   string
+	authenticator *Authenticator
 }
 
 // NewHandler creates a new HTTP API handler
@@ -34,17 +35,25 @@ func NewHandler(
 	wsHub *ws.Hub,
 	sdpProxy *go2rtc.SDPProxyClient,
 	snapshotDir string,
+	authenticator ...*Authenticator,
 ) *Handler {
 	if snapshotDir == "" {
 		snapshotDir = "/var/lib/surveillance/snapshots"
 	}
+	var auth *Authenticator
+	if len(authenticator) > 0 && authenticator[0] != nil {
+		auth = authenticator[0]
+	} else {
+		auth = NewAuthenticator("")
+	}
 	return &Handler{
-		events:      events,
-		cameras:     cameras,
-		tickets:     tickets,
-		wsHub:       wsHub,
-		sdpProxy:    sdpProxy,
-		snapshotDir: snapshotDir,
+		events:        events,
+		cameras:       cameras,
+		tickets:       tickets,
+		wsHub:         wsHub,
+		sdpProxy:      sdpProxy,
+		snapshotDir:   snapshotDir,
+		authenticator: auth,
 	}
 }
 
@@ -80,22 +89,44 @@ func (h *Handler) handleSitesRouter(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resource := parts[1]
+
+	// WebSocket streaming endpoint authenticates via single-use ticket in query string
+	if resource == "ws-events" && r.Method == http.MethodGet {
+		h.handleWSEvents(w, r, siteID)
+		return
+	}
+
+	// All other REST routes require bearer token authentication & site authorization
+	principal, err := h.authenticator.AuthenticateRequest(r)
+	if err != nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{
+			"error": fmt.Sprintf("unauthorized: %v", err),
+		})
+		return
+	}
+
+	// Enforce site-level authorization (tenant boundary)
+	if !principal.CanAccessSite(siteID) {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error": fmt.Sprintf("forbidden: user %s has no access to site %s", principal.UserID, siteID),
+		})
+		return
+	}
+
+	// Inject authenticated principal into request context
+	r = r.WithContext(ContextWithPrincipal(r.Context(), principal))
+
 	switch resource {
 	case "ws-ticket":
 		if r.Method == http.MethodPost {
-			h.handleIssueWSTicket(w, r, siteID)
-			return
-		}
-	case "ws-events":
-		if r.Method == http.MethodGet {
-			h.handleWSEvents(w, r, siteID)
+			h.handleIssueWSTicket(w, r, siteID, principal)
 			return
 		}
 	case "cameras":
 		h.handleCameras(w, r, siteID, parts[2:])
 		return
 	case "incidents":
-		h.handleIncidents(w, r, siteID, parts[2:])
+		h.handleIncidents(w, r, siteID, parts[2:], principal)
 		return
 	}
 
@@ -106,24 +137,20 @@ func (h *Handler) handleSitesRouter(w http.ResponseWriter, r *http.Request) {
 // 1. Single-Use WebSocket Ticket Handlers (VULN-08 Mitigation)
 // ---------------------------------------------------------------------------
 
-type issueTicketRequest struct {
-	UserID string `json:"user_id"`
-}
-
 type issueTicketResponse struct {
 	Ticket           string `json:"ticket"`
 	ExpiresInSeconds int    `json:"expires_in_seconds"`
 	SiteID           string `json:"site_id"`
 }
 
-func (h *Handler) handleIssueWSTicket(w http.ResponseWriter, r *http.Request, siteID string) {
-	var req issueTicketRequest
-	_ = json.NewDecoder(r.Body).Decode(&req)
-	if req.UserID == "" {
-		req.UserID = "operator_floor"
+func (h *Handler) handleIssueWSTicket(w http.ResponseWriter, r *http.Request, siteID string, principal *Principal) {
+	// Derive identity strictly from authenticated principal (VULN-08 mitigation & zero spoofing)
+	userID := principal.UserID
+	if userID == "" {
+		userID = "operator_floor"
 	}
 
-	ticket, err := h.tickets.IssueTicket(siteID, req.UserID, 15*time.Second)
+	ticket, err := h.tickets.IssueTicket(siteID, userID, 15*time.Second)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -238,7 +265,7 @@ func (h *Handler) handleWebRTCSDPExchange(w http.ResponseWriter, r *http.Request
 // 3. Incident State Machine Endpoints (FR-ALT-008: NEW -> ACK -> RESOLVED|DISMISSED)
 // ---------------------------------------------------------------------------
 
-func (h *Handler) handleIncidents(w http.ResponseWriter, r *http.Request, siteID string, subParts []string) {
+func (h *Handler) handleIncidents(w http.ResponseWriter, r *http.Request, siteID string, subParts []string, principal *Principal) {
 	if len(subParts) == 0 {
 		// GET /api/v1/sites/{site_id}/incidents
 		if r.Method == http.MethodGet {
@@ -277,24 +304,26 @@ func (h *Handler) handleIncidents(w http.ResponseWriter, r *http.Request, siteID
 	}
 
 	var reqBody struct {
-		OperatorID string `json:"operator_id"`
-		Reason     string `json:"reason"`
+		Reason string `json:"reason"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&reqBody)
-	if reqBody.OperatorID == "" {
-		reqBody.OperatorID = "operator_floor"
+
+	// Operator identity is strictly derived from the authenticated principal (zero client-side spoofing)
+	operatorID := principal.UserID
+	if operatorID == "" {
+		operatorID = "operator_floor"
 	}
 
 	switch action {
 	case "acknowledge":
-		inc, err := h.events.AcknowledgeIncident(r.Context(), siteID, incidentID, reqBody.OperatorID)
+		inc, err := h.events.AcknowledgeIncident(r.Context(), siteID, incidentID, operatorID)
 		if err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			return
 		}
 		writeJSON(w, http.StatusOK, inc)
 	case "resolve":
-		inc, err := h.events.ResolveIncident(r.Context(), siteID, incidentID, reqBody.OperatorID)
+		inc, err := h.events.ResolveIncident(r.Context(), siteID, incidentID, operatorID)
 		if err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			return
@@ -305,7 +334,7 @@ func (h *Handler) handleIncidents(w http.ResponseWriter, r *http.Request, siteID
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "dismissal reason is mandatory"})
 			return
 		}
-		inc, err := h.events.DismissIncident(r.Context(), siteID, incidentID, reqBody.OperatorID, reqBody.Reason)
+		inc, err := h.events.DismissIncident(r.Context(), siteID, incidentID, operatorID, reqBody.Reason)
 		if err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			return

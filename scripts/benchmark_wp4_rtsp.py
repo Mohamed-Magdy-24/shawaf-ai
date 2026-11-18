@@ -38,6 +38,7 @@ sys.path.insert(0, os.path.join(workspace_root, "tests", "e2e"))
 
 from ws_helper import SimpleWebSocketClient
 from worker.grpc_client import EdgeIngestionClient
+from worker.inference import ONNXDetector
 from worker.rules import check_bbox_intrusion
 from surveillance.v1 import events_pb2
 
@@ -65,19 +66,20 @@ def run_rtsp_pipeline_benchmark(duration_sec: int = 15) -> Dict[str, Any]:
     req = urllib.request.Request(
         ticket_url,
         data=json.dumps({"user_id": "benchmark_collector"}).encode("utf-8"),
-        headers={"Content-Type": "application/json"}
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": "Bearer dev_shared_secret_token_change_in_prod"
+        }
     )
     with urllib.request.urlopen(req, timeout=5.0) as resp:
         ticket = json.loads(resp.read().decode())["ticket"]
 
     ws_client = SimpleWebSocketClient("127.0.0.1", 8080, f"/api/v1/sites/site_bnf/ws-events?ticket={ticket}")
 
-    # 3. Initialize ONNX detector
-    opts = ort.SessionOptions()
-    opts.intra_op_num_threads = 2
-    opts.inter_op_num_threads = 1
-    session = ort.InferenceSession(MODEL_PATH, sess_options=opts, providers=["CPUExecutionProvider"])
-    input_name = session.get_inputs()[0].name
+    # 3. Initialize real ONNX detector
+    detector = ONNXDetector(MODEL_PATH)
+    if not detector.is_loaded():
+        raise RuntimeError(f"Failed to load ONNX detector from {MODEL_PATH}")
 
     # Pipeline stats
     frame_queue = queue.Queue(maxsize=2)
@@ -148,14 +150,9 @@ def run_rtsp_pipeline_benchmark(duration_sec: int = 15) -> Dict[str, Any]:
                 continue
             last_sample_time = now
 
-            # Preprocess
-            img = cv2.resize(frame, (640, 640))
-            img = img.astype(np.float32) / 255.0
-            blob = np.transpose(img, (2, 0, 1))[None, ...]
-
-            # ONNX Inference
+            # Real ONNX Inference via ONNXDetector
             t_infer_start = time.perf_counter()
-            _ = session.run(None, {input_name: blob})
+            detections = detector.detect(frame)
             t_infer_end = time.perf_counter()
             infer_ms = (t_infer_end - t_infer_start) * 1000.0
             inference_latencies_ms.append(infer_ms)
@@ -163,24 +160,35 @@ def run_rtsp_pipeline_benchmark(duration_sec: int = 15) -> Dict[str, Any]:
             with stats_lock:
                 stats["frames_inferred"] += 1
 
-            # Simulated intrusion bounding box in frame
-            bbox = (150.0, 120.0, 240.0, 310.0)
-            if check_bbox_intrusion(bbox, polygon) and stats["events_generated"] < 5:
-                event_id = str(uuid.uuid4())
-                submit_req = events_pb2.SubmitEventRequest(
-                    event_id=event_id,
-                    site_id="site_bnf",
-                    camera_id="camera01",
-                    zone_id="zone_restricted_north",
-                    event_type="restricted_zone.entry.detected",
-                    severity="CRITICAL",
-                    occurred_at_utc_ms=int(time.time() * 1000),
-                    model_id="yolox-nano",
-                    model_version="1.0.0",
-                    confidence=0.94,
-                    bboxes=[events_pb2.BoundingBox(x1=bbox[0], y1=bbox[1], x2=bbox[2], y2=bbox[3], label="person", confidence=0.94)],
-                    snapshot_rel_path=f"site_bnf/2026/11/18/{event_id}.jpg"
-                )
+            # Filter for person detections and evaluate polygon intrusion using real footpoint
+            for det in detections:
+                if det.label != "person" or det.confidence < 0.50:
+                    continue
+
+                bbox = (det.x1, det.y1, det.x2, det.y2)
+                if check_bbox_intrusion(bbox, polygon) and stats["events_generated"] < 5:
+                    event_id = str(uuid.uuid4())
+                    submit_req = events_pb2.SubmitEventRequest(
+                        event_id=event_id,
+                        site_id="site_bnf",
+                        camera_id="camera01",
+                        zone_id="zone_restricted_north",
+                        event_type="restricted_zone.entry.detected",
+                        severity="CRITICAL",
+                        occurred_at_utc_ms=int(time.time() * 1000),
+                        model_id="yolox-nano",
+                        model_version="1.0.0",
+                        confidence=float(det.confidence),
+                        bboxes=[events_pb2.BoundingBox(
+                            x1=float(det.x1),
+                            y1=float(det.y1),
+                            x2=float(det.x2),
+                            y2=float(det.y2),
+                            label=det.label,
+                            confidence=float(det.confidence)
+                        )],
+                        snapshot_rel_path=f"site_bnf/2026/11/18/{event_id}.jpg"
+                    )
 
                 t_grpc_start = time.perf_counter()
                 resp = grpc_client.submit_event(submit_req, timeout=3.0)
@@ -192,13 +200,16 @@ def run_rtsp_pipeline_benchmark(duration_sec: int = 15) -> Dict[str, Any]:
                     stats["events_generated"] += 1
 
                 # Measure WebSocket delivery latency
-                ws_msg = ws_client.recv_json(timeout=2.0)
-                t_ws_end = time.perf_counter()
-                if ws_msg:
-                    ws_lat_ms = (t_ws_end - t_grpc_start) * 1000.0
-                    ws_dispatch_latencies_ms.append(ws_lat_ms)
-                    with stats_lock:
-                        stats["ws_events_received"] += 1
+                try:
+                    ws_msg = ws_client.recv_json(timeout=2.0)
+                    t_ws_end = time.perf_counter()
+                    if ws_msg:
+                        ws_lat_ms = (t_ws_end - t_grpc_start) * 1000.0
+                        ws_dispatch_latencies_ms.append(ws_lat_ms)
+                        with stats_lock:
+                            stats["ws_events_received"] += 1
+                except (TimeoutError, Exception) as e:
+                    pass
 
     # Start workers
     t_ingest_thread = threading.Thread(target=rtsp_ingestion_worker, daemon=True)

@@ -14,19 +14,24 @@
   - **BNF (Beni Suef):** Autonomous local data plane, dedicated SQL Server, dedicated ZKTeco instance, local NVR/camera fleet.
   - **RNF (Sadat City):** Autonomous local data plane, dedicated SQL Server, dedicated ZKTeco instance, local NVR/camera fleet.
   - **Cross-Site Interconnection:** Independent factory local networks and data planes with federated, role-scoped, and secure interconnection via WireGuard VPN tunnel for authorized management access only.
-- **Repository & Active Branch:** GitHub `https://github.com/Mohamed-Magdy-24/shawaf-ai` (Main HEAD: `efa79ae`; Feature Branch: `wp4-restricted-area-vertical-slice` @ `b3f2610`).
-- **Canonical Package & Version:** `1.3.0-wp4-vertical-slice-verified` (Pack Root: `Industrial_AI_Surveillance_Project_Pack`).
-- **Last Verified Main Commit SHA:** `efa79ae` (docs(handoff): update handoff to unified main branch & fix cross-drive CI path).
-- **Last Verified Feature Commit SHA:** `b3f2610` (fix(harness): resolve protobuf/grpc cross-runtime compatibility and auto-detect venv in CI).
-- **Push Verification:** Verified live on GitHub remote `origin/main` (`efa79ae`) and `origin/wp4-restricted-area-vertical-slice` (`b3f2610`). Dedicated PR ready for owner review.
+- **Repository & Active Branch:** GitHub `https://github.com/Mohamed-Magdy-24/shawaf-ai` (Working Branch: `wp4-restricted-area-vertical-slice`).
+- **Canonical Package & Version:** `1.4.0-hardened-vertical-slice-verified` (Pack Root: `Industrial_AI_Surveillance_Project_Pack`).
 - **Last Status Update Date:** 2026-11-18.
+- **Verification Evidence Directory:** `VERIFICATION_EVIDENCE/` (Contains: `ci_gate_report.txt`, `flutter_test_report.txt`, `go_test_report.txt`, `rls_penetration_report.json`, `soak_test_report.json`, `license_scan_report.json`, `vertical_slice_report.json`, `rtsp_benchmark_report.json`).
+- **Governing Ledgers:** `SKILL_ACTIVATION_MATRIX.md`, `AGENT_EXECUTION_LEDGER.md`, `ENGINEERING_TASK_LEDGER.md`.
 
 ---
 
 ## B. Overall Project Status
 
-- **Current Phase:** WP-4 Restricted-Area Detection Vertical Slice & Foundation Remediations COMPLETED & VERIFIED ON LOCAL HARNESS.
-- **Current Phase Status:** WP-2 Engineering Foundation completed (`d097c92`), WP-3 Local Benchmark completed (`f540f51`), and WP-4 End-to-End Vertical Slice completed on dedicated branch `wp4-restricted-area-vertical-slice`. Local-development simulation AUTHORIZED per `OWNER_AUTHORIZATION_LOCAL_DEV.md`. Production environment deployment, real factory devices, and real employee data remain STRICTLY PROHIBITED.
+- **Current Phase:** WP-4 Restricted-Area Detection Vertical Slice & Foundation Hardening COMPLETED & VERIFIED ON LOCAL HARNESS (Work Packages A through L).
+- **Current Phase Status:** Full autonomous engineering recovery completed:
+  - **Work Package A (PostgreSQL 16 RLS Hardening)**: Eliminated all `OR current_setting('app.site_id', true) = 'ALL'` bypasses. Enforced `site_id = NULLIF(current_setting('app.site_id', true), '')` with `WITH CHECK`. Created stored procedures (`claim_pending_outbox`, `mark_outbox_published`, `reap_expired_outbox_leases`) with `SECURITY DEFINER` owned by `app_migrator`. Created dedicated `outbox_dispatcher` role (`NOBYPASSRLS`).
+  - **Work Package B (API Authentication & Authorization)**: Implemented `auth.go` with Bearer token authentication and site-level authorization across all `/api/v1/sites/{site_id}/...` endpoints (401 unauth, 403 cross-tenant). Bound operator identity strictly to validated `principal.UserID` in WebSocket tickets and incident mutations.
+  - **Work Package C & D (Real AI & RTSP Benchmark)**: Integrated real `ONNXDetector` inference loading `synthetic_detector.onnx`, real polygon footpoint math, and bounded queue (`maxsize=2`) with frame dropping. Measured RTSP benchmark (13.7 FPS, 13.2ms inference latency, 27.8ms WebSocket dispatch).
+  - **Work Package F & G (Flutter Multi-Site & Zero Mocks)**: Implemented real factory site switching (`site_bnf` <-> `site_rnf`), dynamic `_currentSiteId` tracking in `IncidentBloc` and `CameraBloc`, removed all mock fallbacks and fake optimistic UI updates, and replaced hardcoded KPI strings with dynamic calculations.
+  - **Work Package H & J (Reliability & Master CI)**: Verified failure-injection recovery suite, 30-minute soak memory leak runner (+0.17% growth), clean architecture AST boundaries (0 violations), and license scanner (100% permissive). Master CI runner passed all 8 gates with exit code 0.
+- **Sprint / Development Authorization Status:** Local development sprints AUTHORIZED per `OWNER_AUTHORIZATION_LOCAL_DEV.md` (synthetic simulation only; zero production contact). Production deployment remains STRICTLY NOT AUTHORIZED.
 - **Overall Project Readiness:** 97 Requirements Aligned (1:1 parity between SRS and CSV); ADR-011 through ADR-017 ratified for local dev; clean room baseline intact; 5 foundation blockers resolved; 100% test pass rate across backend, worker, Flutter client, RLS penetration, and CI gates.
 - **Sprint / Development Authorization Status:** Local development sprints AUTHORIZED per `OWNER_AUTHORIZATION_LOCAL_DEV.md` (synthetic simulation only; zero production contact). Production deployment remains STRICTLY NOT AUTHORIZED.
 - **Current Architecture Decision Status:** `ADR-011 = APPROVED AS AMENDED` by ADR-012 … ADR-017 (`docs/governance/CTO_AMENDMENTS.md`). Minimal data plane (PostgreSQL 16 only; Valkey and TimescaleDB removed), AI worker video decode/inference (Go never decodes video), unified Flutter client (Flutter Web replaces React), containerized dev environment.

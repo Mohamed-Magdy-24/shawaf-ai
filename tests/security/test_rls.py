@@ -46,6 +46,7 @@ class RLSStaticAuditor:
             "policy_events_site_setting": False,
             "policy_outbox_site_setting": False,
             "policy_with_check_enforced": False,
+            "no_wildcard_all_bypass": False,
         }
 
         # Check NOBYPASSRLS on app_runtime
@@ -75,8 +76,12 @@ class RLSStaticAuditor:
             checks["policy_events_site_setting"] = True
         if re.search(r'CREATE\s+POLICY\s+\w+\s+ON\s+outbox[^;]*current_setting\(\'app\.site_id\'', combined_content, re.IGNORECASE):
             checks["policy_outbox_site_setting"] = True
-        if re.search(r'WITH\s+CHECK\s*\(site_id\s*=\s*current_setting', combined_content, re.IGNORECASE):
+        if re.search(r'WITH\s+CHECK\s*\(\s*site_id\s*=\s*(?:NULLIF\()?\s*current_setting', combined_content, re.IGNORECASE):
             checks["policy_with_check_enforced"] = True
+
+        # Check that no policy has OR ... = 'ALL' bypass
+        has_all_bypass = re.search(r'CREATE\s+POLICY[^;]*=\s*\'ALL\'', combined_content, re.IGNORECASE)
+        checks["no_wildcard_all_bypass"] = (has_all_bypass is None)
 
         all_passed = all(checks.values())
         return {
@@ -293,6 +298,94 @@ def run_live_postgres_tests(db_url: str = None) -> List[Dict[str, Any]]:
             "vector": "Live: Context Cleared Post-Transaction (Negative Test)",
             "passed": count == "0",
             "details": f"Subsequent query outside transaction returned {count} rows (expected 0)"
+        })
+
+    def extract_count(output_str: str) -> str:
+        for token in reversed(output_str.strip().split()):
+            if token.isdigit():
+                return token
+        return "-1"
+
+    # 9. Negative Test: Attempted app.site_id = 'ALL' Bypass on Cameras
+    ret, out = run_query(
+        "BEGIN; SELECT set_config('app.site_id', 'ALL', true); SELECT count(*) FROM cameras; COMMIT;"
+    )
+    if ret == 0:
+        count = extract_count(out)
+        all_blocked = (count == "0")
+        results.append({
+            "vector": "Live: Attempted app.site_id = 'ALL' Bypass on Cameras (Negative Test)",
+            "passed": all_blocked,
+            "details": f"Wildcard 'ALL' query returned {count} rows (expected 0, strictly blocked)"
+        })
+
+    # 10. Negative Test: Attempted app.site_id = 'ALL' Bypass on Events
+    ret, out = run_query(
+        "BEGIN; SELECT set_config('app.site_id', 'ALL', true); SELECT count(*) FROM events; COMMIT;"
+    )
+    if ret == 0:
+        count = extract_count(out)
+        all_blocked = (count == "0")
+        results.append({
+            "vector": "Live: Attempted app.site_id = 'ALL' Bypass on Events (Negative Test)",
+            "passed": all_blocked,
+            "details": f"Wildcard 'ALL' query on events returned {count} rows (expected 0, strictly blocked)"
+        })
+
+    # 11. Negative Test: Attempted app.site_id = 'ALL' Bypass on Outbox
+    ret, out = run_query(
+        "BEGIN; SELECT set_config('app.site_id', 'ALL', true); SELECT count(*) FROM outbox; COMMIT;"
+    )
+    if ret == 0:
+        count = extract_count(out)
+        all_blocked = (count == "0")
+        results.append({
+            "vector": "Live: Attempted app.site_id = 'ALL' Bypass on Outbox (Negative Test)",
+            "passed": all_blocked,
+            "details": f"Wildcard 'ALL' query on outbox returned {count} rows (expected 0, strictly blocked)"
+        })
+
+    # 12. Test Isolation Symmetry (site_rnf sees only site_rnf)
+    ret, out = run_query(
+        "BEGIN; SELECT set_config('app.site_id', 'site_rnf', true); SELECT count(*) FROM cameras; COMMIT;"
+    )
+    if ret == 0:
+        passed = "1" in out
+        results.append({
+            "vector": "Live: Isolation Symmetry (site_rnf sees site_rnf)",
+            "passed": passed,
+            "details": f"Successfully isolated tenant rows for site_rnf: {out.strip()}"
+        })
+
+    # 13. Negative Test: Worker Boundary - outbox_dispatcher cannot read cameras
+    ret, out = run_query("SELECT count(*) FROM cameras;", user="outbox_dispatcher")
+    denied = (ret != 0) and ("permission denied" in out.lower())
+    results.append({
+        "vector": "Live: Worker Boundary - outbox_dispatcher cannot read cameras (Negative Test)",
+        "passed": denied,
+        "details": f"outbox_dispatcher camera access rejected: exit={ret}, msg={out.strip()[:80]}"
+    })
+
+    # 14. Negative Test: Worker Boundary - outbox_dispatcher cannot read events
+    ret, out = run_query("SELECT count(*) FROM events;", user="outbox_dispatcher")
+    denied = (ret != 0) and ("permission denied" in out.lower())
+    results.append({
+        "vector": "Live: Worker Boundary - outbox_dispatcher cannot read events (Negative Test)",
+        "passed": denied,
+        "details": f"outbox_dispatcher events access rejected: exit={ret}, msg={out.strip()[:80]}"
+    })
+
+    # 15. Negative Test: Direct SQL Injection with invalid tenant context
+    ret, out = run_query(
+        "BEGIN; SELECT set_config('app.site_id', 'malicious_tenant_injection_site', true); SELECT count(*) FROM cameras; COMMIT;"
+    )
+    if ret == 0:
+        count = extract_count(out)
+        passed = (count == "0")
+        results.append({
+            "vector": "Live: Invalid Tenant Injection Attempt (Negative Test)",
+            "passed": passed,
+            "details": f"Invalid tenant context returned {count} rows (expected 0)"
         })
 
     return results

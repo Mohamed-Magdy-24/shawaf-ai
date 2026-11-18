@@ -14,7 +14,8 @@
       "policy_cameras_site_setting": true,
       "policy_events_site_setting": true,
       "policy_outbox_site_setting": true,
-      "policy_with_check_enforced": true
+      "policy_with_check_enforced": true,
+      "no_wildcard_all_bypass": true
     },
     "failed_checks": []
   },
@@ -100,6 +101,41 @@
       "vector": "Live: Context Cleared Post-Transaction (Negative Test)",
       "passed": true,
       "details": "Subsequent query outside transaction returned 0 rows (expected 0)"
+    },
+    {
+      "vector": "Live: Attempted app.site_id = 'ALL' Bypass on Cameras (Negative Test)",
+      "passed": true,
+      "details": "Wildcard 'ALL' query returned 0 rows (expected 0, strictly blocked)"
+    },
+    {
+      "vector": "Live: Attempted app.site_id = 'ALL' Bypass on Events (Negative Test)",
+      "passed": true,
+      "details": "Wildcard 'ALL' query on events returned 0 rows (expected 0, strictly blocked)"
+    },
+    {
+      "vector": "Live: Attempted app.site_id = 'ALL' Bypass on Outbox (Negative Test)",
+      "passed": true,
+      "details": "Wildcard 'ALL' query on outbox returned 0 rows (expected 0, strictly blocked)"
+    },
+    {
+      "vector": "Live: Isolation Symmetry (site_rnf sees site_rnf)",
+      "passed": true,
+      "details": "Successfully isolated tenant rows for site_rnf: BEGIN\nsite_rnf\n1\nCOMMIT"
+    },
+    {
+      "vector": "Live: Worker Boundary - outbox_dispatcher cannot read cameras (Negative Test)",
+      "passed": true,
+      "details": "outbox_dispatcher camera access rejected: exit=1, msg=ERROR:  permission denied for table cameras"
+    },
+    {
+      "vector": "Live: Worker Boundary - outbox_dispatcher cannot read events (Negative Test)",
+      "passed": true,
+      "details": "outbox_dispatcher events access rejected: exit=1, msg=ERROR:  permission denied for table events"
+    },
+    {
+      "vector": "Live: Invalid Tenant Injection Attempt (Negative Test)",
+      "passed": true,
+      "details": "Invalid tenant context returned 0 rows (expected 0)"
     }
   ]
 }

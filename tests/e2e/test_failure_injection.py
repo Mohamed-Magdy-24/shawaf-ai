@@ -43,7 +43,7 @@ class TestFailureInjectionRecovery(unittest.TestCase):
         # 1. Insert orphaned row in PROCESSING state with expired locked_until (-45s) into live PostgreSQL
         insert_sql = (
             f"BEGIN; "
-            f"SELECT set_config('app.site_id', 'ALL', true); "
+            f"SELECT set_config('app.site_id', '{site_id}', true); "
             f"INSERT INTO events (id, site_id, camera_id, zone_id, event_type, severity, status, occurred_at_utc, snapshot_rel_path) "
             f"VALUES ('{event_id}', '{site_id}', 'camera01', 'zone_test', 'test.crash', 'WARNING', 'NEW', NOW(), 'snap.jpg') ON CONFLICT DO NOTHING; "
             f"INSERT INTO outbox (event_id, site_id, payload, is_fire_priority, status, locked_until, retry_count) "
@@ -59,7 +59,7 @@ class TestFailureInjectionRecovery(unittest.TestCase):
         # 2. Execute Lease Reaper query directly in live database
         reap_sql = (
             f"BEGIN; "
-            f"SELECT set_config('app.site_id', 'ALL', true); "
+            f"SELECT set_config('app.site_id', '{site_id}', true); "
             f"UPDATE outbox SET status = 'PENDING', locked_until = NULL, retry_count = retry_count + 1 "
             f"WHERE status = 'PROCESSING' AND locked_until < NOW() AND event_id = '{event_id}'; "
             f"SELECT status, retry_count FROM outbox WHERE event_id = '{event_id}'; "

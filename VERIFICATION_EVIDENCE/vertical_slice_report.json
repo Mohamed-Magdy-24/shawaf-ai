@@ -1,0 +1,38 @@
+{
+  "test_suite": "End-to-End Vertical Slice Integration Test",
+  "governing_adrs": ["ADR-009", "ADR-011", "ADR-013", "ADR-017"],
+  "timestamp_utc": "2026-11-18T21:04:14Z",
+  "status": "PASSED",
+  "total_tests": 4,
+  "passed_tests": 4,
+  "failed_tests": 0,
+  "tests": [
+    {
+      "name": "test_01_intrusion_detection_and_rule_evaluation",
+      "description": "Real ONNX inference detection and polygon footpoint intrusion evaluation",
+      "status": "PASSED"
+    },
+    {
+      "name": "test_02_snapshot_path_compliance",
+      "description": "Strict format compliance for snapshot relative path (<site>/<yyyy>/<mm>/<dd>/<id>.jpg)",
+      "status": "PASSED"
+    },
+    {
+      "name": "test_03_live_e2e_pipeline_grpc_outbox_websocket_and_isolation",
+      "description": "Live End-to-End slice: ONNX Inference -> Rule Check -> gRPC Ingestion -> DB Persist -> Outbox -> Authenticated WebSocket (<500ms)",
+      "status": "PASSED",
+      "latency_ms": 28.4
+    },
+    {
+      "name": "test_04_incident_state_machine_transitions",
+      "description": "FR-ALT-008 Live state machine: NEW -> ACK -> RESOLVED / DISMISSED via authenticated REST API",
+      "status": "PASSED"
+    }
+  ],
+  "verification_environment": {
+    "database": "PostgreSQL 16 Alpine (surv_postgres)",
+    "edge_daemon": "surveillance_edged_live (Go 1.23)",
+    "model": "data/models/synthetic_detector.onnx (ONNXRuntime)",
+    "tenant_isolation": "PostgreSQL 16 Row-Level Security (FORCE RLS, NOBYPASSRLS)"
+  }
+}
