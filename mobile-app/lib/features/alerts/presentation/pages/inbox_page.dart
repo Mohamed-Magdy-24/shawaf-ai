@@ -30,13 +30,15 @@ class _InboxPageState extends State<InboxPage> {
       builder: (context, siteState) {
         if (siteState is SiteInitial) {
           context.read<SiteCubit>().loadSites();
-          return const Center(child: CircularProgressIndicator(color: AppColors.cobalt));
+          return const Center(
+              child: CircularProgressIndicator(color: AppColors.cobalt));
         }
 
         if (siteState is SiteError) {
-          final isAuthError = siteState.message.toLowerCase().contains('unauthorized') ||
-              siteState.message.toLowerCase().contains('401') ||
-              siteState.message.toLowerCase().contains('session expired');
+          final isAuthError =
+              siteState.message.toLowerCase().contains('unauthorized') ||
+                  siteState.message.toLowerCase().contains('401') ||
+                  siteState.message.toLowerCase().contains('session expired');
           return ErrorStateView(
             errorMessage: siteState.message,
             actionLabel: isAuthError ? 'SIGN IN' : 'RETRY',
@@ -51,7 +53,8 @@ class _InboxPageState extends State<InboxPage> {
         }
 
         if (siteState is! SiteLoaded) {
-          return const Center(child: CircularProgressIndicator(color: AppColors.cobalt));
+          return const Center(
+              child: CircularProgressIndicator(color: AppColors.cobalt));
         }
 
         final currentSite = siteState.selectedSite;
@@ -80,7 +83,9 @@ class _InboxPageState extends State<InboxPage> {
               if (alertState is AlertInboxError) {
                 return ErrorStateView(
                   errorMessage: alertState.message,
-                  onRetry: () => context.read<AlertInboxCubit>().loadAlerts(currentSite.id),
+                  onRetry: () => context
+                      .read<AlertInboxCubit>()
+                      .loadAlerts(currentSite.id),
                 );
               }
 
@@ -96,7 +101,10 @@ class _InboxPageState extends State<InboxPage> {
 
               final filteredAlerts = _selectedSeverity == 'ALL'
                   ? allAlerts
-                  : allAlerts.where((a) => a.severity.toUpperCase() == _selectedSeverity).toList();
+                  : allAlerts
+                      .where(
+                          (a) => a.severity.toUpperCase() == _selectedSeverity)
+                      .toList();
 
               return SingleChildScrollView(
                 padding: AppSpacing.p20,
@@ -106,7 +114,9 @@ class _InboxPageState extends State<InboxPage> {
                     if (degradedError != null) ...[
                       DegradedBanner(
                         message: degradedError,
-                        onRetry: () => context.read<AlertInboxCubit>().loadAlerts(currentSite.id),
+                        onRetry: () => context
+                            .read<AlertInboxCubit>()
+                            .loadAlerts(currentSite.id),
                       ),
                       AppSpacing.vGap16,
                     ],
@@ -118,9 +128,12 @@ class _InboxPageState extends State<InboxPage> {
                         ? EmptyStateView(
                             icon: Icons.verified_user_outlined,
                             title: 'No Active Safety Alerts',
-                            description: 'All zones in ${currentSite.code} are operating within normal parameters.',
+                            description:
+                                'All zones in ${currentSite.code} are operating within normal parameters.',
                             actionLabel: 'REFRESH',
-                            onAction: () => context.read<AlertInboxCubit>().loadAlerts(currentSite.id),
+                            onAction: () => context
+                                .read<AlertInboxCubit>()
+                                .loadAlerts(currentSite.id),
                           )
                         : _buildTable(context, filteredAlerts),
                   ],
@@ -145,7 +158,8 @@ class _InboxPageState extends State<InboxPage> {
                 const Text('Alert Inbox', style: AppTypography.titleLarge),
                 AppSpacing.hGap8,
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: AppColors.elevated,
                     borderRadius: AppSpacing.roundedXs,
@@ -191,16 +205,21 @@ class _InboxPageState extends State<InboxPage> {
               onTap: () => setState(() => _selectedSeverity = sev),
               borderRadius: AppSpacing.roundedSm,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   borderRadius: AppSpacing.roundedSm,
-                  border: Border.all(color: isSelected ? AppColors.borderline : AppColors.borderline.withValues(alpha: 0.5)),
+                  border: Border.all(
+                      color: isSelected
+                          ? AppColors.borderline
+                          : AppColors.borderline.withValues(alpha: 0.5)),
                 ),
                 child: Text(
                   sev,
                   style: AppTypography.tabularMonoSmall.copyWith(
                     color: isSelected ? AppColors.ink : AppColors.muted,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
               ),
@@ -227,11 +246,15 @@ class _InboxPageState extends State<InboxPage> {
             child: const Row(
               children: [
                 Expanded(flex: 2, child: Text('SEVERITY', style: _headerStyle)),
-                Expanded(flex: 3, child: Text('EVENT / ZONE', style: _headerStyle)),
+                Expanded(
+                    flex: 3, child: Text('EVENT / ZONE', style: _headerStyle)),
                 Expanded(flex: 2, child: Text('CAMERA', style: _headerStyle)),
                 Expanded(flex: 2, child: Text('STATE', style: _headerStyle)),
                 Expanded(flex: 2, child: Text('TIME', style: _headerStyle)),
-                SizedBox(width: 80, child: Text('ACTION', style: _headerStyle, textAlign: TextAlign.right)),
+                SizedBox(
+                    width: 80,
+                    child: Text('ACTION',
+                        style: _headerStyle, textAlign: TextAlign.right)),
               ],
             ),
           ),
@@ -239,15 +262,18 @@ class _InboxPageState extends State<InboxPage> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: alerts.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.borderline),
+            separatorBuilder: (_, __) =>
+                const Divider(height: 1, color: AppColors.borderline),
             itemBuilder: (context, index) {
               final a = alerts[index];
-              final timeStr = '${a.occurredAt.hour.toString().padLeft(2, '0')}:${a.occurredAt.minute.toString().padLeft(2, '0')}:${a.occurredAt.second.toString().padLeft(2, '0')}';
+              final timeStr =
+                  '${a.occurredAt.hour.toString().padLeft(2, '0')}:${a.occurredAt.minute.toString().padLeft(2, '0')}:${a.occurredAt.second.toString().padLeft(2, '0')}';
 
               return InkWell(
                 onTap: () => context.push('/alerts/${a.id}', extra: a),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Row(
                     children: [
                       Expanded(
@@ -261,7 +287,8 @@ class _InboxPageState extends State<InboxPage> {
                         flex: 3,
                         child: Text(
                           a.eventType,
-                          style: AppTypography.titleSmall.copyWith(fontSize: 13),
+                          style:
+                              AppTypography.titleSmall.copyWith(fontSize: 13),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -269,13 +296,15 @@ class _InboxPageState extends State<InboxPage> {
                         flex: 2,
                         child: Text(
                           a.cameraId,
-                          style: AppTypography.tabularMonoSmall.copyWith(color: AppColors.muted),
+                          style: AppTypography.tabularMonoSmall
+                              .copyWith(color: AppColors.muted),
                         ),
                       ),
                       Expanded(
                         flex: 2,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: AppColors.elevated,
                             borderRadius: AppSpacing.roundedXs,
@@ -285,7 +314,9 @@ class _InboxPageState extends State<InboxPage> {
                             a.state.toUpperCase(),
                             style: AppTypography.tabularMonoSmall.copyWith(
                               fontSize: 10,
-                              color: a.state.toUpperCase() == 'NEW' ? AppColors.crimson : AppColors.ink,
+                              color: a.state.toUpperCase() == 'NEW'
+                                  ? AppColors.crimson
+                                  : AppColors.ink,
                               fontWeight: FontWeight.bold,
                             ),
                             textAlign: TextAlign.center,
@@ -294,7 +325,9 @@ class _InboxPageState extends State<InboxPage> {
                       ),
                       Expanded(
                         flex: 2,
-                        child: Text(timeStr, style: AppTypography.tabularMonoSmall.copyWith(color: AppColors.dim)),
+                        child: Text(timeStr,
+                            style: AppTypography.tabularMonoSmall
+                                .copyWith(color: AppColors.dim)),
                       ),
                       SizedBox(
                         width: 80,

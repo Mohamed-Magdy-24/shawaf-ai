@@ -34,10 +34,12 @@ class CamerasPage extends StatelessWidget {
                 borderRadius: AppSpacing.roundedXs,
                 border: Border.all(color: AppColors.borderline),
               ),
-              child: const Icon(Icons.videocam, color: AppColors.cobalt, size: 18),
+              child:
+                  const Icon(Icons.videocam, color: AppColors.cobalt, size: 18),
             ),
             AppSpacing.hGap12,
-            Expanded(child: Text(camera.name, style: AppTypography.titleMedium)),
+            Expanded(
+                child: Text(camera.name, style: AppTypography.titleMedium)),
           ],
         ),
         content: SizedBox(
@@ -58,16 +60,19 @@ class CamerasPage extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.videocam_outlined, size: 48, color: AppColors.cobalt),
+                      const Icon(Icons.videocam_outlined,
+                          size: 48, color: AppColors.cobalt),
                       AppSpacing.vGap12,
                       Text(
                         'WebRTC Low-Latency Stream (0.2s glass-to-glass)',
-                        style: AppTypography.bodySmall.copyWith(color: AppColors.muted),
+                        style: AppTypography.bodySmall
+                            .copyWith(color: AppColors.muted),
                       ),
                       AppSpacing.vGap4,
                       Text(
                         'Camera ID: ${camera.id}',
-                        style: AppTypography.tabularMonoSmall.copyWith(color: AppColors.dim),
+                        style: AppTypography.tabularMonoSmall
+                            .copyWith(color: AppColors.dim),
                       ),
                     ],
                   ),
@@ -77,20 +82,27 @@ class CamerasPage extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Target Frame Rate', style: AppTypography.bodySmall.copyWith(color: AppColors.muted)),
-                  Text('${camera.fpsTarget} FPS', style: AppTypography.tabularMonoSmall.copyWith(color: AppColors.ink)),
+                  Text('Target Frame Rate',
+                      style: AppTypography.bodySmall
+                          .copyWith(color: AppColors.muted)),
+                  Text('${camera.fpsTarget} FPS',
+                      style: AppTypography.tabularMonoSmall
+                          .copyWith(color: AppColors.ink)),
                 ],
               ),
               AppSpacing.vGap8,
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('RTSP Masked Path', style: AppTypography.bodySmall.copyWith(color: AppColors.muted)),
+                  Text('RTSP Masked Path',
+                      style: AppTypography.bodySmall
+                          .copyWith(color: AppColors.muted)),
                   Text(
                     camera.rtspUrl != null && camera.rtspUrl!.isNotEmpty
                         ? 'rtsp://***:***@lan-stream'
                         : 'Internal go2rtc Proxy',
-                    style: AppTypography.tabularMonoSmall.copyWith(color: AppColors.dim),
+                    style: AppTypography.tabularMonoSmall
+                        .copyWith(color: AppColors.dim),
                   ),
                 ],
               ),
@@ -100,7 +112,9 @@ class CamerasPage extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('CLOSE', style: AppTypography.bodySmall.copyWith(color: AppColors.muted)),
+            child: Text('CLOSE',
+                style:
+                    AppTypography.bodySmall.copyWith(color: AppColors.muted)),
           ),
         ],
       ),
@@ -113,13 +127,15 @@ class CamerasPage extends StatelessWidget {
       builder: (context, siteState) {
         if (siteState is SiteInitial) {
           context.read<SiteCubit>().loadSites();
-          return const Center(child: CircularProgressIndicator(color: AppColors.cobalt));
+          return const Center(
+              child: CircularProgressIndicator(color: AppColors.cobalt));
         }
 
         if (siteState is SiteError) {
-          final isAuthError = siteState.message.toLowerCase().contains('unauthorized') ||
-              siteState.message.toLowerCase().contains('401') ||
-              siteState.message.toLowerCase().contains('session expired');
+          final isAuthError =
+              siteState.message.toLowerCase().contains('unauthorized') ||
+                  siteState.message.toLowerCase().contains('401') ||
+                  siteState.message.toLowerCase().contains('session expired');
           return ErrorStateView(
             errorMessage: siteState.message,
             actionLabel: isAuthError ? 'SIGN IN' : 'RETRY',
@@ -134,7 +150,8 @@ class CamerasPage extends StatelessWidget {
         }
 
         if (siteState is! SiteLoaded) {
-          return const Center(child: CircularProgressIndicator(color: AppColors.cobalt));
+          return const Center(
+              child: CircularProgressIndicator(color: AppColors.cobalt));
         }
 
         final currentSite = siteState.selectedSite;
@@ -151,7 +168,9 @@ class CamerasPage extends StatelessWidget {
                 BlocBuilder<CameraStreamCubit, CameraStreamState>(
                   builder: (context, cameraState) {
                     if (cameraState is CameraStreamInitial) {
-                      context.read<CameraStreamCubit>().loadCameras(currentSite.id);
+                      context
+                          .read<CameraStreamCubit>()
+                          .loadCameras(currentSite.id);
                       return ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
@@ -172,17 +191,22 @@ class CamerasPage extends StatelessWidget {
                     if (cameraState is CameraStreamError) {
                       return ErrorStateView(
                         errorMessage: cameraState.message,
-                        onRetry: () => context.read<CameraStreamCubit>().loadCameras(currentSite.id),
+                        onRetry: () => context
+                            .read<CameraStreamCubit>()
+                            .loadCameras(currentSite.id),
                       );
                     }
 
-                    final cameras = cameraState is CameraStreamLoaded ? cameraState.cameras : <Camera>[];
+                    final cameras = cameraState is CameraStreamLoaded
+                        ? cameraState.cameras
+                        : <Camera>[];
 
                     if (cameras.isEmpty) {
                       return EmptyStateView(
                         icon: Icons.videocam_off_outlined,
                         title: 'No Cameras Monitored',
-                        description: 'No active RTSP camera feeds provisioned for ${currentSite.code}.',
+                        description:
+                            'No active RTSP camera feeds provisioned for ${currentSite.code}.',
                         actionLabel: 'ADD CAMERA',
                         onAction: () => context.push('/cameras/add'),
                       );
@@ -190,11 +214,14 @@ class CamerasPage extends StatelessWidget {
 
                     return LayoutBuilder(
                       builder: (context, constraints) {
-                        final cols = constraints.maxWidth > 900 ? 3 : (constraints.maxWidth > 600 ? 2 : 1);
+                        final cols = constraints.maxWidth > 900
+                            ? 3
+                            : (constraints.maxWidth > 600 ? 2 : 1);
                         return GridView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: cols,
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 12,
@@ -203,19 +230,24 @@ class CamerasPage extends StatelessWidget {
                           itemCount: cameras.length,
                           itemBuilder: (context, index) {
                             final cam = cameras[index];
-                            final isHealthy = cam.healthStatus.toUpperCase() == 'HEALTHY' || cam.isActive;
+                            final isHealthy =
+                                cam.healthStatus.toUpperCase() == 'HEALTHY' ||
+                                    cam.isActive;
                             return AppCard(
                               padding: AppSpacing.p16,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               cam.name,
@@ -224,26 +256,37 @@ class CamerasPage extends StatelessWidget {
                                             ),
                                             Text(
                                               cam.id,
-                                              style: AppTypography.tabularMonoSmall.copyWith(color: AppColors.muted),
+                                              style: AppTypography
+                                                  .tabularMonoSmall
+                                                  .copyWith(
+                                                      color: AppColors.muted),
                                             ),
                                           ],
                                         ),
                                       ),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 2),
                                         decoration: BoxDecoration(
                                           color: isHealthy
-                                              ? AppColors.emerald.withValues(alpha: 0.15)
-                                              : AppColors.crimson.withValues(alpha: 0.15),
+                                              ? AppColors.emerald
+                                                  .withValues(alpha: 0.15)
+                                              : AppColors.crimson
+                                                  .withValues(alpha: 0.15),
                                           borderRadius: AppSpacing.roundedXs,
                                           border: Border.all(
-                                            color: isHealthy ? AppColors.emerald : AppColors.crimson,
+                                            color: isHealthy
+                                                ? AppColors.emerald
+                                                : AppColors.crimson,
                                           ),
                                         ),
                                         child: Text(
                                           isHealthy ? 'STREAMING' : 'LOST',
-                                          style: AppTypography.tabularMonoSmall.copyWith(
-                                            color: isHealthy ? AppColors.emerald : AppColors.crimson,
+                                          style: AppTypography.tabularMonoSmall
+                                              .copyWith(
+                                            color: isHealthy
+                                                ? AppColors.emerald
+                                                : AppColors.crimson,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
@@ -255,21 +298,27 @@ class CamerasPage extends StatelessWidget {
                                     decoration: BoxDecoration(
                                       color: AppColors.canvas,
                                       borderRadius: AppSpacing.roundedXs,
-                                      border: Border.all(color: AppColors.borderline),
+                                      border: Border.all(
+                                          color: AppColors.borderline),
                                     ),
                                     child: Center(
                                       child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           Icon(
                                             Icons.videocam_outlined,
-                                            color: isHealthy ? AppColors.cobalt : AppColors.dim,
+                                            color: isHealthy
+                                                ? AppColors.cobalt
+                                                : AppColors.dim,
                                             size: 24,
                                           ),
                                           AppSpacing.hGap8,
                                           Text(
                                             '${cam.fpsTarget} FPS · RTSP/WebRTC',
-                                            style: AppTypography.tabularMonoSmall.copyWith(color: AppColors.dim),
+                                            style: AppTypography
+                                                .tabularMonoSmall
+                                                .copyWith(color: AppColors.dim),
                                           ),
                                         ],
                                       ),
@@ -281,7 +330,8 @@ class CamerasPage extends StatelessWidget {
                                         child: AppButton(
                                           label: 'VIEW STREAM',
                                           variant: ButtonVariant.outlined,
-                                          onPressed: () => _showStreamDialog(context, cam),
+                                          onPressed: () =>
+                                              _showStreamDialog(context, cam),
                                         ),
                                       ),
                                     ],
@@ -315,7 +365,8 @@ class CamerasPage extends StatelessWidget {
                 const Text('Cameras & NVRs', style: AppTypography.titleLarge),
                 AppSpacing.hGap8,
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: AppColors.elevated,
                     borderRadius: AppSpacing.roundedXs,

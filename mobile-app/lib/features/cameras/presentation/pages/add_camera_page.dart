@@ -56,7 +56,9 @@ class _AddCameraPageState extends State<AddCameraPage> {
       'stream_subtype': 1,
     };
 
-    final res = await context.read<CameraManagementCubit>().testConnection(siteId, payload);
+    final res = await context
+        .read<CameraManagementCubit>()
+        .testConnection(siteId, payload);
 
     if (mounted) {
       setState(() {
@@ -103,7 +105,9 @@ class _AddCameraPageState extends State<AddCameraPage> {
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Camera onboarded successfully'), backgroundColor: AppColors.emerald),
+          const SnackBar(
+              content: Text('Camera onboarded successfully'),
+              backgroundColor: AppColors.emerald),
         );
         Navigator.of(context).pop();
       }
@@ -120,7 +124,8 @@ class _AddCameraPageState extends State<AddCameraPage> {
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
         backgroundColor: AppColors.panel,
-        title: const Text('Add NVR / IP Camera', style: AppTypography.titleMedium),
+        title:
+            const Text('Add NVR / IP Camera', style: AppTypography.titleMedium),
       ),
       body: SingleChildScrollView(
         padding: AppSpacing.p24,
@@ -141,14 +146,18 @@ class _AddCameraPageState extends State<AddCameraPage> {
                           borderRadius: AppSpacing.roundedXs,
                           border: Border.all(color: AppColors.borderline),
                         ),
-                        child: const Icon(Icons.videocam_outlined, color: AppColors.cobalt, size: 20),
+                        child: const Icon(Icons.videocam_outlined,
+                            color: AppColors.cobalt, size: 20),
                       ),
                       AppSpacing.hGap12,
                       const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Network Camera Configuration', style: AppTypography.titleMedium),
-                          Text('All inputs start empty. Encrypted at rest via AES-256-GCM.', style: AppTypography.bodySmall),
+                          Text('Network Camera Configuration',
+                              style: AppTypography.titleMedium),
+                          Text(
+                              'All inputs start empty. Encrypted at rest via AES-256-GCM.',
+                              style: AppTypography.bodySmall),
                         ],
                       ),
                     ],
@@ -162,7 +171,9 @@ class _AddCameraPageState extends State<AddCameraPage> {
                         borderRadius: AppSpacing.roundedSm,
                         border: Border.all(color: AppColors.crimson),
                       ),
-                      child: Text(_errorMessage!, style: AppTypography.bodySmall.copyWith(color: AppColors.crimson)),
+                      child: Text(_errorMessage!,
+                          style: AppTypography.bodySmall
+                              .copyWith(color: AppColors.crimson)),
                     ),
                     AppSpacing.vGap16,
                   ],
@@ -172,7 +183,8 @@ class _AddCameraPageState extends State<AddCameraPage> {
                         flex: 3,
                         child: TextField(
                           controller: _nameController,
-                          style: AppTypography.bodySmall.copyWith(color: AppColors.ink),
+                          style: AppTypography.bodySmall
+                              .copyWith(color: AppColors.ink),
                           decoration: const InputDecoration(
                             labelText: 'Camera Name *',
                             hintText: 'e.g. Gate 1 Entry',
@@ -185,13 +197,19 @@ class _AddCameraPageState extends State<AddCameraPage> {
                         child: DropdownButtonFormField<String>(
                           initialValue: _vendor,
                           dropdownColor: AppColors.panel,
-                          style: AppTypography.tabularMonoSmall.copyWith(color: AppColors.ink),
-                          decoration: const InputDecoration(labelText: 'Vendor Preset'),
+                          style: AppTypography.tabularMonoSmall
+                              .copyWith(color: AppColors.ink),
+                          decoration:
+                              const InputDecoration(labelText: 'Vendor Preset'),
                           items: const [
-                            DropdownMenuItem(value: 'HIKVISION', child: Text('Hikvision')),
-                            DropdownMenuItem(value: 'DAHUA', child: Text('Dahua')),
-                            DropdownMenuItem(value: 'TIANDY', child: Text('Tiandy')),
-                            DropdownMenuItem(value: 'RTSP', child: Text('Generic RTSP')),
+                            DropdownMenuItem(
+                                value: 'HIKVISION', child: Text('Hikvision')),
+                            DropdownMenuItem(
+                                value: 'DAHUA', child: Text('Dahua')),
+                            DropdownMenuItem(
+                                value: 'TIANDY', child: Text('Tiandy')),
+                            DropdownMenuItem(
+                                value: 'RTSP', child: Text('Generic RTSP')),
                           ],
                           onChanged: (val) {
                             if (val != null) setState(() => _vendor = val);
@@ -207,7 +225,8 @@ class _AddCameraPageState extends State<AddCameraPage> {
                         flex: 3,
                         child: TextField(
                           controller: _hostIpController,
-                          style: AppTypography.tabularMonoSmall.copyWith(color: AppColors.ink),
+                          style: AppTypography.tabularMonoSmall
+                              .copyWith(color: AppColors.ink),
                           decoration: const InputDecoration(
                             labelText: 'Device IP / Host *',
                             hintText: 'e.g. 192.168.1.100',
@@ -219,7 +238,8 @@ class _AddCameraPageState extends State<AddCameraPage> {
                         flex: 1,
                         child: TextField(
                           controller: _portController,
-                          style: AppTypography.tabularMonoSmall.copyWith(color: AppColors.ink),
+                          style: AppTypography.tabularMonoSmall
+                              .copyWith(color: AppColors.ink),
                           decoration: const InputDecoration(
                             labelText: 'RTSP Port',
                             hintText: '554',
@@ -231,7 +251,8 @@ class _AddCameraPageState extends State<AddCameraPage> {
                         flex: 1,
                         child: TextField(
                           controller: _fpsController,
-                          style: AppTypography.tabularMonoSmall.copyWith(color: AppColors.ink),
+                          style: AppTypography.tabularMonoSmall
+                              .copyWith(color: AppColors.ink),
                           decoration: const InputDecoration(
                             labelText: 'FPS Target',
                             hintText: '15',
@@ -246,7 +267,8 @@ class _AddCameraPageState extends State<AddCameraPage> {
                       Expanded(
                         child: TextField(
                           controller: _usernameController,
-                          style: AppTypography.bodySmall.copyWith(color: AppColors.ink),
+                          style: AppTypography.bodySmall
+                              .copyWith(color: AppColors.ink),
                           decoration: const InputDecoration(
                             labelText: 'RTSP Username',
                             hintText: 'admin',
@@ -258,7 +280,8 @@ class _AddCameraPageState extends State<AddCameraPage> {
                         child: TextField(
                           controller: _passwordController,
                           obscureText: true,
-                          style: AppTypography.bodySmall.copyWith(color: AppColors.ink),
+                          style: AppTypography.bodySmall
+                              .copyWith(color: AppColors.ink),
                           decoration: const InputDecoration(
                             labelText: 'RTSP Password',
                             hintText: 'Encrypted at rest',
@@ -275,7 +298,9 @@ class _AddCameraPageState extends State<AddCameraPage> {
                     children: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: Text('Cancel', style: AppTypography.bodySmall.copyWith(color: AppColors.muted)),
+                        child: Text('Cancel',
+                            style: AppTypography.bodySmall
+                                .copyWith(color: AppColors.muted)),
                       ),
                       AppSpacing.hGap12,
                       AppButton(
@@ -311,9 +336,12 @@ class _AddCameraPageState extends State<AddCameraPage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Multi-Stage Diagnostic Probe', style: AppTypography.titleSmall),
-                  Text('Verifies DNS, TCP 554, RTSP handshake, SDP and frame decoding.',
-                      style: AppTypography.tabularMonoSmall.copyWith(fontSize: 10, color: AppColors.muted)),
+                  const Text('Multi-Stage Diagnostic Probe',
+                      style: AppTypography.titleSmall),
+                  Text(
+                      'Verifies DNS, TCP 554, RTSP handshake, SDP and frame decoding.',
+                      style: AppTypography.tabularMonoSmall
+                          .copyWith(fontSize: 10, color: AppColors.muted)),
                 ],
               ),
               AppButton(
@@ -353,11 +381,16 @@ class _AddCameraPageState extends State<AddCameraPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Probe Latency: ${latency}ms', style: AppTypography.tabularMonoSmall.copyWith(color: AppColors.cobalt)),
+            Text('Probe Latency: ${latency}ms',
+                style: AppTypography.tabularMonoSmall
+                    .copyWith(color: AppColors.cobalt)),
             Text(
-              failedStage == null ? 'ALL STAGES VERIFIED' : 'FAILED AT: $failedStage',
+              failedStage == null
+                  ? 'ALL STAGES VERIFIED'
+                  : 'FAILED AT: $failedStage',
               style: AppTypography.tabularMonoSmall.copyWith(
-                color: failedStage == null ? AppColors.emerald : AppColors.crimson,
+                color:
+                    failedStage == null ? AppColors.emerald : AppColors.crimson,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -376,14 +409,18 @@ class _AddCameraPageState extends State<AddCameraPage> {
                   color: isOk ? AppColors.emerald : AppColors.crimson,
                 ),
                 AppSpacing.hGap8,
-                Text(s['label']!, style: AppTypography.tabularMonoSmall.copyWith(fontSize: 11)),
+                Text(s['label']!,
+                    style:
+                        AppTypography.tabularMonoSmall.copyWith(fontSize: 11)),
               ],
             ),
           );
         }),
         if (errorMsg != null && errorMsg.toString().isNotEmpty) ...[
           AppSpacing.vGap8,
-          Text('Error: $errorMsg', style: AppTypography.tabularMonoSmall.copyWith(color: AppColors.crimson, fontSize: 11)),
+          Text('Error: $errorMsg',
+              style: AppTypography.tabularMonoSmall
+                  .copyWith(color: AppColors.crimson, fontSize: 11)),
         ],
       ],
     );

@@ -38,7 +38,8 @@ class EmployeesPage extends StatelessWidget {
                 borderRadius: AppSpacing.roundedXs,
                 border: Border.all(color: AppColors.borderline),
               ),
-              child: const Icon(Icons.person_add_alt_1, color: AppColors.cobalt, size: 18),
+              child: const Icon(Icons.person_add_alt_1,
+                  color: AppColors.cobalt, size: 18),
             ),
             AppSpacing.hGap12,
             const Text('Enroll Employee', style: AppTypography.titleMedium),
@@ -57,7 +58,8 @@ class EmployeesPage extends StatelessWidget {
               AppSpacing.vGap16,
               TextField(
                 controller: idCtrl,
-                style: AppTypography.tabularMonoSmall.copyWith(color: AppColors.ink),
+                style: AppTypography.tabularMonoSmall
+                    .copyWith(color: AppColors.ink),
                 decoration: const InputDecoration(
                   labelText: 'Employee ID *',
                   hintText: 'e.g. EMP-1050',
@@ -87,7 +89,9 @@ class EmployeesPage extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: AppTypography.bodySmall.copyWith(color: AppColors.muted)),
+            child: Text('Cancel',
+                style:
+                    AppTypography.bodySmall.copyWith(color: AppColors.muted)),
           ),
           AppButton(
             label: 'SAVE & ENROLL',
@@ -95,7 +99,9 @@ class EmployeesPage extends StatelessWidget {
             onPressed: () {
               final empId = idCtrl.text.trim();
               final name = nameCtrl.text.trim();
-              final dept = deptCtrl.text.trim().isEmpty ? 'Operations' : deptCtrl.text.trim();
+              final dept = deptCtrl.text.trim().isEmpty
+                  ? 'Operations'
+                  : deptCtrl.text.trim();
               if (empId.isNotEmpty && name.isNotEmpty) {
                 context.read<EmployeeCubit>().enrollEmployee(siteId, {
                   'employee_id': empId,
@@ -122,7 +128,8 @@ class EmployeesPage extends StatelessWidget {
           borderRadius: AppSpacing.roundedMd,
           side: BorderSide(color: AppColors.borderline),
         ),
-        title: const Text('Bulk Import Employees (CSV)', style: AppTypography.titleMedium),
+        title: const Text('Bulk Import Employees (CSV)',
+            style: AppTypography.titleMedium),
         content: SizedBox(
           width: 500,
           child: Column(
@@ -137,9 +144,11 @@ class EmployeesPage extends StatelessWidget {
               TextField(
                 controller: csvCtrl,
                 maxLines: 6,
-                style: AppTypography.tabularMonoSmall.copyWith(color: AppColors.ink, fontSize: 11),
+                style: AppTypography.tabularMonoSmall
+                    .copyWith(color: AppColors.ink, fontSize: 11),
                 decoration: const InputDecoration(
-                  hintText: 'EMP-101,Ahmed Ali,Operations\nEMP-102,Khaled Omar,Safety',
+                  hintText:
+                      'EMP-101,Ahmed Ali,Operations\nEMP-102,Khaled Omar,Safety',
                 ),
               ),
             ],
@@ -148,7 +157,9 @@ class EmployeesPage extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: AppTypography.bodySmall.copyWith(color: AppColors.muted)),
+            child: Text('Cancel',
+                style:
+                    AppTypography.bodySmall.copyWith(color: AppColors.muted)),
           ),
           AppButton(
             label: 'IMPORT ROWS',
@@ -172,13 +183,15 @@ class EmployeesPage extends StatelessWidget {
       builder: (context, siteState) {
         if (siteState is SiteInitial) {
           context.read<SiteCubit>().loadSites();
-          return const Center(child: CircularProgressIndicator(color: AppColors.cobalt));
+          return const Center(
+              child: CircularProgressIndicator(color: AppColors.cobalt));
         }
 
         if (siteState is SiteError) {
-          final isAuthError = siteState.message.toLowerCase().contains('unauthorized') ||
-              siteState.message.toLowerCase().contains('401') ||
-              siteState.message.toLowerCase().contains('session expired');
+          final isAuthError =
+              siteState.message.toLowerCase().contains('unauthorized') ||
+                  siteState.message.toLowerCase().contains('401') ||
+                  siteState.message.toLowerCase().contains('session expired');
           return ErrorStateView(
             errorMessage: siteState.message,
             actionLabel: isAuthError ? 'SIGN IN' : 'RETRY',
@@ -193,7 +206,8 @@ class EmployeesPage extends StatelessWidget {
         }
 
         if (siteState is! SiteLoaded) {
-          return const Center(child: CircularProgressIndicator(color: AppColors.cobalt));
+          return const Center(
+              child: CircularProgressIndicator(color: AppColors.cobalt));
         }
 
         final currentSite = siteState.selectedSite;
@@ -231,7 +245,8 @@ class EmployeesPage extends StatelessWidget {
                     if (empState is EmployeeError) {
                       return ErrorStateView(
                         errorMessage: empState.message,
-                        onRetry: () => context.read<EmployeeCubit>().load(currentSite.id),
+                        onRetry: () =>
+                            context.read<EmployeeCubit>().load(currentSite.id),
                       );
                     }
 
@@ -240,9 +255,11 @@ class EmployeesPage extends StatelessWidget {
                       return EmptyStateView(
                         icon: Icons.people_outline,
                         title: 'No Enrolled Personnel',
-                        description: 'Zero mock mode active. Enroll staff for ${currentSite.code} using the button above.',
+                        description:
+                            'Zero mock mode active. Enroll staff for ${currentSite.code} using the button above.',
                         actionLabel: 'REFRESH',
-                        onAction: () => context.read<EmployeeCubit>().load(currentSite.id),
+                        onAction: () =>
+                            context.read<EmployeeCubit>().load(currentSite.id),
                       );
                     }
 
@@ -267,10 +284,12 @@ class EmployeesPage extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Text('Employees & Live Presence', style: AppTypography.titleLarge),
+                  const Text('Employees & Live Presence',
+                      style: AppTypography.titleLarge),
                   AppSpacing.hGap8,
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: AppColors.elevated,
                       borderRadius: AppSpacing.roundedXs,
@@ -333,11 +352,16 @@ class EmployeesPage extends StatelessWidget {
             ),
             child: const Row(
               children: [
-                Expanded(flex: 2, child: Text('EMPLOYEE ID', style: _headerStyle)),
+                Expanded(
+                    flex: 2, child: Text('EMPLOYEE ID', style: _headerStyle)),
                 Expanded(flex: 3, child: Text('NAME', style: _headerStyle)),
-                Expanded(flex: 2, child: Text('DEPARTMENT', style: _headerStyle)),
-                Expanded(flex: 3, child: Text('LAST SEEN (WHERE)', style: _headerStyle)),
-                Expanded(flex: 2, child: Text('MATCH CONF.', style: _headerStyle)),
+                Expanded(
+                    flex: 2, child: Text('DEPARTMENT', style: _headerStyle)),
+                Expanded(
+                    flex: 3,
+                    child: Text('LAST SEEN (WHERE)', style: _headerStyle)),
+                Expanded(
+                    flex: 2, child: Text('MATCH CONF.', style: _headerStyle)),
                 Expanded(flex: 2, child: Text('SOURCE', style: _headerStyle)),
               ],
             ),
@@ -346,15 +370,21 @@ class EmployeesPage extends StatelessWidget {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: loaded.employees.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.borderline),
+            separatorBuilder: (_, __) =>
+                const Divider(height: 1, color: AppColors.borderline),
             itemBuilder: (context, index) {
               final emp = loaded.employees[index];
               final pres = presenceMap[emp.employeeId];
-              final whereText = pres != null ? '${pres.cameraId} · ${pres.zoneId ?? "General"}' : '—';
-              final confText = pres != null ? '${(pres.confidence * 100).toStringAsFixed(1)}%' : '—';
+              final whereText = pres != null
+                  ? '${pres.cameraId} · ${pres.zoneId ?? "General"}'
+                  : '—';
+              final confText = pres != null
+                  ? '${(pres.confidence * 100).toStringAsFixed(1)}%'
+                  : '—';
 
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
                     Expanded(
@@ -369,11 +399,15 @@ class EmployeesPage extends StatelessWidget {
                     ),
                     Expanded(
                       flex: 3,
-                      child: Text(emp.fullName, style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w500)),
+                      child: Text(emp.fullName,
+                          style: AppTypography.bodySmall
+                              .copyWith(fontWeight: FontWeight.w500)),
                     ),
                     Expanded(
                       flex: 2,
-                      child: Text(emp.department, style: AppTypography.bodySmall.copyWith(color: AppColors.muted)),
+                      child: Text(emp.department,
+                          style: AppTypography.bodySmall
+                              .copyWith(color: AppColors.muted)),
                     ),
                     Expanded(
                       flex: 3,
@@ -383,7 +417,9 @@ class EmployeesPage extends StatelessWidget {
                             Container(
                               width: 6,
                               height: 6,
-                              decoration: const BoxDecoration(color: AppColors.emerald, shape: BoxShape.circle),
+                              decoration: const BoxDecoration(
+                                  color: AppColors.emerald,
+                                  shape: BoxShape.circle),
                             ),
                             AppSpacing.hGap6,
                           ],
@@ -391,7 +427,9 @@ class EmployeesPage extends StatelessWidget {
                             child: Text(
                               whereText,
                               style: AppTypography.tabularMonoSmall.copyWith(
-                                color: pres != null ? AppColors.ink : AppColors.dim,
+                                color: pres != null
+                                    ? AppColors.ink
+                                    : AppColors.dim,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -404,7 +442,8 @@ class EmployeesPage extends StatelessWidget {
                       child: Text(
                         confText,
                         style: AppTypography.tabularMonoSmall.copyWith(
-                          color: pres != null ? AppColors.emerald : AppColors.dim,
+                          color:
+                              pres != null ? AppColors.emerald : AppColors.dim,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -412,7 +451,8 @@ class EmployeesPage extends StatelessWidget {
                     Expanded(
                       flex: 2,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: AppColors.elevated,
                           borderRadius: AppSpacing.roundedXs,
@@ -420,7 +460,8 @@ class EmployeesPage extends StatelessWidget {
                         ),
                         child: Text(
                           emp.sourceType,
-                          style: AppTypography.tabularMonoSmall.copyWith(fontSize: 10),
+                          style: AppTypography.tabularMonoSmall
+                              .copyWith(fontSize: 10),
                           textAlign: TextAlign.center,
                         ),
                       ),
